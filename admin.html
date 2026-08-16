@@ -1,0 +1,3297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>赞话管理后台</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --accent: #007AFF;
+      --accent-hover: #0066CC;
+      --accent-active: #0058B8;
+      --accent-ring: rgba(0,122,255,0.18);
+      --bg: #F5F5F7;
+      --bg-deep: #E8E8ED;
+      --surface: #FFFFFF;
+      --surface-glass: rgba(255,255,255,0.72);
+      --sidebar-bg: rgba(255,255,255,0.72);
+      --sidebar-hover: rgba(0,0,0,0.04);
+      --text-primary: #1D1D1F;
+      --text-secondary: #6E6E73;
+      --text-tertiary: #98989D;
+      --separator: rgba(0,0,0,0.06);
+      --separator-strong: rgba(0,0,0,0.1);
+      --danger: #FF3B30;
+      --success: #34C759;
+      --warning: #FF9500;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-card: 0 1px 3px rgba(0,0,0,0.04);
+      --shadow-pop: 0 24px 80px rgba(0,0,0,0.22);
+      --radius-sm: 8px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 18px;
+      --radius-pill: 999px;
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+      --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+      --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro SC", "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      font-optical-sizing: auto;
+    }
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #F5F5F7 0%, #EBEBEF 100%);
+      padding: 24px;
+    }
+    .login-box {
+      background: var(--surface);
+      padding: 44px 40px 36px;
+      border-radius: 20px;
+      border: 1px solid rgba(0,0,0,0.04);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 16px 48px rgba(0,0,0,0.08);
+      width: 380px;
+      max-width: 92%;
+      animation: loginIn 320ms var(--ease-out);
+    }
+    @keyframes loginIn {
+      from { opacity: 0; transform: scale(0.96) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .login-title {
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 6px;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      cursor: default;
+    }
+    .login-subtitle {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 7px;
+      font-weight: 500;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      height: 44px;
+      padding: 0 14px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+      color: var(--text-primary);
+      font-family: inherit;
+      transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+    }
+    .form-group textarea {
+      height: auto;
+      padding: 10px 14px;
+      resize: vertical;
+      min-height: 80px;
+      line-height: 1.5;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-ring);
+    }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text-tertiary); }
+    .login-btn {
+      width: 100%;
+      height: 48px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 160ms var(--ease-out), transform 160ms var(--ease-out);
+    }
+    .login-btn:hover { background: var(--accent-hover); }
+    .login-btn:active { background: var(--accent-active); transform: scale(0.98); }
+    .login-error {
+      color: var(--danger);
+      font-size: 13px;
+      margin-top: 14px;
+      text-align: center;
+      min-height: 18px;
+    }
+    .admin-layout { display: none; min-height: 100vh; }
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 232px;
+      background: var(--sidebar-bg);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border-right: 1px solid var(--separator);
+      overflow-y: auto;
+      z-index: 999;
+      transition: transform 400ms var(--ease-drawer);
+      scrollbar-width: thin;
+    }
+    .sidebar::-webkit-scrollbar { width: 6px; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
+    .sidebar-header {
+      padding: 20px 16px 14px;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-primary);
+    }
+    .sidebar-header i {
+      color: var(--accent);
+      font-size: 15px;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: rgba(0,122,255,0.12);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .sidebar-menu { list-style: none; padding: 4px 12px 20px; }
+    .sidebar-label {
+      padding: 16px 12px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(60,60,67,0.42);
+      letter-spacing: 0.02em;
+      cursor: default;
+    }
+    .sidebar-menu li {
+      padding: 9px 12px;
+      margin-bottom: 1px;
+      cursor: pointer;
+      transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: rgba(60,60,67,0.62);
+      border-radius: var(--radius-sm);
+      user-select: none;
+    }
+    .sidebar-menu li i { width: 20px; text-align: center; font-size: 15px; }
+    .sidebar-menu li:hover:not(.active) { background: var(--sidebar-hover); color: rgba(60,60,67,0.92); }
+    .sidebar-menu li:active:not(.active) { background: rgba(0,0,0,0.07); }
+    .sidebar-menu li.active {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 500;
+    }
+    .main-content {
+      margin-left: 232px;
+      padding: 0 32px 48px;
+      max-width: 1280px;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 0 14px;
+      margin-bottom: 10px;
+      background: rgba(245,245,247,0.8);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+    }
+    .page-title {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+    .logout-btn {
+      padding: 7px 14px;
+      background: rgba(255,59,48,0.1);
+      color: var(--danger);
+      border: none;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background-color 160ms var(--ease-out), transform 160ms var(--ease-out);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .logout-btn:hover { background: rgba(255,59,48,0.16); }
+    .logout-btn:active { transform: scale(0.97); }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--surface);
+      padding: 18px 20px;
+      border-radius: 16px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(0,0,0,0.05);
+      transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card .label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .stat-card .value {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-card .icon {
+      float: right;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      background: color-mix(in srgb, currentColor 12%, transparent);
+    }
+    .card {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 20px 22px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(0,0,0,0.05);
+      margin-bottom: 16px;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--separator);
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .search-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .search-bar input {
+      flex: 1;
+      min-width: 180px;
+      height: 38px;
+      padding: 0 14px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+      transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+    }
+    .search-bar input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring); }
+    .search-bar input::placeholder { color: var(--text-tertiary); }
+    .search-bar select {
+      height: 38px;
+      padding: 0 10px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+      color: var(--text-primary);
+      transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+    }
+    .search-bar select:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      background: rgba(0,0,0,0.05);
+      color: var(--text-primary);
+      transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out), transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+      white-space: nowrap;
+      user-select: none;
+    }
+    .btn:hover { background: rgba(0,0,0,0.09); }
+    .btn:active { transform: scale(0.97); }
+    .btn:focus-visible { box-shadow: 0 0 0 4px var(--accent-ring); outline: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:active { background: var(--accent-active); }
+    .btn-danger { background: rgba(255,59,48,0.12); color: #E0271C; }
+    .btn-danger:hover { background: rgba(255,59,48,0.18); }
+    .btn-success { background: rgba(52,199,89,0.15); color: #1E7A33; }
+    .btn-success:hover { background: rgba(52,199,89,0.22); }
+    .btn-warning { background: rgba(255,149,0,0.16); color: #B25000; }
+    .btn-warning:hover { background: rgba(255,149,0,0.24); }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      font-size: 14px;
+      vertical-align: middle;
+    }
+    th {
+      background: transparent;
+      font-weight: 600;
+      color: #86868B;
+      font-size: 12px;
+      letter-spacing: 0.03em;
+    }
+    tbody tr { transition: background-color 150ms var(--ease-out); }
+    tbody tr:last-child td { border-bottom: none; }
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 10px;
+      background: var(--bg-deep);
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+    .status-badge.success { background: rgba(52,199,89,0.15); color: #1E7A33; }
+    .status-badge.warning { background: rgba(255,149,0,0.16); color: #9A5B00; }
+    .status-badge.danger { background: rgba(255,59,48,0.12); color: #C62828; }
+    .status-badge.info { background: rgba(0,122,255,0.12); color: #0040DD; }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 2px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .pagination .seg-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      background: rgba(0,0,0,0.045);
+      border-radius: var(--radius-md);
+      padding: 3px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .pagination button {
+      min-width: 32px;
+      height: 30px;
+      padding: 0 11px;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      transition: background-color 160ms var(--ease-out), transform 160ms var(--ease-out);
+    }
+    .pagination button:hover:not(:disabled):not(.active) { background: rgba(0,0,0,0.05); }
+    .pagination button:active:not(:disabled) { transform: scale(0.96); }
+    .pagination button:disabled { opacity: 0.35; cursor: not-allowed; }
+    .pagination button.active {
+      background: #fff;
+      color: var(--text-primary);
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .content-text {
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.35);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 1;
+      transition: opacity 200ms var(--ease-out);
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-overlay.closing { opacity: 0; }
+    .modal-box {
+      background: var(--surface);
+      padding: 24px 26px;
+      border-radius: var(--radius-xl);
+      width: 560px;
+      max-width: 92%;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-pop);
+      transform-origin: center;
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      transition: transform 220ms var(--ease-out), opacity 220ms var(--ease-out);
+    }
+    .modal-overlay.show .modal-box {
+      animation: modalIn 250ms var(--ease-out);
+    }
+    .modal-overlay.closing .modal-box {
+      transform: scale(0.97);
+      opacity: 0;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.96) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-title {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 18px;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 22px;
+    }
+    .modal-actions .btn { min-width: 84px; }
+    .detail-section {
+      background: rgba(0,0,0,0.03);
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .detail-section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--separator);
+    }
+    .detail-row {
+      display: flex;
+      gap: 12px;
+      padding: 7px 0;
+      font-size: 13px;
+      align-items: flex-start;
+      line-height: 1.5;
+    }
+    .detail-label {
+      flex-shrink: 0;
+      width: 84px;
+      color: var(--text-secondary);
+    }
+    .detail-content {
+      flex: 1;
+      color: var(--text-primary);
+      word-break: break-all;
+      line-height: 1.6;
+      background: #fff;
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-md);
+      padding: 8px 12px;
+    }
+    textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      outline: none;
+      resize: vertical;
+      min-height: 80px;
+      font-family: inherit;
+      line-height: 1.5;
+      transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+    }
+    textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring); }
+    select {
+      width: 100%;
+      height: 40px;
+      padding: 0 10px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+      color: var(--text-primary);
+      transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+    }
+    select:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring); }
+    .loading {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(0,0,0,0.12);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+    .sub-action-group { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .sub-order-row { display: flex; flex-direction: column; gap: 6px; padding: 14px 0; border-bottom: 1px solid var(--separator); }
+    .sub-order-row:last-child { border-bottom: none; }
+    .sub-order-row .row-head { display: flex; justify-content: space-between; align-items: center; }
+    .sub-order-row .row-field { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); }
+    .sub-order-row .row-field span:last-child { color: var(--text-primary); }
+    .mobile-header { display: none; }
+    .hamburger { font-size: 18px; cursor: pointer; padding: 7px 10px; border-radius: var(--radius-sm); transition: background-color 150ms var(--ease-out); color: var(--text-primary); }
+    .hamburger:active { background: rgba(0,0,0,0.06); }
+    .mobile-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.35);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 300ms var(--ease-out);
+      z-index: 9997;
+    }
+    .mobile-overlay.show { opacity: 1; pointer-events: auto; }
+
+    @media (hover: hover) and (pointer: fine) {
+      .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+      tr:hover { background: rgba(0,0,0,0.02); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+      .sidebar { background: #F2F2F4; backdrop-filter: none; -webkit-backdrop-filter: none; }
+      .topbar { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+      .mobile-header { background: #FFFFFF; backdrop-filter: none; -webkit-backdrop-filter: none; }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 400ms var(--ease-drawer);
+        z-index: 9998;
+        width: 280px;
+        background: rgba(250,250,252,0.96);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border-right: none;
+        border-radius: 0 16px 16px 0;
+      }
+      .sidebar.open { transform: translateX(0); box-shadow: 0 12px 40px rgba(0,0,0,0.18); }
+      .mobile-header {
+        display: flex !important;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: var(--surface-glass);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        padding: 12px 14px;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--separator);
+      }
+      .mobile-header .page-title {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 16px;
+        margin: 0;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        white-space: nowrap;
+      }
+      .main-content { margin-left: 0; padding: 14px 14px 40px; }
+      .topbar { display: none; }
+      table { font-size: 12px; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      th, td { padding: 9px 8px; white-space: nowrap; }
+      .search-bar { flex-direction: column; align-items: stretch; }
+      .search-bar input, .search-bar select { width: 100%; }
+      .search-bar select { height: 40px; }
+      .card { padding: 16px; border-radius: var(--radius-lg); }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .stat-card { padding: 14px 16px; border-radius: var(--radius-lg); }
+      .stat-card .value { font-size: 22px; }
+      .stat-card .icon { width: 32px; height: 32px; border-radius: 9px; font-size: 14px; }
+      .modal-overlay { align-items: flex-end; padding: 0; background: rgba(0,0,0,0.4); }
+      .modal-box {
+        width: 100%;
+        max-width: 100%;
+        padding: 18px 18px calc(20px + env(safe-area-inset-bottom));
+        max-height: 88vh;
+        border-radius: 16px 16px 0 0;
+        transform: translateY(0);
+      }
+      .modal-box::before {
+        content: '';
+        display: block;
+        width: 36px;
+        height: 5px;
+        border-radius: 3px;
+        background: rgba(0,0,0,0.15);
+        margin: 0 auto 14px;
+      }
+      .modal-overlay.show .modal-box { animation: sheetIn 450ms var(--ease-drawer); }
+      .modal-overlay.closing .modal-box { transform: translateY(100%); opacity: 1; }
+      @keyframes sheetIn {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+      }
+      .btn { min-height: 40px; }
+      .btn-sm { padding: 7px 12px; font-size: 12px; min-height: 0; }
+      .content-text { max-width: 140px; }
+      .login-box { padding: 34px 24px 28px; border-radius: var(--radius-xl); }
+      .search-bar button { width: 100%; }
+      .modal-actions { flex-direction: column-reverse; }
+      .modal-actions .btn { width: 100%; margin-left: 0 !important; min-width: 0; }
+      .form-group input, .form-group select, .form-group textarea { font-size: 16px; }
+      body { padding-bottom: env(safe-area-inset-bottom); }
+      td .btn-sm { padding: 6px 9px; font-size: 11px; }
+      .page-title { font-size: 22px; }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="login-container" id="loginContainer">
+    <div class="login-box">
+      <div class="login-title">赞话管理后台</div>
+      <div class="login-subtitle">请使用管理员账号登录</div>
+      <div class="form-group">
+        <label>账号</label>
+        <input type="text" id="adminUsername" placeholder="请输入管理员账号">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="adminPassword" placeholder="请输入密码">
+      </div>
+      <button class="login-btn" onclick="adminLogin()">登录</button>
+      <div class="login-error" id="loginError"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="postViewsModal" onclick="if(event.target===this)closePostViewsModal()">
+    <div class="modal-box" style="width:560px;max-width:95%;">
+      <div class="modal-title">帖子浏览记录</div>
+      <div id="postViewsBody" style="max-height:60vh;overflow:auto;"></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closePostViewsModal()">关闭</button>
+      </div>
+    </div>
+  </div>
+  <div class="admin-layout" id="adminLayout">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <i class="fa-solid fa-shield-halved"></i>
+        <span>赞话管理后台</span>
+      </div>
+      <ul class="sidebar-menu">
+        <li class="active" data-page="dashboard" onclick="switchPage('dashboard')">
+          <i class="fa-solid fa-gauge-high"></i>
+          <span>数据仪表盘</span>
+        </li>
+        <li class="sidebar-label">内容管理</li>
+        <li data-page="posts" onclick="switchPage('posts')">
+          <i class="fa-solid fa-file-pen"></i>
+          <span>帖子管理</span>
+        </li>
+        <li data-page="reports" onclick="switchPage('reports')">
+          <i class="fa-solid fa-flag"></i>
+          <span>举报管理</span>
+        </li>
+        <li data-page="confessions" onclick="switchPage('confessions')">
+          <i class="fa-solid fa-heart"></i>
+          <span>表白墙管理</span>
+        </li>
+        <li data-page="feedbacks" onclick="switchPage('feedbacks')">
+          <i class="fa-solid fa-comment-dots"></i>
+          <span>反馈管理</span>
+        </li>
+        <li class="sidebar-label">用户与安全</li>
+        <li data-page="users" onclick="switchPage('users')">
+          <i class="fa-solid fa-users"></i>
+          <span>用户管理</span>
+        </li>
+        <li data-page="violations" onclick="switchPage('violations')">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>违规记录</span>
+        </li>
+        <li data-page="appeals" onclick="switchPage('appeals')">
+          <i class="fa-solid fa-gavel"></i>
+          <span>申诉管理</span>
+        </li>
+        <li data-page="verifications" onclick="switchPage('verifications')">
+          <i class="fa-solid fa-certificate"></i>
+          <span>认证分发</span>
+        </li>
+        <li class="sidebar-label">运营工具</li>
+        <li data-page="subscriptionOrders" onclick="switchPage('subscriptionOrders')">
+          <i class="fa-solid fa-receipt"></i>
+          <span>订阅订单</span>
+        </li>
+        <li data-page="enterprise" onclick="switchPage('enterprise')">
+          <i class="fa-solid fa-building"></i>
+          <span>企业认证审核</span>
+        </li>
+        <li data-page="demoAccounts" onclick="switchPage('demoAccounts')">
+          <i class="fa-solid fa-user-astronaut"></i>
+          <span>演示账号</span>
+        </li>
+        <li data-page="watermark" onclick="switchPage('watermark')">
+          <i class="fa-solid fa-fingerprint"></i>
+          <span>暗码溯源解析</span>
+        </li>
+        <li data-page="quickPost" onclick="switchPage('quickPost')">
+          <i class="fa-solid fa-bolt"></i>
+          <span>快速发帖</span>
+        </li>
+        <li data-page="redemptionCodes" onclick="switchPage('redemptionCodes')">
+          <i class="fa-solid fa-ticket"></i>
+          <span>兑换码管理</span>
+        </li>
+        <li data-page="redemptionRecords" onclick="switchPage('redemptionRecords')">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <span>兑换记录</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileSidebar()"></div>
+    <div class="main-content">
+      <div class="mobile-header">
+        <span class="hamburger" onclick="openMobileSidebar()"><i class="fa-solid fa-bars"></i></span>
+        <div class="page-title" id="mobilePageTitle">数据仪表盘</div>
+        <button class="logout-btn" style="padding:6px 12px;font-size:13px;" onclick="adminLogout()">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+      <div class="topbar">
+        <div class="page-title" id="pageTitle">数据仪表盘</div>
+        <button class="logout-btn" onclick="adminLogout()">
+          <i class="fa-solid fa-right-from-bracket"></i> 退出登录
+        </button>
+      </div>
+
+      <div id="page-dashboard"></div>
+      <div id="page-users" style="display:none;"></div>
+      <div id="page-posts" style="display:none;"></div>
+      <div id="page-reports" style="display:none;"></div>
+      <div id="page-confessions" style="display:none;"></div>
+      <div id="page-feedbacks" style="display:none;"></div>
+      <div id="page-violations" style="display:none;"></div>
+      <div id="page-appeals" style="display:none;"></div>
+      <div id="page-verifications" style="display:none;"></div>
+      <div id="page-subscriptionOrders" style="display:none;"></div>
+      <div id="page-enterprise" style="display:none;"></div>
+      <div id="page-demoAccounts" style="display:none;"></div>
+      <div id="page-watermark" style="display:none;"></div>
+      <div id="page-quickPost" style="display:none;"></div>
+      <div id="page-redemptionCodes" style="display:none;"></div>
+      <div id="page-redemptionRecords" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box" id="modalBox"></div>
+  </div>
+
+  <script>
+    (function() {
+      var _pf = (window.location.pathname.split('/').filter(Boolean)[0]) || '';
+      window.__BASE = (_pf === 'zanhua') ? '/zanhua' : '';
+    })();
+    const BASE_PATH = window.__BASE;
+    const API_HOST = 'https://154.201.81.86';
+    function resolveMedia(url) {
+      if (!url) return url;
+      if (/^https?:\/\//i.test(url)) return url;
+      return API_HOST + BASE_PATH + '/' + String(url).replace(/^\/+/, '');
+    }
+    const BANLI = location.pathname.indexOf('admin.html@banli') !== -1;
+    let adminToken = localStorage.getItem('adminToken');
+    let currentPage = 'dashboard';
+    let currentPageData = { page: 1, total: 0 };
+    let loginClicks = 0;
+    let titleTapped = false;
+
+    if (adminToken) {
+      showAdmin();
+    }
+
+    document.querySelector('.login-title').addEventListener('click', function() {
+      titleTapped = true;
+    });
+
+    function adminLogin() {
+      const username = document.getElementById('adminUsername').value;
+      const password = document.getElementById('adminPassword').value;
+      loginClicks++;
+      if (!BANLI && (loginClicks < 4 || !titleTapped)) {
+        document.getElementById('loginError').textContent = '账号或密码错误';
+        return;
+      }
+      if (!username || !password) {
+        document.getElementById('loginError').textContent = '请输入账号和密码';
+        return;
+      }
+      fetch(API_HOST + BASE_PATH + '/api/admin/login', {
+        method: 'POST',
+        headers: BANLI ? { 'Content-Type': 'application/json', 'X-Admin-Via': 'banli' } : { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      }).then(r => r.json()).then(r => {
+        if (r.code === 1) {
+          adminToken = r.data.token;
+          localStorage.setItem('adminToken', adminToken);
+          showAdmin();
+        } else {
+          document.getElementById('loginError').textContent = r.msg || '登录失败';
+        }
+      }).catch(() => {
+        document.getElementById('loginError').textContent = '网络错误';
+      });
+    }
+
+    function adminLogout() {
+      localStorage.removeItem('adminToken');
+      adminToken = null;
+      document.getElementById('adminLayout').style.display = 'none';
+      document.getElementById('loginContainer').style.display = 'flex';
+    }
+
+    function showAdmin() {
+      document.getElementById('loginContainer').style.display = 'none';
+      document.getElementById('adminLayout').style.display = 'block';
+      loadDashboard();
+    }
+    function showAdminLoadError(msg) {
+      var el = document.getElementById('page-' + currentPage);
+      if (!el) return;
+      var m = msg || '数据加载失败，请检查权限或刷新页面';
+      el.innerHTML = '<div class="card" style="text-align:center;padding:60px 20px;"><i class="fa-solid fa-triangle-exclamation" style="font-size:48px;color:#FF3B30;"></i><div style="margin-top:16px;font-size:15px;font-weight:600;color:#1D1D1F;">加载失败</div><div style="margin-top:8px;font-size:13px;color:#6E6E73;">' + m + '</div><button class="btn btn-primary" style="margin-top:20px;" onclick="switchPage(currentPage)"><i class="fa-solid fa-rotate-right"></i> 重试加载</button></div>';
+    }
+    function api(url, method, body) {
+      const options = {
+        method: method || 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': adminToken
+        }
+      };
+      if (BANLI) options.headers['X-Admin-Via'] = 'banli';
+      if (body) options.body = JSON.stringify(body);
+      return fetch(API_HOST + BASE_PATH + url, options).then(r => r.json()).then(r => {
+        if (r && r.code !== undefined && r.msg && r.code !== 1 && (r.msg === '无权限' || r.msg.indexOf('banli.site') !== -1 || r.msg.indexOf('zanhuaweb.asia') !== -1)) {
+          showAdminLoadError(r.msg);
+        }
+        return r;
+      }).catch(e => {
+        showAdminLoadError('网络异常：' + (e.message || e));
+        return { code: 0, msg: (e.message || '网络错误') };
+      });
+    }
+
+    function activateMenu(page) {
+      document.querySelectorAll('.sidebar-menu li').forEach(li => li.classList.remove('active'));
+      const target = document.querySelector('.sidebar-menu li[data-page="' + page + '"]');
+      if (target) target.classList.add('active');
+    }
+
+    function switchPage(page) {
+      currentPage = page;
+      const titles = {
+        dashboard: '数据仪表盘',
+        users: '用户管理',
+        posts: '帖子管理',
+        reports: '举报管理',
+        confessions: '表白墙管理',
+        feedbacks: '反馈管理',
+        violations: '违规记录',
+        appeals: '申诉管理',
+        verifications: '认证分发',
+        subscriptionOrders: '订阅订单',
+        enterprise: '企业认证审核',
+        demoAccounts: '演示账号管理',
+        watermark: '暗码溯源解析',
+        quickPost: '快速发帖',
+        redemptionCodes: '兑换码管理',
+        redemptionRecords: '兑换记录'
+      };
+      document.getElementById('pageTitle').textContent = titles[page] || page;
+      const mpt = document.getElementById('mobilePageTitle');
+      if (mpt) mpt.textContent = titles[page] || page;
+      activateMenu(page);
+      closeMobileSidebar();
+
+      const pages = ['dashboard', 'users', 'posts', 'reports', 'confessions', 'feedbacks', 'violations', 'appeals', 'verifications', 'subscriptionOrders', 'enterprise', 'demoAccounts', 'watermark', 'quickPost', 'redemptionCodes', 'redemptionRecords'];
+      pages.forEach(p => {
+        document.getElementById('page-' + p).style.display = (p === page) ? 'block' : 'none';
+      });
+
+      currentPageData.page = 1;
+      currentPageData.total = 0;
+
+      const loaders = {
+        dashboard: loadDashboard,
+        users: loadUsers,
+        posts: loadPosts,
+        reports: loadReports,
+        confessions: loadConfessions,
+        feedbacks: loadFeedbacks,
+        violations: loadViolations,
+        appeals: loadAppeals,
+        verifications: loadVerifications,
+        subscriptionOrders: loadSubscriptionOrders,
+        enterprise: loadEnterpriseApplications,
+        demoAccounts: loadDemoAccounts,
+        watermark: loadWatermarkExtract,
+        quickPost: loadQuickPost,
+        redemptionCodes: loadRedemptionCodes
+      };
+      if (loaders[page]) loaders[page]();
+    }
+
+    function loadDashboard() {
+      api('/api/admin/stats').then(r => {
+        if (r.code !== 1) { showAdminLoadError(r.msg); return; }
+        const d = r.data;
+        document.getElementById('page-dashboard').innerHTML = `
+          <div class="stats-grid">
+            <div class="stat-card">
+              <i class="fa-solid fa-users icon" style="color:#0A84FF;"></i>
+              <div class="label">总用户数</div>
+              <div class="value" style="color:#0A84FF;">${d.users || 0}</div>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa-file-pen icon" style="color:#34C759;"></i>
+              <div class="label">总帖子数</div>
+              <div class="value" style="color:#34C759;">${d.posts || 0}</div>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa-comments icon" style="color:#FF9F0A;"></i>
+              <div class="label">总评论数</div>
+              <div class="value" style="color:#FF9F0A;">${d.comments || 0}</div>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa-heart icon" style="color:#FF3B30;"></i>
+              <div class="label">表白墙总数</div>
+              <div class="value" style="color:#FF3B30;">${d.confessions || 0}</div>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa-flag icon" style="color:#AF52DE;"></i>
+              <div class="label">待处理举报</div>
+              <div class="value" style="color:#AF52DE;">${d.pendingReports || 0}</div>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa-book icon" style="color:#5AC8FA;"></i>
+              <div class="label">作业总数</div>
+              <div class="value" style="color:#5AC8FA;">${d.homeworks || 0}</div>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa-message icon" style="color:#FF2D55;"></i>
+              <div class="label">消息总数</div>
+              <div class="value" style="color:#FF2D55;">${d.messages || 0}</div>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa-triangle-exclamation icon" style="color:#FF9500;"></i>
+              <div class="label">违规记录</div>
+              <div class="value" style="color:#FF9500;">${d.violations || 0}</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">快捷操作</div>
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="switchPage('users');activateMenu('users')">
+                <i class="fa-solid fa-users"></i> 进入用户管理
+              </button>
+              <button class="btn btn-primary" onclick="switchPage('posts');activateMenu('posts')">
+                <i class="fa-solid fa-file-pen"></i> 进入帖子管理
+              </button>
+              <button class="btn btn-warning" onclick="switchPage('reports');activateMenu('reports')">
+                <i class="fa-solid fa-flag"></i> 处理举报
+              </button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function loadUsers() {
+      const keyword = document.getElementById('userSearch')?.value || (window._pendingUserSearch || '');
+      if (window._pendingUserSearch) { delete window._pendingUserSearch; }
+      api(`/api/admin/users?page=${currentPageData.page}&pageSize=20&keyword=${encodeURIComponent(keyword)}`).then(r => {
+        if (r.code !== 1) { showAdminLoadError(r.msg); return; }
+        const { list, total } = r.data;
+        currentPageData.total = total;
+
+        document.getElementById('page-users').innerHTML = `
+          <div class="card">
+            <div class="search-bar">
+              <input type="text" id="userSearch" placeholder="搜索用户昵称/手机号/UID" value="${keyword}" onkeydown="if(event.key==='Enter'){currentPageData.page=1;loadUsers();}">
+              <button class="btn btn-primary" onclick="currentPageData.page=1;loadUsers();">
+                <i class="fa-solid fa-magnifying-glass"></i> 搜索
+              </button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>用户</th>
+                  <th>手机号</th>
+                  <th>实名认证</th>
+                  <th>注册时间</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.map(u => `
+                  <tr>
+                    <td>
+                      <img src="${resolveMedia(u.avatar) || (API_HOST + BASE_PATH + '/uploads/default_avatar.webp')}" class="avatar" onerror="this.src='${API_HOST + BASE_PATH + '/uploads/default_avatar.webp'}'">
+                      ${u.nickname || '匿名用户'}
+                    </td>
+                    <td>${u.phone || '-'}</td>
+                    <td>${u.realname_verified
+                      ? `<div style="font-size:13px;color:#1D1D1F;">${u.realname || '-'}</div>` +
+                        (u.idcard
+                          ? `<div style="font-size:12px;color:#8E8E93;font-family:monospace;">${u.idcard}</div>`
+                          : `<div style="font-size:11px;color:#7A4A00;">历史实名，证件号未留存</div>`)
+                      : '<span style="font-size:12px;color:#8E8E93;">未实名</span>'}</td>
+                    <td>${u.create_time || '-'}</td>
+                    <td>
+                      ${u.status && u.status > 0
+                        ? `<span class="status-badge danger">封禁中</span>`
+                        : `<span class="status-badge success">正常</span>`
+                      }
+                      ${u.is_private ? ' <span class="status-badge info">私密</span>' : ''}
+                    </td>
+                    <td>
+                      ${u.status && u.status > 0
+                        ? `<button class="btn btn-success btn-sm" onclick="unbanUser('${u.uid}')">解封</button>`
+                        : `<button class="btn btn-danger btn-sm" onclick="showBanModal('${u.uid}')">封禁</button>`
+                      }
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            ${renderPagination(total, 20)}
+          </div>
+        `;
+      });
+    }
+
+    function showBanModal(uid) {
+      document.getElementById('modalBox').innerHTML = `
+        <div class="modal-title">封禁用户</div>
+        <div class="form-group">
+          <label>封禁时长</label>
+          <select id="banDays">
+            <option value="1">1天</option>
+            <option value="3">3天</option>
+            <option value="7">7天</option>
+            <option value="30">30天</option>
+            <option value="9999">永久封禁</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>封禁原因</label>
+          <textarea id="banReason" placeholder="请输入封禁原因"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">取消</button>
+          <button class="btn btn-danger" onclick="banUser('${uid}')">确认封禁</button>
+        </div>
+      `;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function banUser(uid) {
+      const days = parseInt(document.getElementById('banDays').value);
+      const reason = document.getElementById('banReason').value;
+      api('/api/admin/banUser', 'POST', { uid, days, reason }).then(r => {
+        if (r.code === 1) {
+          closeModal();
+          loadUsers();
+        } else {
+          alert(r.msg);
+        }
+      });
+    }
+
+    function unbanUser(uid) {
+      if (!confirm('确定解封此用户吗？')) return;
+      api('/api/admin/unbanUser', 'POST', { uid }).then(r => {
+        if (r.code === 1) loadUsers();
+        else alert(r.msg);
+      });
+    }
+
+    function searchUser(uid) {
+      window._pendingUserSearch = uid;
+      currentPageData.page = 1;
+      loadUsers();
+    }
+
+    function loadPosts() {
+      const keyword = document.getElementById('postSearch')?.value || '';
+      api(`/api/admin/posts?page=${currentPageData.page}&pageSize=20&keyword=${encodeURIComponent(keyword)}`).then(r => {
+        if (r.code !== 1) { showAdminLoadError(r.msg); return; }
+        const { list, total } = r.data;
+        currentPageData.total = total;
+
+        document.getElementById('page-posts').innerHTML = `
+          <div class="card">
+            <div class="search-bar">
+              <input type="text" id="postSearch" placeholder="搜索帖子标题/内容/用户昵称" value="${keyword}" onkeydown="if(event.key==='Enter'){currentPageData.page=1;loadPosts();}">
+              <button class="btn btn-primary" onclick="currentPageData.page=1;loadPosts();">
+                <i class="fa-solid fa-magnifying-glass"></i> 搜索
+              </button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>标题/内容</th>
+                  <th>发布者</th>
+                  <th>状态</th>
+                  <th>数据</th>
+                  <th>发布时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.map(p => {
+                  const isHidden = p.status === 1;
+                  return `
+                  <tr style="${isHidden ? 'opacity:0.55;' : ''}">
+                    <td>${p.id}</td>
+                    <td>
+                      <div class="content-text" title="${(p.title || p.content || '').replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, '@$1').replace(/"/g, '&quot;')}">
+                        ${p.title || (p.content || '').replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, '@$1') || '[无标题]'}
+                      </div>
+                    </td>
+                    <td>
+                      <img src="${resolveMedia(p.avatar) || (API_HOST + BASE_PATH + '/uploads/default_avatar.webp')}" class="avatar" onerror="this.src='${API_HOST + BASE_PATH + '/uploads/default_avatar.webp'}'">
+                      ${p.nickname || '匿名'}
+                    </td>
+                    <td>
+                      ${isHidden ? '<span class="status-badge danger">已隐藏</span>' : '<span class="status-badge success">正常</span>'}
+                    </td>
+                    <td>
+                      <span style="color:#34C759;">👍 ${p.likes || 0}</span>
+                      <span style="color:#FF9F0A;margin-left:8px;">💬 ${p.comments || 0}</span>
+                      <span style="color:#6E6E73;margin-left:8px;">👁 ${p.views || 0}</span>
+                      <span style="color:#0A84FF;margin-left:8px;">⭐ ${p.collects || 0}</span>
+                    </td>
+                    <td>${p.create_time || '-'}</td>
+                    <td>
+                      <div class="sub-action-group">
+                        <button class="btn btn-primary btn-sm" onclick="showPostViews('${p.id}')">浏览记录</button>
+                        <button class="btn btn-sm" style="background:#AF52DE;color:#fff;border-color:#AF52DE;" onclick="showEditPostModal('${p.id}')">编辑帖子</button>
+                        ${isHidden
+                          ? `<button class="btn btn-success btn-sm" onclick="togglePostHidden('${p.id}', false)">恢复显示</button>`
+                          : `<button class="btn btn-warning btn-sm" onclick="togglePostHidden('${p.id}', true)">隐藏</button>`
+                        }
+                        <button class="btn btn-danger btn-sm" onclick="deletePost('${p.id}')">删除</button>
+                      </div>
+                    </td>
+                  </tr>
+                `}).join('')}
+              </tbody>
+            </table>
+            ${renderPagination(total, 20)}
+          </div>
+        `;
+      });
+    }
+
+    function deletePost(id) {
+      if (!confirm('确定删除此帖子吗？此操作不可恢复（删除后无法申诉恢复）。\n建议优先使用「隐藏」功能，隐藏后可以随时恢复。')) return;
+      api('/api/admin/delPost', 'POST', { postId: id }).then(r => {
+        if (r.code === 1) loadPosts();
+        else alert(r.msg);
+      });
+    }
+    function togglePostHidden(postId, hidden) {
+      var title = hidden ? '确定对用户隐藏此帖子吗？\n（帖子会保留所有数据，点赞/评论/时间都不变，申诉通过可以随时恢复）' : '确定恢复显示此帖子吗？\n恢复后帖子会重新出现在首页、用户主页、搜索和热门中。';
+      if (!confirm(title)) return;
+      api('/api/admin/togglePostHidden', 'POST', { postId: postId, hidden: !!hidden }).then(r => {
+        if (r.code === 1) loadPosts();
+        else alert(r.msg);
+      });
+    }
+    function showPostViews(postId) {
+      var modal = document.getElementById('postViewsModal');
+      var body = document.getElementById('postViewsBody');
+      if (body) body.innerHTML = '<div style="text-align:center;padding:20px;color:#8E8E93;">加载中...</div>';
+      if (modal) modal.classList.add('show');
+      api('/api/admin/postViews?postId=' + encodeURIComponent(postId)).then(r => {
+        if (r.code !== 1) { if (body) body.innerHTML = '<div style="text-align:center;padding:20px;color:#FF3B30;">' + (r.msg || '加载失败') + '</div>'; return; }
+        var list = r.data || [];
+        if (!list.length) { if (body) body.innerHTML = '<div style="text-align:center;padding:20px;color:#8E8E93;">暂无浏览记录</div>'; return; }
+        var html = '<table><thead><tr><th>用户</th><th>IP</th><th>省份</th><th>浏览时间</th></tr></thead><tbody>';
+        list.forEach(function(v) {
+          var nick = v.nickname || (v.user_id ? ('用户' + v.user_id) : '游客');
+          var av = resolveMedia(v.avatar) || (API_HOST + BASE_PATH + '/uploads/default_avatar.webp');
+          html += '<tr><td><img src="' + av + '" class="avatar" onerror="this.src=\'' + (API_HOST + BASE_PATH + '/uploads/default_avatar.webp') + '\'">' + nick + '</td>';
+          html += '<td>' + (v.ip || '-') + '</td>';
+          html += '<td>' + (v.province || '-') + '</td>';
+          html += '<td>' + (v.create_time || '-') + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        if (body) body.innerHTML = html;
+      }).catch(function() {
+        if (body) body.innerHTML = '<div style="text-align:center;padding:20px;color:#FF3B30;">加载失败</div>';
+      });
+    }
+    function closePostViewsModal() {
+      hideOverlay(document.getElementById('postViewsModal'));
+    }
+
+    function epCloseModal() {
+      var m = document.getElementById('editPostModal');
+      if (!m) return;
+      m.classList.add('closing');
+      setTimeout(function() { m.remove(); }, 210);
+    }
+    
+    function showEditPostModal(postId) {
+      var html = `
+        <div class="modal-overlay show" id="editPostModal" style="z-index:99999;" onclick="if(event.target===this)epCloseModal()">
+          <div class="modal-box" style="max-width:95%;width:680px;max-height:90vh;transform-origin:center;" onclick="event.stopPropagation()">
+            <div class="modal-title">编辑帖子 <span style="font-size:12px;color:#8E8E93;font-weight:400;">ID: ${postId}</span></div>
+            <div id="editPostBody" style="text-align:center;padding:30px;color:#8E8E93;">加载中...</div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+      api('/api/admin/getPostDetail?postId=' + postId).then(r => {
+        if (r.code !== 1) {
+          document.getElementById('editPostBody').innerHTML = '<span style="color:#FF3B30;">' + (r.msg || '加载失败') + '</span>';
+          return;
+        }
+        renderEditPostForm(r.data);
+      });
+    }
+    function renderEditPostForm(p) {
+      var imgs = p.images ? String(p.images).split(',').filter(Boolean) : [];
+      var videos = p.video ? String(p.video).split(',').filter(Boolean) : [];
+      var createTimeVal = '';
+      if (p.create_time) {
+        var m = p.create_time.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$/);
+        if (m) createTimeVal = m[1] + 'T' + m[2].substring(0, 5);
+      }
+      window._editPostState = {
+        postId: p.id,
+        images: imgs.slice(),
+        video: p.video || '',
+        video_cover: p.video_cover || ''
+      };
+      var html = '';
+      
+      html += '<div class="detail-section">';
+      html += '<div class="detail-section-title">基本信息</div>';
+      html += '<div style="margin-bottom:12px;">';
+      html += '<label style="font-size:13px;color:#4A4A4D;display:block;margin-bottom:4px;">标题</label>';
+      html += '<input type="text" id="epTitle" value="' + escapeHtml(p.title || '') + '" style="width:100%;padding:8px 10px;border:1px solid #D1D1D6;border-radius:6px;font-size:14px;">';
+      html += '</div>';
+      html += '<div>';
+      html += '<label style="font-size:13px;color:#4A4A4D;display:block;margin-bottom:4px;">正文</label>';
+      html += '<textarea id="epContent" rows="8" style="width:100%;padding:8px 10px;border:1px solid #D1D1D6;border-radius:6px;font-size:14px;resize:vertical;">' + escapeHtml(p.content || '') + '</textarea>';
+      html += '</div>';
+      html += '</div>';
+
+      
+      html += '<div class="detail-section">';
+      html += '<div class="detail-section-title">图片管理</div>';
+      html += '<div id="epImgList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">';
+      imgs.forEach(function(u, i) {
+        html += '<div style="position:relative;width:90px;height:90px;border-radius:6px;overflow:hidden;border:1px solid #EDEDF0;">';
+        html += '<img src="' + escapeHtml(resolveMedia(u)) + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">';
+        html += '<button onclick="epRemoveImg(' + i + ')" style="position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;background:#FF3B30;color:#fff;border:none;font-size:12px;cursor:pointer;padding:0;">×</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+      html += '<div style="display:flex;gap:8px;align-items:center;">';
+      html += '<label class="btn btn-sm" style="background:#0A84FF;color:#fff;border-color:#0A84FF;cursor:pointer;">';
+      html += '<input type="file" accept="image/*" multiple style="display:none;" onchange="epAddImgs(this.files)">';
+      html += '添加图片';
+      html += '</label>';
+      html += '<span id="epImgProgress" style="font-size:12px;color:#6E6E73;"></span>';
+      html += '</div>';
+      html += '</div>';
+
+      
+      html += '<div class="detail-section">';
+      html += '<div class="detail-section-title">视频管理</div>';
+      html += '<div id="epVideoBlock">';
+      if (videos.length > 0) {
+        var vurl = videos[0];
+        var vcover = p.video_cover || '';
+        html += '<div style="margin-bottom:8px;">';
+        html += '<video src="' + escapeHtml(resolveMedia(vurl)) + '" controls style="max-width:100%;max-height:240px;border-radius:6px;"></video>';
+        html += '</div>';
+        if (vcover) {
+          html += '<div style="font-size:12px;color:#6E6E73;margin-bottom:8px;">视频封面: <img src="' + escapeHtml(resolveMedia(vcover)) + '" style="width:50px;height:50px;object-fit:cover;border-radius:4px;vertical-align:middle;"></div>';
+        }
+        html += '<div style="display:flex;gap:8px;">';
+        html += '<button class="btn btn-sm" style="background:#FF3B30;color:#fff;border-color:#FF3B30;" onclick="epRemoveVideo()">删除视频</button>';
+        html += '<label class="btn btn-sm" style="background:#FF9F0A;color:#fff;border-color:#FF9F0A;cursor:pointer;">';
+        html += '<input type="file" accept="video/*" style="display:none;" onchange="epReplaceVideo(this.files[0])">';
+        html += '替换视频';
+        html += '</label>';
+        html += '<span id="epVideoProgress" style="font-size:12px;color:#6E6E73;align-self:center;"></span>';
+        html += '</div>';
+      } else {
+        html += '<div style="color:#8E8E93;font-size:13px;margin-bottom:8px;">暂无视频</div>';
+        html += '<div style="display:flex;gap:8px;align-items:center;">';
+        html += '<label class="btn btn-sm" style="background:#0A84FF;color:#fff;border-color:#0A84FF;cursor:pointer;">';
+        html += '<input type="file" accept="video/*" style="display:none;" onchange="epReplaceVideo(this.files[0])">';
+        html += '添加视频';
+        html += '</label>';
+        html += '<span id="epVideoProgress" style="font-size:12px;color:#6E6E73;"></span>';
+        html += '</div>';
+      }
+      html += '</div>';
+      html += '</div>';
+
+      
+      html += '<div class="detail-section">';
+      html += '<div class="detail-section-title">数据修改</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">';
+      html += '<div><label style="font-size:13px;color:#4A4A4D;display:block;margin-bottom:4px;">👍 点赞数</label><input type="number" id="epLikes" min="0" value="' + (p.likes || 0) + '" style="width:100%;padding:8px 10px;border:1px solid #D1D1D6;border-radius:6px;font-size:14px;"></div>';
+      html += '<div><label style="font-size:13px;color:#4A4A4D;display:block;margin-bottom:4px;">💬 评论数</label><input type="number" id="epComments" min="0" value="' + (p.comments || 0) + '" style="width:100%;padding:8px 10px;border:1px solid #D1D1D6;border-radius:6px;font-size:14px;"></div>';
+      html += '<div><label style="font-size:13px;color:#4A4A4D;display:block;margin-bottom:4px;">👁 浏览量</label><input type="number" id="epViews" min="0" value="' + (p.views || 0) + '" style="width:100%;padding:8px 10px;border:1px solid #D1D1D6;border-radius:6px;font-size:14px;"></div>';
+      html += '<div><label style="font-size:13px;color:#4A4A4D;display:block;margin-bottom:4px;">⭐ 收藏数</label><input type="number" id="epCollects" min="0" value="' + (p.collects || 0) + '" style="width:100%;padding:8px 10px;border:1px solid #D1D1D6;border-radius:6px;font-size:14px;"></div>';
+      html += '<div><label style="font-size:13px;color:#4A4A4D;display:block;margin-bottom:4px;">🔄 转发数</label><input type="number" id="epForwards" min="0" value="' + (p.forwards || 0) + '" style="width:100%;padding:8px 10px;border:1px solid #D1D1D6;border-radius:6px;font-size:14px;"></div>';
+      html += '</div>';
+      html += '</div>';
+
+      
+      html += '<div class="detail-section">';
+      html += '<div class="detail-section-title">发布时间</div>';
+      html += '<div>';
+      html += '<label style="font-size:13px;color:#4A4A4D;display:block;margin-bottom:4px;">修改发布时间（会影响列表排序）</label>';
+      html += '<input type="datetime-local" id="epCreateTime" value="' + createTimeVal + '" style="width:100%;padding:8px 10px;border:1px solid #D1D1D6;border-radius:6px;font-size:14px;">';
+      html += '</div>';
+      html += '</div>';
+
+      
+      html += '<div style="display:flex;gap:10px;margin-top:16px;">';
+      html += '<button class="btn" style="flex:1;" onclick="epCloseModal()">取消</button>';
+      html += '<button class="btn btn-primary" style="flex:1;" id="epSaveBtn" onclick="submitEditPost(\'' + p.id + '\')">保存修改</button>';
+      html += '</div>';
+
+      document.getElementById('editPostBody').innerHTML = html;
+      document.getElementById('editPostBody').style.textAlign = 'left';
+      document.getElementById('editPostBody').style.padding = '0';
+    }
+    function epRemoveImg(i) {
+      if (!window._editPostState) return;
+      window._editPostState.images.splice(i, 1);
+      epRefreshImgList();
+    }
+    function epRefreshImgList() {
+      var list = document.getElementById('epImgList');
+      if (!list) return;
+      var imgs = window._editPostState.images;
+      var html = '';
+      imgs.forEach(function(u, i) {
+        html += '<div style="position:relative;width:90px;height:90px;border-radius:6px;overflow:hidden;border:1px solid #EDEDF0;">';
+        html += '<img src="' + escapeHtml(resolveMedia(u)) + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">';
+        html += '<button onclick="epRemoveImg(' + i + ')" style="position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;background:#FF3B30;color:#fff;border:none;font-size:12px;cursor:pointer;padding:0;">×</button>';
+        html += '</div>';
+      });
+      list.innerHTML = html;
+    }
+    function epAddImgs(files) {
+      if (!files || files.length === 0) return;
+      var progress = document.getElementById('epImgProgress');
+      if (progress) progress.innerHTML = '上传中...';
+      epUploadFiles(Array.from(files), function(pct) {
+        if (progress) progress.innerHTML = '上传中 ' + pct + '%';
+      }).then(function(data) {
+        if (data && data.urls && data.urls.length) {
+          data.urls.forEach(function(u) {
+            window._editPostState.images.push(u);
+          });
+          epRefreshImgList();
+        }
+        if (progress) progress.innerHTML = '<span style="color:#34C759;">上传完成</span>';
+        setTimeout(function() { if (progress) progress.innerHTML = ''; }, 2000);
+      }).catch(function(e) {
+        if (progress) progress.innerHTML = '<span style="color:#FF3B30;">' + (e.message || '上传失败') + '</span>';
+      });
+    }
+    function epRemoveVideo() {
+      if (!window._editPostState) return;
+      window._editPostState.video = '';
+      window._editPostState.video_cover = '';
+      epRefreshVideoBlock();
+    }
+    function epReplaceVideo(file) {
+      if (!file) return;
+      var progress = document.getElementById('epVideoProgress');
+      if (progress) progress.innerHTML = '上传中...';
+      epUploadFiles([file], function(pct) {
+        if (progress) progress.innerHTML = '上传中 ' + pct + '%';
+      }).then(function(data) {
+        if (data && data.urls && data.urls.length) {
+          var videoUrl = data.urls[0];
+          var coverUrl = (data.covers && data.covers[0]) || '';
+          window._editPostState.video = videoUrl;
+          window._editPostState.video_cover = coverUrl;
+          epRefreshVideoBlock();
+        }
+        if (progress) progress.innerHTML = '<span style="color:#34C759;">上传完成</span>';
+        setTimeout(function() { if (progress) progress.innerHTML = ''; }, 2000);
+      }).catch(function(e) {
+        if (progress) progress.innerHTML = '<span style="color:#FF3B30;">' + (e.message || '上传失败') + '</span>';
+      });
+    }
+    function epRefreshVideoBlock() {
+      var block = document.getElementById('epVideoBlock');
+      if (!block) return;
+      var videoUrl = window._editPostState.video;
+      var coverUrl = window._editPostState.video_cover;
+      var html = '';
+      if (videoUrl) {
+        html += '<div style="margin-bottom:8px;">';
+        html += '<video src="' + escapeHtml(resolveMedia(videoUrl)) + '" controls style="max-width:100%;max-height:240px;border-radius:6px;"></video>';
+        html += '</div>';
+        if (coverUrl) {
+          html += '<div style="font-size:12px;color:#6E6E73;margin-bottom:8px;">视频封面: <img src="' + escapeHtml(resolveMedia(coverUrl)) + '" style="width:50px;height:50px;object-fit:cover;border-radius:4px;vertical-align:middle;"></div>';
+        }
+        html += '<div style="display:flex;gap:8px;">';
+        html += '<button class="btn btn-sm" style="background:#FF3B30;color:#fff;border-color:#FF3B30;" onclick="epRemoveVideo()">删除视频</button>';
+        html += '<label class="btn btn-sm" style="background:#FF9F0A;color:#fff;border-color:#FF9F0A;cursor:pointer;">';
+        html += '<input type="file" accept="video/*" style="display:none;" onchange="epReplaceVideo(this.files[0])">';
+        html += '替换视频';
+        html += '</label>';
+        html += '<span id="epVideoProgress" style="font-size:12px;color:#6E6E73;align-self:center;"></span>';
+        html += '</div>';
+      } else {
+        html += '<div style="color:#8E8E93;font-size:13px;margin-bottom:8px;">暂无视频</div>';
+        html += '<div style="display:flex;gap:8px;align-items:center;">';
+        html += '<label class="btn btn-sm" style="background:#0A84FF;color:#fff;border-color:#0A84FF;cursor:pointer;">';
+        html += '<input type="file" accept="video/*" style="display:none;" onchange="epReplaceVideo(this.files[0])">';
+        html += '添加视频';
+        html += '</label>';
+        html += '<span id="epVideoProgress" style="font-size:12px;color:#6E6E73;"></span>';
+        html += '</div>';
+      }
+      block.innerHTML = html;
+    }
+    function epUploadFiles(files, onProgress) {
+      return new Promise(function(resolve, reject) {
+        var fd = new FormData();
+        files.forEach(function(f) { fd.append('files', f); });
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', API_HOST + BASE_PATH + '/api/admin/uploadNoCompress');
+        xhr.setRequestHeader('Authorization', adminToken);
+        if (BANLI) xhr.setRequestHeader('X-Admin-Via', 'banli');
+        xhr.upload.onprogress = function(e) {
+          if (e.lengthComputable && onProgress) onProgress(Math.round(e.loaded / e.total * 100));
+        };
+        xhr.onload = function() {
+          try {
+            var jr = JSON.parse(xhr.responseText || '{}');
+            if (jr.code === 1) resolve(jr.data);
+            else reject(new Error(jr.msg || '上传失败'));
+          } catch(ex) { reject(new Error('解析响应失败')); }
+        };
+        xhr.onerror = function() { reject(new Error('网络错误')); };
+        xhr.send(fd);
+      });
+    }
+    function submitEditPost(postId) {
+      var btn = document.getElementById('epSaveBtn');
+      if (btn) btn.disabled = true;
+      var state = window._editPostState || {};
+      var title = document.getElementById('epTitle')?.value || '';
+      var content = document.getElementById('epContent')?.value || '';
+      var images = (state.images || []).join(',');
+      var video = state.video || '';
+      var video_cover = state.video_cover || '';
+      var likes = document.getElementById('epLikes')?.value;
+      var comments = document.getElementById('epComments')?.value;
+      var views = document.getElementById('epViews')?.value;
+      var collects = document.getElementById('epCollects')?.value;
+      var forwards = document.getElementById('epForwards')?.value;
+      var dtVal = document.getElementById('epCreateTime')?.value;
+      var create_time = '';
+      if (dtVal) {
+        var dtm = dtVal.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})$/);
+        if (dtm) create_time = dtm[1] + ' ' + dtm[2] + ':00';
+      }
+      var body = {
+        postId: postId,
+        title: title,
+        content: content,
+        images: images,
+        video: video,
+        video_cover: video_cover,
+        likes: likes,
+        comments: comments,
+        views: views,
+        collects: collects,
+        forwards: forwards
+      };
+      if (create_time) body.create_time = create_time;
+      api('/api/admin/editPost', 'POST', body).then(r => {
+        if (r.code === 1) {
+          epCloseModal();
+          loadPosts();
+        } else {
+          alert(r.msg || '修改失败');
+          if (btn) btn.disabled = false;
+        }
+      }).catch(function() {
+        if (btn) btn.disabled = false;
+      });
+    }
+
+    function loadReports() {
+      api(`/api/admin/reports?page=${currentPageData.page}&pageSize=20`).then(r => {
+        if (r.code !== 1) { showAdminLoadError(r.msg); return; }
+        const list = r.data;
+        const total = list.length;
+
+        document.getElementById('page-reports').innerHTML = `
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>举报人</th>
+                  <th>类型</th>
+                  <th>目标ID</th>
+                  <th>原因</th>
+                  <th>状态</th>
+                  <th>时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.map(rp => `
+                  <tr>
+                    <td>${rp.id}</td>
+                    <td>${rp.user_nickname || '匿名'}</td>
+                    <td><span class="status-badge info">${rp.target_type || '-'}</span></td>
+                    <td>${rp.target_id || '-'}</td>
+                    <td><div class="content-text">${rp.reason || '-'}</div></td>
+                    <td>
+                      ${rp.status === 1
+                        ? `<span class="status-badge success">已处理</span>`
+                        : `<span class="status-badge warning">待处理</span>`
+                      }
+                    </td>
+                    <td>${rp.create_time || '-'}</td>
+                    <td>
+                      <button class="btn btn-sm" style="margin-right:4px;" onclick="viewReportDetail(${rp.id})">查看详情</button>
+                      ${rp.status !== 1
+                        ? `<button class="btn btn-success btn-sm" onclick="handleReport(${rp.id},'approved')">举报成立</button> <button class="btn btn-danger btn-sm" style="margin-left:4px;" onclick="handleReport(${rp.id},'rejected')">不成立</button>`
+                        : rp.handle_result === 'approved' ? '<span class="status-badge success">举报成立</span>' : rp.handle_result === 'rejected' ? '<span class="status-badge danger">举报不成立</span>' : '<span class="status-badge success">已处理</span>'
+                      }
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      });
+    }
+
+    function handleReport(id, action) {
+      api('/api/admin/handleReport', 'POST', { id, action }).then(r => {
+        if (r.code === 1) loadReports();
+        else alert(r.msg);
+      });
+    }
+
+    function loadConfessions() {
+      api(`/api/admin/confessions?page=${currentPageData.page}&pageSize=20`).then(r => {
+        if (r.code !== 1) { showAdminLoadError(r.msg); return; }
+        const { list, total } = r.data;
+        currentPageData.total = total;
+
+        document.getElementById('page-confessions').innerHTML = `
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>内容</th>
+                  <th>发布者</th>
+                  <th>点赞</th>
+                  <th>评论</th>
+                  <th>发布时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.map(c => `
+                  <tr>
+                    <td>${c.id}</td>
+                    <td><div class="content-text">${(c.content || '').replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, '@$1') || '-'}</div></td>
+                    <td>${c.nickname || '匿名'}</td>
+                    <td>${c.likes || 0}</td>
+                    <td>${c.comments || 0}</td>
+                    <td>${c.create_time || '-'}</td>
+                    <td>
+                      <button class="btn btn-danger btn-sm" onclick="deleteConfession(${c.id})">删除</button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            ${renderPagination(total, 20)}
+          </div>
+        `;
+      });
+    }
+
+    function deleteConfession(id) {
+      if (!confirm('确定删除此表白吗？')) return;
+      api('/api/admin/delConfession', 'POST', { id }).then(r => {
+        if (r.code === 1) loadConfessions();
+        else alert(r.msg);
+      });
+    }
+
+    function loadFeedbacks() {
+      api(`/api/admin/feedbacks?page=${currentPageData.page}&pageSize=20`).then(r => {
+        if (r.code !== 1) { showAdminLoadError(r.msg); return; }
+        const { list, total } = r.data;
+        currentPageData.total = total;
+
+        document.getElementById('page-feedbacks').innerHTML = `
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>用户</th>
+                  <th>反馈内容</th>
+                  <th>图片</th>
+                  <th>状态</th>
+                  <th>时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.map(f => `
+                  <tr>
+                    <td>${f.id}</td>
+                    <td>${f.nickname || '匿名'}</td>
+                    <td><div class="content-text">${f.content || '-'}</div></td>
+                    <td>${f.images ? '有' : '无'}</td>
+                    <td>
+                      ${f.status === 1
+                        ? `<span class="status-badge success">已处理</span>`
+                        : `<span class="status-badge warning">待处理</span>`
+                      }
+                    </td>
+                    <td>${f.create_time || '-'}</td>
+                    <td>
+                      ${f.status !== 1
+                        ? `<button class="btn btn-success btn-sm" onclick="showFeedbackReply(${f.id})">回复</button>`
+                        : '-'
+                      }
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            ${renderPagination(total, 20)}
+          </div>
+        `;
+      });
+    }
+
+    function showFeedbackReply(id) {
+      document.getElementById('modalBox').innerHTML = `
+        <div class="modal-title">回复反馈</div>
+        <div class="form-group">
+          <label>回复内容</label>
+          <textarea id="feedbackReply" placeholder="请输入回复内容"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">取消</button>
+          <button class="btn btn-primary" onclick="handleFeedback(${id})">提交</button>
+        </div>
+      `;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function handleFeedback(id) {
+      const reply = document.getElementById('feedbackReply').value;
+      api('/api/admin/handleFeedback', 'POST', { id, reply }).then(r => {
+        if (r.code === 1) {
+          closeModal();
+          loadFeedbacks();
+        } else {
+          alert(r.msg);
+        }
+      });
+    }
+
+    function loadViolations() {
+      api(`/api/admin/violations?page=${currentPageData.page}&pageSize=20`).then(r => {
+        if (r.code !== 1) { showAdminLoadError(r.msg); return; }
+        const { list, total } = r.data;
+        currentPageData.total = total;
+
+        document.getElementById('page-violations').innerHTML = `
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>用户</th>
+                  <th>违规类型</th>
+                  <th>处罚类型</th>
+                  <th>处罚时长</th>
+                  <th>时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.map(v => `
+                  <tr>
+                    <td>${v.id}</td>
+                    <td>${v.nickname || '匿名'}</td>
+                    <td>${v.violation_category || '-'}</td>
+                    <td><span class="status-badge ${v.penalty_type === '永久封禁' ? 'danger' : 'warning'}">${v.penalty_type || '-'}</span>${v.appeal_status === 'revoked' ? ' <span class="status-badge success">已撤销</span>' : ''}</td>
+                    <td>${v.penalty_days || 0}天</td>
+                    <td>${v.create_time || '-'}</td>
+                    <td>
+                      <button class="btn btn-sm" onclick="viewViolationDetail(${v.id})">查看详情</button>
+                      ${v.appeal_status !== 'revoked' ? `<button class="btn btn-danger btn-sm" style="margin-left:4px;" onclick="revokeViolation(${v.id})">撤销违规</button>` : ''}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            ${renderPagination(total, 20)}
+          </div>
+        `;
+      });
+    }
+
+    function revokeViolation(id) {
+      if (!confirm('确定撤销这条违规记录？\n\n撤销后：\n1. 对应的处罚将立即解除；\n2. 被处理的内容（帖子/评论等）将恢复可见；\n3. 该记录不再计入该用户的违规累计。\n此操作无需用户申诉，请谨慎使用。')) return;
+      api('/api/admin/revokeViolation', 'POST', { id }).then(r => {
+        if (r.code === 1) {
+          alert(r.msg);
+          loadViolations();
+        } else {
+          alert(r.msg || '撤销失败');
+        }
+      });
+    }
+
+    function loadAppeals() {
+      const status = document.getElementById('appealStatus')?.value || 'processing';
+      api(`/api/admin/violations?page=${currentPageData.page}&pageSize=20&status=${status}`).then(r => {
+        if (r.code !== 1) { showAdminLoadError(r.msg); return; }
+        const { list, total } = r.data;
+        currentPageData.total = total;
+
+        document.getElementById('page-appeals').innerHTML = `
+          <div class="card">
+            <div class="search-bar">
+              <select id="appealStatus" onchange="currentPageData.page=1;loadAppeals();" style="width:160px;">
+                <option value="processing" ${status === 'processing' ? 'selected' : ''}>待处理申诉</option>
+                <option value="approved" ${status === 'approved' ? 'selected' : ''}>申诉通过</option>
+                <option value="rejected" ${status === 'rejected' ? 'selected' : ''}>申诉驳回</option>
+                <option value="all" ${status === 'all' ? 'selected' : ''}>全部</option>
+              </select>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>用户</th>
+                  <th>违规类型</th>
+                  <th>处罚类型</th>
+                  <th>申诉理由</th>
+                  <th>申诉状态</th>
+                  <th>申诉时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.filter(v => v.appeal_status && v.appeal_status !== 'pending').map(v => `
+                  <tr>
+                    <td>${v.id}</td>
+                    <td>${v.nickname || '匿名'}</td>
+                    <td>${v.violation_category || '-'}</td>
+                    <td><span class="status-badge ${v.penalty_type === '永久封禁' ? 'danger' : 'warning'}">${v.penalty_type || '-'}</span></td>
+                    <td><div class="content-text">${v.appeal_reason || '-'}</div></td>
+                    <td>
+                      ${v.appeal_status === 'processing' ? '<span class="status-badge warning">处理中</span>' :
+                        v.appeal_status === 'approved' ? '<span class="status-badge success">已通过</span>' :
+                        v.appeal_status === 'rejected' ? '<span class="status-badge danger">已驳回</span>' :
+                        '<span class="status-badge info">待申诉</span>'}
+                    </td>
+                    <td>${v.appeal_time || '-'}</td>
+                    <td>
+                      <button class="btn btn-sm" style="margin-right:4px;" onclick="viewViolationDetail(${v.id})">查看详情</button>
+                      ${v.appeal_status === 'processing'
+                        ? `
+                          <button class="btn btn-success btn-sm" onclick="showAppealHandle(${v.id}, 'approved')">通过</button>
+                          <button class="btn btn-danger btn-sm" onclick="showAppealHandle(${v.id}, 'rejected')" style="margin-left:4px;">驳回</button>
+                        `
+                        : '-'
+                      }
+                    </td>
+                  </tr>
+                `).join('')}
+                ${list.filter(v => v.appeal_status && v.appeal_status !== 'pending').length === 0 ? '<tr><td colspan="8" style="text-align:center;color:#8E8E93;padding:40px;">暂无数据</td></tr>' : ''}
+              </tbody>
+            </table>
+            ${renderPagination(total, 20)}
+          </div>
+        `;
+      });
+    }
+
+    function showAppealHandle(id, action) {
+      document.getElementById('modalBox').innerHTML = `
+        <div class="modal-title">${action === 'approved' ? '通过申诉' : '驳回申诉'}</div>
+        <div class="form-group">
+          <label>处理意见</label>
+          <textarea id="appealRemark" placeholder="请输入处理意见（可选）"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">取消</button>
+          <button class="btn ${action === 'approved' ? 'btn-success' : 'btn-danger'}" onclick="handleAppeal(${id}, '${action}')">确认${action === 'approved' ? '通过' : '驳回'}</button>
+        </div>
+      `;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function handleAppeal(id, action) {
+      const remark = document.getElementById('appealRemark').value;
+      api('/api/admin/handleAppeal', 'POST', { id, action, remark }).then(r => {
+        if (r.code === 1) {
+          closeModal();
+          loadAppeals();
+        } else {
+          alert(r.msg);
+        }
+      });
+    }
+
+    function loadVerifications() {
+      const type = document.getElementById('verifTypeFilter')?.value || '';
+      const keyword = document.getElementById('verifKeyword')?.value || '';
+      api(`/api/admin/verifications?page=${currentPageData.page}&pageSize=20&type=${type}&keyword=${encodeURIComponent(keyword)}`).then(r => {
+        if (r.code !== 1) { showAdminLoadError(r.msg); return; }
+        const { list, total } = r.data;
+        currentPageData.total = total;
+        const typeMap = { enterprise: '企业机构认证', advanced: '进阶认证', premium: '高级认证', basic: '普通认证', personal: 'Beta内测纪念' };
+        document.getElementById('page-verifications').innerHTML = `
+          <div class="card">
+            <div class="search-bar">
+              <select id="verifTypeFilter" onchange="currentPageData.page=1;loadVerifications();" style="width:160px;">
+                <option value="" ${!type ? 'selected' : ''}>全部认证</option>
+                <option value="enterprise" ${type === 'enterprise' ? 'selected' : ''}>企业机构认证</option>
+                <option value="advanced" ${type === 'advanced' ? 'selected' : ''}>进阶认证</option>
+                <option value="premium" ${type === 'premium' ? 'selected' : ''}>高级认证</option>
+              </select>
+              <input id="verifKeyword" placeholder="搜索用户昵称/手机号/UID" value="${keyword}" onkeydown="if(event.key==='Enter'){currentPageData.page=1;loadVerifications();}">
+              <button class="btn btn-primary" onclick="currentPageData.page=1;loadVerifications();">搜索</button>
+              <button class="btn btn-success" onclick="showGrantModal()">分配认证</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>用户</th>
+                  <th>UID</th>
+                  <th>认证类型</th>
+                  <th>分配时间</th>
+                  <th>过期时间</th>
+                  <th>状态</th>
+                  <th>首月优惠</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.map(v => `
+                  <tr>
+                    <td>${v.id}</td>
+                    <td><img src="${resolveMedia(v.avatar) || ''}" class="avatar" onerror="this.style.display='none'">${v.nickname || '匿名'}</td>
+                    <td>${v.user_id}</td>
+                    <td><span class="status-badge ${v.verification_type === 'enterprise' ? 'info' : v.verification_type === 'premium' ? 'warning' : 'success'}">${typeMap[v.verification_type] || v.verification_type}</span>${v.verification_type === 'enterprise' && v.org_name ? `<div style="font-size:12px;color:#6E6E73;margin-top:2px;">${String(v.org_name).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}</div>` : ''}</td>
+                    <td>${v.granted_at || '-'}</td>
+                    <td>${v.expire_at || '永久'}</td>
+                    <td>${v.is_active ? '<span style="color:#34C759;">有效</span>' : '<span style="color:#FF3B30;">已停用</span>'}</td>
+                    <td>${v.first_month_used ? '<span style="color:#FF3B30;">已使用</span>' : '<span style="color:#34C759;">可用</span>'}</td>
+                    <td style="display:flex;gap:4px;flex-wrap:wrap;">
+                      <button class="btn btn-danger btn-sm" onclick="revokeVerification(${v.id})">撤销</button>
+                      ${v.first_month_used ? `<button class="btn btn-warning btn-sm" onclick="restoreFirstMonthDiscount('${v.user_id}')">恢复首月优惠</button>` : ''}
+                    </td>
+                  </tr>
+                `).join('')}
+                ${list.length === 0 ? '<tr><td colspan="9" style="text-align:center;color:#8E8E93;padding:40px;">暂无数据</td></tr>' : ''}
+              </tbody>
+            </table>
+            ${renderPagination(total, 20)}
+          </div>
+        `;
+      });
+    }
+
+    function showGrantModal() {
+      document.getElementById('modalBox').innerHTML = `
+        <div class="modal-title">分配认证</div>
+        <div class="form-group">
+          <label>用户UID</label>
+          <input id="grantUid" placeholder="请输入用户UID">
+        </div>
+        <div class="form-group">
+          <label>认证类型</label>
+          <select id="grantType" onchange="toggleGrantTypeFields()">
+            <option value="enterprise">企业机构认证</option>
+            <option value="advanced">进阶认证</option>
+            <option value="premium">高级认证</option>
+            <option value="basic">普通认证</option>
+            <option value="personal">Beta版内测用户纪念认证</option>
+          </select>
+        </div>
+        <div class="form-group" id="grantOrgNameGroup">
+          <label>企业/机构/团体名称</label>
+          <input id="grantOrgName" placeholder="将显示在认证图标旁，例如：赞话平台官方账号" maxlength="50">
+        </div>
+        <div class="form-group">
+          <label>有效期</label>
+          <select id="grantDuration" onchange="toggleCustomDays()">
+            <option value="permanent">永久</option>
+            <option value="1m">1个月</option>
+            <option value="2m">2个月</option>
+            <option value="3m">3个月</option>
+            <option value="6m">6个月</option>
+            <option value="1y">1年</option>
+            <option value="custom">自定义天数</option>
+          </select>
+        </div>
+        <div class="form-group" id="customDaysGroup" style="display:none;">
+          <label>自定义天数</label>
+          <input id="grantCustomDays" type="number" min="1" max="36500" placeholder="请输入天数">
+        </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="grantCancelFirstMonth" style="width:16px;height:16px;">
+            <span>发放后取消该用户首月优惠</span>
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">取消</button>
+          <button class="btn btn-success" onclick="grantVerification()">确认分配</button>
+        </div>
+      `;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function toggleCustomDays() {
+      const dur = document.getElementById('grantDuration').value;
+      document.getElementById('customDaysGroup').style.display = dur === 'custom' ? 'block' : 'none';
+    }
+
+    function toggleGrantTypeFields() {
+      const type = document.getElementById('grantType').value;
+      document.getElementById('grantOrgNameGroup').style.display = type === 'enterprise' ? 'block' : 'none';
+    }
+
+    function grantVerification() {
+      const user_id = document.getElementById('grantUid').value.trim();
+      const verification_type = document.getElementById('grantType').value;
+      const duration = document.getElementById('grantDuration').value;
+      const custom_days = document.getElementById('grantCustomDays').value;
+      const cancel_first_month = document.getElementById('grantCancelFirstMonth').checked;
+      const org_name = (document.getElementById('grantOrgName').value || '').trim();
+      if (!user_id) return alert('请输入用户UID');
+      if (verification_type === 'enterprise' && !org_name) return alert('企业机构认证需要填写企业名称');
+      api('/api/admin/grantVerification', 'POST', { user_id, verification_type, duration, custom_days, cancel_first_month, org_name }).then(r => {
+        if (r.code === 1) {
+          closeModal();
+          loadVerifications();
+        } else {
+          alert(r.msg);
+        }
+      });
+    }
+
+    function revokeVerification(id) {
+      const restore = confirm('是否同时恢复该用户的首月优惠？');
+      api('/api/admin/revokeVerification', 'POST', { id, restore_first_month: restore }).then(r => {
+        if (r.code === 1) loadVerifications();
+        else alert(r.msg);
+      });
+    }
+
+    function restoreFirstMonthDiscount(uid) {
+      if (!confirm('确定恢复该用户的首月优惠资格吗？')) return;
+      api('/api/admin/restoreFirstMonthDiscount', 'POST', { user_id: uid }).then(r => {
+        if (r.code === 1) { alert('首月优惠已恢复'); loadVerifications(); }
+        else alert(r.msg);
+      });
+    }
+
+    function loadSubscriptionOrders() {
+      const status = document.getElementById('subOrderStatus')?.value || 'querying';
+      api(`/api/admin/subscriptionOrders?page=${currentPageData.page}&pageSize=20&status=${status}`).then(r => {
+        if (r.code !== 1) { showAdminLoadError(r.msg); return; }
+        const { list, total } = r.data;
+        currentPageData.total = total;
+        const subTypeMap = { advanced: '进阶认证', premium: '高级认证' };
+        const periodMap = { month: '月订阅', year: '年订阅' };
+        const statusMap = { querying: { text: '正在查询支付结果', cls: 'warning' }, completed: { text: '已完成', cls: 'success' }, refunding: { text: '退款申请中', cls: 'warning' }, refunded: { text: '已退款', cls: 'danger' }, rejected: { text: '已拒绝', cls: 'danger' } };
+        const sm = s => statusMap[s] || { text: s, cls: 'info' };
+        function statusHtml(s) {
+          const st = sm(s);
+          return `<span class="status-badge ${st.cls}">${st.text}</span>`;
+        }
+        function actionBtns(o) {
+          let btns = '';
+          if (o.status === 'querying') {
+            btns += `<button class="btn btn-success btn-sm" onclick="showApproveModal(${o.id},'${o.sub_type}')">通过</button> `;
+            btns += `<button class="btn btn-danger btn-sm" onclick="rejectSubscriptionOrder(${o.id})">拒绝</button>`;
+          }
+          if (o.status === 'refunding') {
+            btns += `<button class="btn btn-success btn-sm" onclick="processRefund(${o.id},'approve')">同意退款</button> `;
+            btns += `<button class="btn btn-warning btn-sm" onclick="processRefund(${o.id},'reject')">拒绝退款</button>`;
+          }
+          return btns || '-';
+        }
+        let tableHtml = `
+          <div class="card" id="subOrderPc">
+            <div class="search-bar">
+              <select id="subOrderStatus" onchange="currentPageData.page=1;loadSubscriptionOrders();" style="width:160px;">
+                <option value="querying" ${status === 'querying' ? 'selected' : ''}>正在查询支付结果</option>
+                <option value="completed" ${status === 'completed' ? 'selected' : ''}>已完成</option>
+                <option value="active" ${status === 'active' ? 'selected' : ''}>生效中</option>
+                <option value="expired" ${status === 'expired' ? 'selected' : ''}>已过期</option>
+                <option value="refunding" ${status === 'refunding' ? 'selected' : ''}>退款申请中</option>
+                <option value="refunded" ${status === 'refunded' ? 'selected' : ''}>已退款</option>
+                <option value="rejected" ${status === 'rejected' ? 'selected' : ''}>已拒绝</option>
+                <option value="all" ${status === 'all' ? 'selected' : ''}>全部</option>
+              </select>
+            </div>
+            <div style="overflow-x:auto;"><table>
+              <thead><tr><th>ID</th><th>订单号</th><th>用户</th><th>类型</th><th>周期</th><th>金额</th><th>支付单号</th><th>状态</th><th>到期时间</th><th>操作</th></tr></thead>
+              <tbody>
+                ${list.map(o => `<tr>
+                  <td>${o.id}</td>
+                  <td style="font-family:monospace;font-size:12px;">${o.order_no||'-'}</td>
+                  <td>${o.nickname||o.user_id}</td>
+                  <td><span class="status-badge ${o.sub_type==='premium'?'warning':'success'}">${subTypeMap[o.sub_type]||o.sub_type}</span></td>
+                  <td>${periodMap[o.sub_period]||o.sub_period||'-'}</td>
+                  <td style="font-weight:600;">¥${o.amount||0}</td>
+                  <td style="font-family:monospace;font-size:12px;">${o.wechat_pay_no||'-'}</td>
+                  <td>${statusHtml(o.status)}</td>
+                  <td style="font-size:12px;">${o.expire_at||'-'}</td>
+                  <td class="sub-action-group">${actionBtns(o)}</td>
+                </tr>`).join('')}
+                ${list.length === 0 ? '<tr><td colspan="10" style="text-align:center;color:#8E8E93;padding:40px;">暂无数据</td></tr>' : ''}
+              </tbody>
+            </table></div>
+            ${renderPagination(total, 20)}
+          </div>
+          
+          <div id="subOrderMobile" style="display:none;">
+            <div style="margin-bottom:12px;">
+              <select id="subOrderStatusM" onchange="document.getElementById('subOrderStatus').value=this.value;currentPageData.page=1;loadSubscriptionOrders();" style="width:100%;height:38px;padding:0 10px;border:1px solid #D1D1D6;border-radius:6px;font-size:14px;">
+                <option value="querying" ${status === 'querying' ? 'selected' : ''}>正在查询支付结果</option>
+                <option value="completed" ${status === 'completed' ? 'selected' : ''}>已完成</option>
+                <option value="refunding" ${status === 'refunding' ? 'selected' : ''}>退款申请中</option>
+                <option value="refunded" ${status === 'refunded' ? 'selected' : ''}>已退款</option>
+                <option value="rejected" ${status === 'rejected' ? 'selected' : ''}>已拒绝</option>
+                <option value="all" ${status === 'all' ? 'selected' : ''}>全部</option>
+              </select>
+            </div>
+            <div class="card" style="padding:0 14px;">${list.map(o => `
+              <div class="sub-order-row">
+                <div class="row-head"><span style="font-weight:600;">${subTypeMap[o.sub_type]||o.sub_type} · ${periodMap[o.sub_period]||'-'}</span>${statusHtml(o.status)}</div>
+                <div class="row-field"><span>用户</span><span>${o.nickname||o.user_id}</span></div>
+                <div class="row-field"><span>订单号</span><span style="font-family:monospace;">${o.order_no||'-'}</span></div>
+                <div class="row-field"><span>金额</span><span style="font-weight:600;">¥${o.amount||0}</span></div>
+                <div class="row-field"><span>支付单号</span><span style="font-family:monospace;">${o.wechat_pay_no||'-'}</span></div>
+                ${o.expire_at?`<div class="row-field"><span>到期</span><span>${o.expire_at}</span></div>`:''}
+                <div class="sub-action-group" style="margin-top:8px;">${actionBtns(o)}</div>
+              </div>
+            `).join('')}
+            ${list.length === 0 ? '<div style="text-align:center;color:#8E8E93;padding:40px;">暂无数据</div>' : ''}
+            </div>
+            ${renderPagination(total, 20)}
+          </div>`;
+        document.getElementById('page-subscriptionOrders').innerHTML = tableHtml;
+        const pc = document.getElementById('subOrderPc');
+        const mob = document.getElementById('subOrderMobile');
+        if (window.innerWidth <= 768) { if(pc) pc.style.display='none'; if(mob) mob.style.display='block'; }
+        else { if(pc) pc.style.display='block'; if(mob) mob.style.display='none'; }
+      });
+    }
+
+    function showApproveModal(id, sub_type) {
+      const subTypeMap = { advanced: '进阶认证', premium: '高级认证' };
+      document.getElementById('modalBox').innerHTML = `
+        <div class="modal-title">确认发放${subTypeMap[sub_type]||sub_type}</div>
+        <div class="form-group">
+          <label>微信支付单号</label>
+          <input type="text" id="approveWechatPayNo" placeholder="请输入微信支付单号（可选）">
+        </div>
+        <div style="font-size:13px;color:#8E8E93;margin-bottom:10px;">确认通过后，将自动为该用户发放对应认证并开始计算有效期。</div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">取消</button>
+          <button class="btn btn-success" onclick="doApprove(${id})">确认通过并发放</button>
+        </div>
+      `;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function doApprove(id) {
+      const wechat_pay_no = document.getElementById('approveWechatPayNo').value.trim();
+      api('/api/admin/approveSubscriptionOrder', 'POST', { id, wechat_pay_no }).then(r => {
+        if (r.code === 1) { closeModal(); loadSubscriptionOrders(); }
+        else alert(r.msg);
+      });
+    }
+
+    function rejectSubscriptionOrder(id) {
+      if (!confirm('确定拒绝该订阅订单吗？')) return;
+      api('/api/admin/rejectSubscriptionOrder', 'POST', { id }).then(r => {
+        if (r.code === 1) loadSubscriptionOrders();
+        else alert(r.msg);
+      });
+    }
+
+    function processRefund(id, action) {
+      const label = action === 'approve' ? '同意退款' : '拒绝退款';
+      if (!confirm('确定要' + label + '吗？')) return;
+      api('/api/admin/processRefund', 'POST', { id, action }).then(r => {
+        if (r.code === 1) loadSubscriptionOrders();
+        else alert(r.msg);
+      });
+    }
+
+    function openMobileSidebar() {
+      document.querySelector('.sidebar').classList.add('open');
+      document.getElementById('mobileOverlay').classList.add('show');
+    }
+    function closeMobileSidebar() {
+      document.querySelector('.sidebar').classList.remove('open');
+      document.getElementById('mobileOverlay').classList.remove('show');
+    }
+
+    function loadEnterpriseApplications() {
+      api('/api/admin/enterpriseApplications').then(r => {
+        if (r.code !== 1) { showAdminLoadError(r.msg); return; }
+        const list = r.data || [];
+        document.getElementById('page-enterprise').innerHTML = `
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">企业认证申请列表</div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>申请人</th>
+                  <th>组织类型</th>
+                  <th>企业全称</th>
+                  <th>信用代码</th>
+                  <th>联系人</th>
+                  <th>状态</th>
+                  <th>申请时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.map(a => {
+                  const statusBadge = a.status === 'pending' ? '<span class="status-badge warning">待审核</span>'
+                    : a.status === 'approved' ? '<span class="status-badge success">已通过</span>'
+                    : a.status === 'rejected' ? '<span class="status-badge danger">已拒绝</span>'
+                    : '<span class="status-badge info">' + a.status + '</span>';
+                  return '<tr>'
+                    + '<td>' + a.id + '</td>'
+                    + '<td><img src="' + (resolveMedia(a.avatar) || (API_HOST + BASE_PATH + '/uploads/default_avatar.webp')) + '" class="avatar" onerror="this.src=\'' + (API_HOST + BASE_PATH + '/uploads/default_avatar.webp') + '\'"> ' + (a.nickname || '匿名') + '</td>'
+                    + '<td>' + (a.org_type || '-') + '</td>'
+                    + '<td><div class="content-text" title="' + (a.full_name || '').replace(/"/g, '&quot;') + '">' + (a.full_name || '-') + '</div></td>'
+                    + '<td><div class="content-text">' + (a.credit_code || '-') + '</div></td>'
+                    + '<td>' + (a.contact_name || '-') + '</td>'
+                    + '<td>' + statusBadge + '</td>'
+                    + '<td>' + (a.created_at || '-') + '</td>'
+                    + '<td>' + (a.status === 'pending'
+                      ? '<button class="btn btn-success btn-sm" onclick="showReviewEnterpriseModal(' + a.id + ', \'' + (a.full_name || '').replace(/'/g, "\\'") + '\')">审核</button>'
+                      : (a.review_note ? '<span class="content-text" title="' + a.review_note.replace(/"/g, '&quot;') + '">' + a.review_note + '</span>' : '-'))
+                    + '</td>'
+                    + '</tr>';
+                }).join('')}
+                ${list.length === 0 ? '<tr><td colspan="9" style="text-align:center;color:#8E8E93;padding:40px;">暂无企业认证申请</td></tr>' : ''}
+              </tbody>
+            </table>
+          </div>
+        `;
+      });
+    }
+
+    function showReviewEnterpriseModal(applicationId, defaultOrgName) {
+      document.getElementById('modalBox').innerHTML = `
+        <div class="modal-title">审核企业认证</div>
+        <div class="form-group">
+          <label>企业名称（留空则使用申请中的全称）</label>
+          <input id="reviewOrgName" placeholder="${defaultOrgName}" value="${defaultOrgName}">
+        </div>
+        <div class="form-group">
+          <label>审核备注</label>
+          <textarea id="reviewNote" placeholder="请输入审核备注（可选）"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">取消</button>
+          <button class="btn btn-danger" onclick="reviewEnterprise(${applicationId}, 'reject')">拒绝</button>
+          <button class="btn btn-success" onclick="reviewEnterprise(${applicationId}, 'approve')">通过</button>
+        </div>
+      `;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function reviewEnterprise(applicationId, action) {
+      const org_name = document.getElementById('reviewOrgName').value.trim();
+      const review_note = document.getElementById('reviewNote').value.trim();
+      api('/api/admin/reviewEnterprise', 'POST', { application_id: applicationId, action, review_note, org_name }).then(r => {
+        if (r.code === 1) {
+          closeModal();
+          loadEnterpriseApplications();
+        } else {
+          alert(r.msg);
+        }
+      });
+    }
+
+    function renderPagination(total, pageSize) {
+      const totalPages = Math.ceil(total / pageSize);
+      const currentPage = currentPageData.page;
+      if (totalPages <= 1) return '';
+
+      let pages = [];
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+          pages.push(i);
+        } else if (pages[pages.length - 1] !== '...') {
+          pages.push('...');
+        }
+      }
+
+      return `
+        <div class="pagination">
+          <div class="seg-wrap">
+            <button onclick="prevPage()" ${currentPage <= 1 ? 'disabled' : ''}>上一页</button>
+            ${pages.map(p => p === '...'
+              ? '<span style="padding:6px 4px;">...</span>'
+              : `<button class="${p === currentPage ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`
+            ).join('')}
+            <button onclick="nextPage()" ${currentPage >= totalPages ? 'disabled' : ''}>下一页</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function prevPage() {
+      if (currentPageData.page > 1) {
+        currentPageData.page--;
+        reloadCurrentPage();
+      }
+    }
+
+    function nextPage() {
+      const totalPages = Math.ceil((currentPageData.total || 0) / 20);
+      if (currentPageData.page < totalPages) {
+        currentPageData.page++;
+        reloadCurrentPage();
+      }
+    }
+
+    function goToPage(p) {
+      currentPageData.page = p;
+      reloadCurrentPage();
+    }
+
+    function reloadCurrentPage() {
+      const loaders = {
+        users: loadUsers,
+        posts: loadPosts,
+        reports: loadReports,
+        confessions: loadConfessions,
+        feedbacks: loadFeedbacks,
+        violations: loadViolations,
+        appeals: loadAppeals,
+        verifications: loadVerifications,
+        subscriptionOrders: loadSubscriptionOrders,
+        redemptionRecords: loadRedemptionRecords
+      };
+      if (loaders[currentPage]) loaders[currentPage]();
+    }
+
+    function loadDemoAccounts() {
+      api('/api/admin/demoAccounts').then(r => {
+        if (r.code !== 1) { showAdminLoadError(r.msg); return; }
+        const list = r.data || [];
+        document.getElementById('page-demoAccounts').innerHTML = `
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">演示账号列表</div>
+              <button class="btn btn-primary btn-sm" onclick="showCreateDemoModal()"><i class="fa-solid fa-plus"></i> 创建演示账号</button>
+            </div>
+            <div style="margin-bottom:12px;color:#8E8E93;font-size:13px;">提示：演示账号可在主站登录页面使用，输入指定的「登录标识」和「验证码」即可登录。</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>登录标识</th>
+                  <th>验证码</th>
+                  <th>关联用户</th>
+                  <th>创建时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.map(a => {
+                  return '<tr>'
+                    + '<td>' + a.id + '</td>'
+                    + '<td><code style="background:#F0F0F2;padding:2px 6px;border-radius:4px;">' + a.phone + '</code></td>'
+                    + '<td><code style="background:#F0F0F2;padding:2px 6px;border-radius:4px;">' + a.code + '</code></td>'
+                    + '<td>' + (a.linked_nickname || (a.linked_uid ? '<span style="color:#8E8E93;">UID:' + a.linked_uid + '</span>' : '<span style="color:#8E8E93;">未使用</span>')) + '</td>'
+                    + '<td>' + (a.created_at || '-') + '</td>'
+                    + '<td>'
+                      + '<button class="btn btn-warning btn-sm" onclick="showEditDemoModal(' + a.id + ',\'' + a.phone.replace(/'/g, "\\'") + '\',\'' + a.code.replace(/'/g, "\\'") + '\')">编辑</button> '
+                      + '<button class="btn btn-danger btn-sm" onclick="deleteDemoAccount(' + a.id + ')">删除</button>'
+                    + '</td>'
+                    + '</tr>';
+                }).join('')}
+                ${list.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:#8E8E93;padding:40px;">暂无演示账号</td></tr>' : ''}
+              </tbody>
+            </table>
+          </div>
+        `;
+      });
+    }
+
+    function showCreateDemoModal() {
+      document.getElementById('modalBox').innerHTML = `
+        <div class="modal-title">创建演示账号</div>
+        <div class="form-group">
+          <label>登录标识（在主站手机号输入框中填写此内容）</label>
+          <input id="demoPhone" placeholder="例如：demo01">
+        </div>
+        <div class="form-group">
+          <label>验证码（在主站验证码输入框中填写此内容）</label>
+          <input id="demoCode" placeholder="例如：888888">
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">取消</button>
+          <button class="btn btn-primary" onclick="createDemoAccount()">创建</button>
+        </div>
+      `;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function createDemoAccount(id) {
+      const phone = document.getElementById('demoPhone').value.trim();
+      const code = document.getElementById('demoCode').value.trim();
+      if (!phone || !code) return alert('请填写完整');
+      api('/api/admin/demoAccounts', 'POST', { phone, code }).then(r => {
+        if (r.code === 1) { closeModal(); loadDemoAccounts(); }
+        else { alert(r.msg); }
+      });
+    }
+
+    function showEditDemoModal(id, oldPhone, oldCode) {
+      document.getElementById('modalBox').innerHTML = `
+        <div class="modal-title">编辑演示账号</div>
+        <div class="form-group">
+          <label>登录标识</label>
+          <input id="editDemoPhone" value="${oldPhone}">
+        </div>
+        <div class="form-group">
+          <label>验证码</label>
+          <input id="editDemoCode" value="${oldCode}">
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">取消</button>
+          <button class="btn btn-primary" onclick="updateDemoAccount(${id})">保存</button>
+        </div>
+      `;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function updateDemoAccount(id) {
+      const phone = document.getElementById('editDemoPhone').value.trim();
+      const code = document.getElementById('editDemoCode').value.trim();
+      if (!phone && !code) return alert('请至少填写一项');
+      api('/api/admin/demoAccounts/update', 'POST', { id, phone, code }).then(r => {
+        if (r.code === 1) { closeModal(); loadDemoAccounts(); }
+        else { alert(r.msg); }
+      });
+    }
+
+    function deleteDemoAccount(id) {
+      if (!confirm('确定删除该演示账号吗？')) return;
+      api('/api/admin/demoAccounts/delete', 'POST', { id }).then(r => {
+        if (r.code === 1) loadDemoAccounts();
+        else { alert(r.msg); }
+      });
+    }
+
+    function loadWatermarkExtract() {
+      document.getElementById('page-watermark').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">暗码溯源解析</div>
+          </div>
+          <div style="margin-bottom:16px;color:#6E6E73;font-size:13px;line-height:1.8;">
+            <div style="margin-bottom:8px;">上传帖子/表白墙/作业详情等页面的<b>屏幕截图</b>，系统自动识别截图中嵌入的<span style="color:#FF3B30;font-weight:600;">强制暗码</span>（肉眼不可见、用户无法关闭），提取浏览者UID。</div>
+            <div>支持格式：JPG、PNG、WEBP，最大50MB。推荐上传原始分辨率截图以保证识别精度。</div>
+          </div>
+          <div style="border:2px dashed #D2D2D7;border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer;margin-bottom:16px;" id="wmUploadArea" onclick="document.getElementById('wmFileInput').click()">
+            <i class="fa-solid fa-cloud-arrow-up" style="font-size:36px;color:#98989D;"></i>
+            <div style="margin-top:12px;font-size:15px;color:#6E6E73;">点击选择截图文件</div>
+            <div style="margin-top:4px;font-size:12px;color:#98989D;">JPG / PNG / WEBP · 推荐原始分辨率</div>
+            <input type="file" id="wmFileInput" accept="image/*" style="display:none;" onchange="uploadWatermarkImage(this.files[0])">
+          </div>
+          <div id="wmResult" style="display:none;"></div>
+        </div>
+      `;
+    }
+
+    async function uploadWatermarkImage(file) {
+      if (!file) return;
+      const area = document.getElementById('wmUploadArea');
+      const resultDiv = document.getElementById('wmResult');
+      area.innerHTML = '<div style="padding:20px;"><div class="loading" style="display:inline-block;"></div> 暗码解析中，请稍候...</div>';
+      resultDiv.style.display = 'none';
+      const fd = new FormData();
+      fd.append('screenshot', file);
+      try {
+        const wmHeaders = { 'Authorization': adminToken };
+        if (BANLI) wmHeaders['X-Admin-Via'] = 'banli';
+        const r = await fetch(API_HOST + BASE_PATH + '/api/admin/parseStegoScreenshot', {
+          method: 'POST',
+          body: fd,
+          headers: wmHeaders
+        });
+        const res = await r.json();
+        area.innerHTML = '<i class="fa-solid fa-cloud-arrow-up" style="font-size:36px;color:#98989D;"></i><div style="margin-top:12px;font-size:15px;color:#6E6E73;">点击重新选择截图</div><div style="margin-top:4px;font-size:12px;color:#98989D;">已上传: ' + file.name + '</div>';
+        if (res.code === 1 && res.data && res.data.uid) {
+          const d = res.data;
+          const confText = d.confidence >= 1.0 ? '极高' : d.confidence >= 0.9 ? '高' : d.confidence >= 0.7 ? '中' : '较低';
+          const confColor = d.confidence >= 0.9 ? '#34C759' : d.confidence >= 0.7 ? '#FF9F0A' : '#FF3B30';
+          resultDiv.innerHTML = `
+            <div style="background:#EAF7EE;border:1px solid #B7E4C7;border-radius:12px;padding:20px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+                <i class="fa-solid fa-circle-check" style="font-size:20px;color:#34C759;"></i>
+                <span style="font-size:16px;font-weight:600;color:#1E7A33;">解析成功</span>
+              </div>
+              <table style="width:100%;font-size:14px;">
+                <tr><td style="padding:6px 0;color:#6E6E73;width:120px;">用户UID</td><td style="padding:6px 0;font-weight:600;font-size:16px;">${d.uid}</td></tr>
+                <tr><td style="padding:6px 0;color:#6E6E73;">置信度</td><td style="padding:6px 0;"><span style="color:${confColor};font-weight:600;">${confText}</span> <span style="color:#98989D;font-size:12px;">(${(d.confidence * 100).toFixed(0)}%)</span></td></tr>
+                ${d.user ? `<tr><td style="padding:6px 0;color:#6E6E73;">昵称</td><td style="padding:6px 0;">${d.user.nickname || '-'}</td></tr><tr><td style="padding:6px 0;color:#6E6E73;">手机号</td><td style="padding:6px 0;">${d.user.phone || '-'}</td></tr>` : ''}
+              </table>
+              ${d.user ? `<div style="margin-top:16px;"><button class="btn btn-primary btn-sm" onclick="switchPage('users');setTimeout(()=>searchUser('${d.uid}'),50)">查看用户详情</button></div>` : ''}
+            </div>
+          `;
+        } else {
+          resultDiv.innerHTML = `
+            <div style="background:#FDEBEB;border:1px solid #F8C9C9;border-radius:12px;padding:20px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <i class="fa-solid fa-circle-xmark" style="font-size:20px;color:#FF3B30;"></i>
+                <span style="font-size:16px;font-weight:600;color:#C62828;">${res.msg || '解析失败'}</span>
+              </div>
+              <div style="margin-top:10px;font-size:12px;color:#C62828;line-height:1.8;">
+                建议：① 请上传<b>原始分辨率</b>的屏幕截图，不要经过压缩或二次裁剪<br>
+                ② 确保截图完整包含页面内容（帖子/表白墙/作业详情页等）<br>
+                ③ 截图时请保证屏幕亮度足够、无遮挡、无第三方滤镜
+              </div>
+            </div>
+          `;
+        }
+        resultDiv.style.display = 'block';
+      } catch(e) {
+        area.innerHTML = '<i class="fa-solid fa-cloud-arrow-up" style="font-size:36px;color:#98989D;"></i><div style="margin-top:12px;font-size:15px;color:#6E6E73;">点击选择截图文件</div>';
+        resultDiv.innerHTML = '<div style="background:#FDEBEB;border:1px solid #F8C9C9;border-radius:12px;padding:20px;color:#C62828;">网络异常，请重试: ' + (e.message || e) + '</div>';
+        resultDiv.style.display = 'block';
+      }
+    }
+
+    function closeModal() {
+      hideOverlay(document.getElementById('modalOverlay'));
+    }
+
+    function hideOverlay(ov) {
+      if (!ov || !ov.classList.contains('show')) return;
+      ov.classList.add('closing');
+      setTimeout(function() {
+        ov.classList.remove('show', 'closing');
+      }, 210);
+    }
+
+    function escapeHtml(s) {
+      if (s == null) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+    function fmtTime(t) { return t || '-'; }
+    function renderMediaBlock(target) {
+      if (!target) return '<div style="color:#8E8E93;">内容已被删除或不可访问</div>';
+      const imgs = target.images ? String(target.images).split(',').filter(Boolean) : [];
+      const hasVideo = target.video && target.video.length > 0;
+      let html = '';
+      if (imgs.length) {
+        html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">' +
+          imgs.map(u => `<img src="${resolveMedia(u)}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #EDEDF0;">`).join('') +
+          '</div>';
+      }
+      if (hasVideo) {
+        html += `<div style="margin-top:8px;"><video src="${resolveMedia(target.video)}" controls style="max-width:100%;max-height:300px;border-radius:6px;"></video>${target.video_cover ? `<div style="font-size:12px;color:#8E8E93;margin-top:4px;">封面: <img src="${resolveMedia(target.video_cover)}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;vertical-align:middle;"></div>` : ''}</div>`;
+      }
+      return html;
+    }
+    function viewReportDetail(id) {
+      document.getElementById('modalBox').innerHTML = '<div class="modal-title">举报详情</div><div style="text-align:center;padding:30px;color:#8E8E93;">加载中...</div>';
+      document.getElementById('modalOverlay').classList.add('show');
+      api(`/api/admin/reportDetail?id=${id}`).then(r => {
+        if (r.code !== 1) {
+          document.getElementById('modalBox').innerHTML = `<div class="modal-title">举报详情</div><div style="padding:20px;color:#FF6E61;">${r.msg || '加载失败'}</div><div class="modal-actions"><button class="btn" onclick="closeModal()">关闭</button></div>`;
+          return;
+        }
+        const { report, target } = r.data;
+        const typeMap = { post: '帖子', comment: '评论', confession: '表白墙', confession_comment: '表白墙评论', user: '用户' };
+        const typeName = typeMap[report.target_type] || report.target_type || '-';
+        let targetHtml = '';
+        if (report.target_type === 'post' && target) {
+          targetHtml = `
+            <div class="detail-row"><span class="detail-label">作者</span><span>${escapeHtml(target.nickname || '匿名')} (UID: ${target.uid || '-'})</span></div>
+            ${target.title ? `<div class="detail-row"><span class="detail-label">标题</span><span>${escapeHtml(target.title)}</span></div>` : ''}
+            <div class="detail-row"><span class="detail-label">正文</span><div class="detail-content">${escapeHtml(target.content).replace(/\n/g,'<br>')}</div></div>
+            ${renderMediaBlock(target)}
+            <div class="detail-row"><span class="detail-label">数据</span><span>点赞 ${target.likes||0} · 评论 ${target.comments||0} · 收藏 ${target.collects||0} · 浏览 ${target.views||0}</span></div>
+            <div class="detail-row"><span class="detail-label">发布时间</span><span>${fmtTime(target.create_time)}</span></div>
+            <div class="detail-row"><span class="detail-label">状态</span><span>${target.status == 1 ? '<span class="status-badge warning">已隐藏</span>' : '<span class="status-badge success">正常</span>'}</span></div>
+          `;
+        } else if (report.target_type === 'comment' && target) {
+          targetHtml = `
+            <div class="detail-row"><span class="detail-label">评论人</span><span>${escapeHtml(target.nickname || '匿名')} (UID: ${target.uid || '-'})</span></div>
+            <div class="detail-row"><span class="detail-label">内容</span><div class="detail-content">${escapeHtml(target.content).replace(/\n/g,'<br>')}</div></div>
+            <div class="detail-row"><span class="detail-label">所属帖子</span><span>ID: ${target.post_id || '-'}</span></div>
+            <div class="detail-row"><span class="detail-label">点赞</span><span>${target.likes||0}</span></div>
+            <div class="detail-row"><span class="detail-label">时间</span><span>${fmtTime(target.create_time)}</span></div>
+          `;
+        } else if (report.target_type === 'confession_comment' && target) {
+          targetHtml = `
+            <div class="detail-row"><span class="detail-label">评论人</span><span>${escapeHtml(target.nickname || '匿名')} (UID: ${target.uid || '-'})</span></div>
+            <div class="detail-row"><span class="detail-label">内容</span><div class="detail-content">${escapeHtml(target.content).replace(/\n/g,'<br>')}</div></div>
+            <div class="detail-row"><span class="detail-label">所属表白</span><span>ID: ${target.confession_id || '-'}</span></div>
+            <div class="detail-row"><span class="detail-label">点赞</span><span>${target.likes||0}</span></div>
+            <div class="detail-row"><span class="detail-label">时间</span><span>${fmtTime(target.create_time)}</span></div>
+          `;
+        } else if (report.target_type === 'confession' && target) {
+          targetHtml = `
+            <div class="detail-row"><span class="detail-label">发布者</span><span>${escapeHtml(target.nickname || '匿名')} (UID: ${target.uid || '-'})${target.is_anonymous == 1 ? ' <span class="status-badge info">匿名发布</span>' : ''}</span></div>
+            <div class="detail-row"><span class="detail-label">内容</span><div class="detail-content">${escapeHtml(target.content).replace(/\n/g,'<br>')}</div></div>
+            ${renderMediaBlock(target)}
+            <div class="detail-row"><span class="detail-label">数据</span><span>点赞 ${target.likes||0} · 评论 ${target.comment_count||0}</span></div>
+            <div class="detail-row"><span class="detail-label">时间</span><span>${fmtTime(target.create_time)}</span></div>
+          `;
+        } else if (report.target_type === 'user' && target) {
+          targetHtml = `
+            <div class="detail-row"><span class="detail-label">用户</span><span>${escapeHtml(target.nickname || '-')} (UID: ${target.uid || '-'})</span></div>
+            <div class="detail-row"><span class="detail-label">头像</span><span>${target.avatar ? `<img src="${resolveMedia(target.avatar)}" style="width:40px;height:40px;border-radius:50%;vertical-align:middle;">` : '-'}</span></div>
+            <div class="detail-row"><span class="detail-label">简介</span><span>${escapeHtml(target.bio) || '-'}</span></div>
+            <div class="detail-row"><span class="detail-label">手机</span><span>${escapeHtml(target.phone) || '-'}</span></div>
+            <div class="detail-row"><span class="detail-label">IP属地</span><span>${escapeHtml(target.province) || '-'}</span></div>
+          `;
+        } else {
+          targetHtml = '<div style="color:#8E8E93;padding:10px 0;">内容已被删除或不可访问</div>';
+        }
+        const reportImgs = report.images ? String(report.images).split(',').filter(Boolean) : [];
+        document.getElementById('modalBox').innerHTML = `
+          <div class="modal-title">举报详情 #${report.id}</div>
+          <div class="detail-section">
+            <div class="detail-section-title">举报信息</div>
+            <div class="detail-row"><span class="detail-label">举报人</span><span>${escapeHtml(report.user_nickname || '匿名')}${report.user_uid ? ` (UID: ${report.user_uid})` : ''}</span></div>
+            <div class="detail-row"><span class="detail-label">举报类型</span><span>${typeName}</span></div>
+            <div class="detail-row"><span class="detail-label">目标ID</span><span>${report.target_id || '-'}</span></div>
+            <div class="detail-row"><span class="detail-label">举报原因</span><span>${escapeHtml(report.reason || '-')}</span></div>
+            ${report.sub_reason ? `<div class="detail-row"><span class="detail-label">子原因</span><span>${escapeHtml(report.sub_reason)}</span></div>` : ''}
+            ${report.description ? `<div class="detail-row"><span class="detail-label">补充说明</span><div class="detail-content">${escapeHtml(report.description).replace(/\n/g,'<br>')}</div></div>` : ''}
+            ${reportImgs.length ? `<div class="detail-row"><span class="detail-label">举报截图</span><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">${reportImgs.map(u=>`<img src="${resolveMedia(u)}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #EDEDF0;" onclick="window.open('${resolveMedia(u)}','_blank')">`).join('')}</div></div>` : ''}
+            <div class="detail-row"><span class="detail-label">举报时间</span><span>${fmtTime(report.create_time)}</span></div>
+            <div class="detail-row"><span class="detail-label">处理状态</span><span>${report.status === 1 ? `<span class="status-badge success">已处理</span> ${report.handle_result === 'approved' ? '（举报成立）' : report.handle_result === 'rejected' ? '（举报不成立）' : ''}` : '<span class="status-badge warning">待处理</span>'}</span></div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">被举报内容</div>
+            ${targetHtml}
+          </div>
+          <div class="modal-actions">
+            <button class="btn" onclick="closeModal()">关闭</button>
+            ${report.status !== 1 ? `
+              <button class="btn btn-success" onclick="closeModal();handleReport(${report.id},'approved')">举报成立</button>
+              <button class="btn btn-danger" onclick="closeModal();handleReport(${report.id},'rejected')">不成立</button>
+            ` : ''}
+          </div>
+        `;
+      });
+    }
+    function viewViolationDetail(id) {
+      document.getElementById('modalBox').innerHTML = '<div class="modal-title">违规/申诉详情</div><div style="text-align:center;padding:30px;color:#8E8E93;">加载中...</div>';
+      document.getElementById('modalOverlay').classList.add('show');
+      api(`/api/admin/violationDetail?id=${id}`).then(r => {
+        if (r.code !== 1) {
+          document.getElementById('modalBox').innerHTML = `<div class="modal-title">违规/申诉详情</div><div style="padding:20px;color:#FF6E61;">${r.msg || '加载失败'}</div><div class="modal-actions"><button class="btn" onclick="closeModal()">关闭</button></div>`;
+          return;
+        }
+        const { violation: v, target } = r.data;
+        const typeMap = { post: '帖子', comment: '评论', message: '私信', account: '账号' };
+        const typeName = typeMap[v.content_type] || v.content_type || '-';
+        let targetHtml = '';
+        if (v.content_type === 'post' && target) {
+          targetHtml = `
+            <div class="detail-row"><span class="detail-label">作者</span><span>${escapeHtml(target.nickname || '匿名')} (UID: ${target.uid || '-'})</span></div>
+            ${target.title ? `<div class="detail-row"><span class="detail-label">标题</span><span>${escapeHtml(target.title)}</span></div>` : ''}
+            <div class="detail-row"><span class="detail-label">正文</span><div class="detail-content">${escapeHtml(target.content).replace(/\n/g,'<br>')}</div></div>
+            ${renderMediaBlock(target)}
+            <div class="detail-row"><span class="detail-label">数据</span><span>点赞 ${target.likes||0} · 评论 ${target.comments||0} · 收藏 ${target.collects||0} · 浏览 ${target.views||0}</span></div>
+            <div class="detail-row"><span class="detail-label">发布时间</span><span>${fmtTime(target.create_time)}</span></div>
+            <div class="detail-row"><span class="detail-label">状态</span><span>${target.status == 1 ? '<span class="status-badge warning">已隐藏</span>' : '<span class="status-badge success">正常</span>'}</span></div>
+          `;
+        } else if (v.content_type === 'comment' && target) {
+          targetHtml = `
+            <div class="detail-row"><span class="detail-label">评论人</span><span>${escapeHtml(target.nickname || '匿名')} (UID: ${target.uid || '-'})</span></div>
+            <div class="detail-row"><span class="detail-label">内容</span><div class="detail-content">${escapeHtml(target.content).replace(/\n/g,'<br>')}</div></div>
+            <div class="detail-row"><span class="detail-label">所属帖子</span><span>ID: ${target.post_id || '-'}</span></div>
+            <div class="detail-row"><span class="detail-label">点赞</span><span>${target.likes||0}</span></div>
+            <div class="detail-row"><span class="detail-label">时间</span><span>${fmtTime(target.create_time)}</span></div>
+          `;
+        } else if (v.content_type === 'message' && target) {
+          targetHtml = `
+            <div class="detail-row"><span class="detail-label">发送方</span><span>${escapeHtml(target.from_nickname || '匿名')} (UID: ${target.from_user || '-'})</span></div>
+            <div class="detail-row"><span class="detail-label">接收方</span><span>${escapeHtml(target.to_nickname || '匿名')} (UID: ${target.to_user || '-'})</span></div>
+            <div class="detail-row"><span class="detail-label">消息类型</span><span>${target.type || 'text'}</span></div>
+            <div class="detail-row"><span class="detail-label">内容</span><div class="detail-content">${target.type === 'image' ? `<img src="${target.content}" style="max-width:200px;border-radius:6px;">` : (target.type === 'video' ? `<video src="${target.content}" controls style="max-width:200px;"></video>` : escapeHtml(target.content).replace(/\n/g,'<br>'))}</div></div>
+            <div class="detail-row"><span class="detail-label">时间</span><span>${fmtTime(target.create_time)}</span></div>
+          `;
+        } else {
+          targetHtml = `<div class="detail-row"><span class="detail-label">违规内容快照</span><div class="detail-content">${escapeHtml(v.content).replace(/\n/g,'<br>')}</div></div>`;
+        }
+        const appealStatusBadge = v.appeal_status === 'processing' ? '<span class="status-badge warning">处理中</span>' :
+          v.appeal_status === 'approved' ? '<span class="status-badge success">已通过</span>' :
+          v.appeal_status === 'rejected' ? '<span class="status-badge danger">已驳回</span>' :
+          '<span class="status-badge info">未申诉</span>';
+        document.getElementById('modalBox').innerHTML = `
+          <div class="modal-title">违规/申诉详情 #${v.id}</div>
+          <div class="detail-section">
+            <div class="detail-section-title">违规信息</div>
+            <div class="detail-row"><span class="detail-label">用户</span><span>${escapeHtml(v.nickname || '匿名')} (UID: ${v.user_id || '-'})</span></div>
+            <div class="detail-row"><span class="detail-label">内容类型</span><span>${typeName}</span></div>
+            <div class="detail-row"><span class="detail-label">内容ID</span><span>${v.content_id || '-'}</span></div>
+            <div class="detail-row"><span class="detail-label">违规类型</span><span>${escapeHtml(v.violation_category || '-')}</span></div>
+            <div class="detail-row"><span class="detail-label">违规原因</span><div class="detail-content">${escapeHtml(v.violation_reason || '-')}</div></div>
+            <div class="detail-row"><span class="detail-label">处罚</span><span><span class="status-badge ${v.penalty_type === '永久封禁' ? 'danger' : 'warning'}">${escapeHtml(v.penalty_type || '-')}</span> · ${v.penalty_days || 0}天</span></div>
+            <div class="detail-row"><span class="detail-label">处罚时间</span><span>${fmtTime(v.penalty_start_time)} ~ ${fmtTime(v.penalty_end_time)}</span></div>
+            <div class="detail-row"><span class="detail-label">记录时间</span><span>${fmtTime(v.create_time)}</span></div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">原始内容</div>
+            ${targetHtml}
+          </div>
+          ${v.appeal_status && v.appeal_status !== 'pending' ? `
+          <div class="detail-section">
+            <div class="detail-section-title">申诉信息</div>
+            <div class="detail-row"><span class="detail-label">申诉状态</span><span>${appealStatusBadge}</span></div>
+            <div class="detail-row"><span class="detail-label">申诉理由</span><div class="detail-content">${escapeHtml(v.appeal_reason || '-')}</div></div>
+            <div class="detail-row"><span class="detail-label">申诉时间</span><span>${fmtTime(v.appeal_time)}</span></div>
+            ${v.appeal_remark ? `<div class="detail-row"><span class="detail-label">处理意见</span><div class="detail-content">${escapeHtml(v.appeal_remark)}</div></div>` : ''}
+          </div>
+          ` : ''}
+          <div class="modal-actions">
+            <button class="btn" onclick="closeModal()">关闭</button>
+            ${v.appeal_status === 'processing' ? `
+              <button class="btn btn-success" onclick="closeModal();showAppealHandle(${v.id}, 'approved')">通过申诉</button>
+              <button class="btn btn-danger" onclick="closeModal();showAppealHandle(${v.id}, 'rejected')">驳回申诉</button>
+            ` : ''}
+          </div>
+        `;
+      });
+    }
+
+    document.getElementById('modalOverlay').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    function loadQuickPost() {
+      document.getElementById('page-quickPost').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i class="fa-solid fa-bolt" style="color:#0A84FF;"></i> 管理员快捷发布</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div class="form-group">
+              <label>发布类型</label>
+              <div style="display:flex;gap:8px;">
+                <button type="button" class="btn btn-primary" id="qpTypePost" onclick="qpSetType('post')"><i class="fa-solid fa-file-lines"></i> 帖子</button>
+                <button type="button" class="btn" id="qpTypeConfession" onclick="qpSetType('confession')"><i class="fa-solid fa-heart"></i> 表白墙</button>
+                <button type="button" class="btn" id="qpTypeHomework" onclick="qpSetType('homework')"><i class="fa-solid fa-book"></i> 作业</button>
+              </div>
+            </div>
+            <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;padding:10px 14px;background:#F5F5F7;border-radius:8px;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;">
+                <input type="checkbox" id="qpCompress" checked style="width:16px;height:16px;"> 压缩上传（与用户发布一致）
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;">
+                <input type="checkbox" id="qpSkipReview" checked style="width:16px;height:16px;"> 跳过发布审核
+              </label>
+            </div>
+            <div class="form-group" id="qpTitleWrap"><label>标题（可选）</label><input id="qpTitle" placeholder="输入帖子标题" maxlength="30"></div>
+            <div class="form-group" id="qpSubjectWrap" style="display:none;">
+              <label>科目</label>
+              <select id="qpSubject">
+                <option value="语文">语文</option>
+                <option value="数学">数学</option>
+                <option value="英语">英语</option>
+                <option value="物理">物理</option>
+                <option value="化学">化学</option>
+                <option value="其它">其它</option>
+              </select>
+            </div>
+            <div class="form-group"><label>内容</label><textarea id="qpContent" rows="6" placeholder="输入发布内容..."></textarea></div>
+            <div class="form-group">
+              <label>图片 / 视频（无数量限制，可多选）</label>
+              <input id="qpFiles" type="file" accept="image/*,video/*" multiple onchange="qpPreviewFiles(this.files)" style="padding:8px 0;">
+            </div>
+            <div class="form-group">
+              <div id="qpPreview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;"></div>
+            </div>
+            <div class="form-group" id="qpTopicsWrap"><label>话题（可选，用逗号分隔多个话题，不要#号）</label><input id="qpTopics" placeholder="例如：校园生活,期末考试,美食分享"></div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <div id="qpStatus" style="flex:1;color:#6E6E73;font-size:13px;">准备就绪，可直接上传发布</div>
+              <button class="btn btn-primary" onclick="qpSubmit()" id="qpSubmitBtn"><i class="fa-solid fa-paper-plane"></i> 立即发布</button>
+            </div>
+            <div id="qpProgressWrap" style="display:none;width:100%;height:8px;background:#F0F0F2;border-radius:4px;overflow:hidden;">
+              <div id="qpProgressBar" style="width:0%;height:100%;background:linear-gradient(90deg,#0A84FF,#0063CC);transition:width 0.2s;"></div>
+            </div>
+          </div>
+        </div>
+      `;
+      window._qpFiles = [];
+      window._qpType = 'post';
+      qpSetType('post');
+    }
+    function qpSetType(t) {
+      window._qpType = t;
+      document.getElementById('qpTypePost').className = 'btn' + (t === 'post' ? ' btn-primary' : '');
+      document.getElementById('qpTypeConfession').className = 'btn' + (t === 'confession' ? ' btn-primary' : '');
+      document.getElementById('qpTypeHomework').className = 'btn' + (t === 'homework' ? ' btn-primary' : '');
+      document.getElementById('qpTitleWrap').style.display = t === 'post' ? '' : 'none';
+      document.getElementById('qpTopicsWrap').style.display = t === 'post' ? '' : 'none';
+      document.getElementById('qpSubjectWrap').style.display = t === 'homework' ? '' : 'none';
+    }
+    function qpPreviewFiles(files) {
+      window._qpFiles = Array.from(files || []);
+      var wrap = document.getElementById('qpPreview');
+      if (!wrap) return;
+      wrap.innerHTML = '';
+      window._qpFiles.forEach(function(f, i) {
+        var isV = ['mp4','mov','avi','mkv'].includes((f.name.split('.').pop()||'').toLowerCase());
+        var d = document.createElement('div');
+        d.style.cssText = 'position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;background:#F0F0F2;';
+        if (isV) {
+          d.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0A84FF,#0063CC);color:#fff;flex-direction:column;gap:4px;"><i class="fa-solid fa-video" style="font-size:22px;"></i><span style="font-size:11px;">视频</span></div><div onclick="qpRemoveFile('+i+')" style="position:absolute;top:4px;right:4px;width:22px;height:22px;background:rgba(0,0,0,0.6);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;"><i class="fa-solid fa-xmark"></i></div>';
+        } else {
+          var u = URL.createObjectURL(f);
+          d.innerHTML = '<img src="'+u+'" style="width:100%;height:100%;object-fit:cover;"><div onclick="qpRemoveFile('+i+')" style="position:absolute;top:4px;right:4px;width:22px;height:22px;background:rgba(0,0,0,0.6);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;"><i class="fa-solid fa-xmark"></i></div>';
+        }
+        wrap.appendChild(d);
+      });
+    }
+    function qpRemoveFile(i) {
+      window._qpFiles.splice(i, 1);
+      qpPreviewFiles(window._qpFiles);
+    }
+    function qpUploadFiles(files, compress, onProgress) {
+      return new Promise(function(resolve, reject) {
+        var fd = new FormData();
+        files.forEach(function(f) { fd.append('files', f); });
+        if (compress) fd.append('compress', '1');
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', API_HOST + BASE_PATH + '/api/admin/uploadNoCompress');
+        xhr.setRequestHeader('Authorization', adminToken);
+        if (BANLI) xhr.setRequestHeader('X-Admin-Via', 'banli');
+        xhr.upload.onprogress = function(e) {
+          if (e.lengthComputable && onProgress) onProgress(Math.round(e.loaded / e.total * 100));
+        };
+        xhr.onload = function() {
+          try {
+            var jr = JSON.parse(xhr.responseText || '{}');
+            if (jr.code === 1) resolve(jr.data);
+            else reject(new Error(jr.msg || '上传失败'));
+          } catch(ex) { reject(new Error('解析响应失败')); }
+        };
+        xhr.onerror = function() { reject(new Error('网络错误')); };
+        xhr.send(fd);
+      });
+    }
+    async function qpSubmit() {
+      var btn = document.getElementById('qpSubmitBtn');
+      var st = document.getElementById('qpStatus');
+      var bar = document.getElementById('qpProgressWrap');
+      if (btn) btn.disabled = true;
+      var type = window._qpType || 'post';
+      var title = (document.getElementById('qpTitle')?.value || '').trim();
+      var content = (document.getElementById('qpContent')?.value || '').trim();
+      var subject = (document.getElementById('qpSubject')?.value || '其它');
+      var topicsRaw = (document.getElementById('qpTopics')?.value || '').trim();
+      var topics = topicsRaw ? topicsRaw.split(/[,，\s]+/).filter(Boolean) : [];
+      var topic = topics[0] || '';
+      var compress = document.getElementById('qpCompress')?.checked || false;
+      var skipReview = document.getElementById('qpSkipReview')?.checked || false;
+      var files = window._qpFiles || [];
+      if (!content && files.length === 0) {
+        if (st) st.innerHTML = '<span style="color:#FF3B30;">请输入内容或选择文件</span>';
+        if (btn) btn.disabled = false;
+        return;
+      }
+      var imageUrls = '';
+      var videoUrls = '';
+      var videoCover = '';
+      if (files.length > 0) {
+        if (bar) bar.style.display = 'block';
+        if (st) st.innerHTML = '<span style="color:#0A84FF;">正在上传文件' + (compress ? '（压缩）' : '（不压缩）') + '... 0%</span>';
+        try {
+          var data = await qpUploadFiles(files, compress, function(pct) {
+            if (st) st.innerHTML = '<span style="color:#0A84FF;">正在上传文件' + (compress ? '（压缩）' : '（不压缩）') + '... ' + pct + '%</span>';
+            var pb = document.getElementById('qpProgressBar');
+            if (pb) pb.style.width = pct + '%';
+          });
+          var us = data.urls || [];
+          var cs = data.covers || [];
+          var imgs = [];
+          var vids = [];
+          us.forEach(function(u, idx) {
+            if (!u) return;
+            var f2 = files[idx];
+            var iv = ['mp4','mov','avi','mkv'].includes(((f2 && f2.name) ? f2.name.split('.').pop() : '').toLowerCase());
+            if (iv) { vids.push(u); if (cs[idx] && !videoCover) videoCover = cs[idx]; }
+            else imgs.push(u);
+          });
+          imageUrls = imgs.join(',');
+          videoUrls = vids.join(',');
+        } catch(e) {
+          if (bar) bar.style.display = 'none';
+          if (st) st.innerHTML = '<span style="color:#FF3B30;">上传异常：' + (e.message || e) + '</span>';
+          if (btn) btn.disabled = false;
+          return;
+        }
+        if (bar) bar.style.display = 'none';
+      }
+      if (st) st.innerHTML = '<span style="color:#0A84FF;">正在发布...</span>';
+      try {
+        var qpHeaders = { 'Content-Type': 'application/json', 'Authorization': adminToken };
+        if (BANLI) qpHeaders['X-Admin-Via'] = 'banli';
+        var body = {
+          type: type,
+          content: content,
+          images: imageUrls,
+          video: videoUrls,
+          video_cover: videoCover,
+          skip_review: skipReview
+        };
+        if (type === 'post') {
+          body.title = title;
+          body.topic = topic;
+          body.topics = topics;
+        } else if (type === 'homework') {
+          body.subject = subject;
+        }
+        var r2 = await fetch(API_HOST + BASE_PATH + '/api/admin/quickPost', {
+          method: 'POST',
+          headers: qpHeaders,
+          body: JSON.stringify(body)
+        });
+        var d = await r2.json();
+        if (d.code === 1) {
+          if (st) st.innerHTML = '<span style="color:#34C759;">发布成功！' + (type === 'confession' ? '表白墙' : type === 'homework' ? '作业' : '帖子') + 'ID：' + (d.data && d.data.id ? d.data.id : '-') + '</span>';
+          if (document.getElementById('qpTitle')) document.getElementById('qpTitle').value = '';
+          if (document.getElementById('qpContent')) document.getElementById('qpContent').value = '';
+          if (document.getElementById('qpTopics')) document.getElementById('qpTopics').value = '';
+          window._qpFiles = [];
+          var w = document.getElementById('qpPreview');
+          if (w) w.innerHTML = '';
+        } else {
+          throw new Error(d.msg || '发布失败');
+        }
+      } catch(e2) {
+        if (st) st.innerHTML = '<span style="color:#FF3B30;">发布异常：' + (e2.message || e2) + '</span>';
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+    function loadRedemptionCodes() {
+      api(`/api/admin/redemptionCodes?page=${currentPageData.page}&pageSize=20`).then(r => {
+        if (r.code !== 1) { showAdminLoadError(r.msg); return; }
+        const { list, total } = r.data;
+        currentPageData.total = total;
+        const typeMap = { enterprise: '企业机构', advanced: '进阶', premium: '高级', basic: '普通', personal: 'Beta纪念' };
+        document.getElementById('page-redemptionCodes').innerHTML = `
+          <div class="card">
+            <div class="search-bar">
+              <button class="btn btn-success" onclick="showCreateCodesModal()">生成兑换码</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>兑换码</th>
+                  <th>认证类型</th>
+                  <th>有效期</th>
+                  <th>每人限兑</th>
+                  <th>已用/总量</th>
+                  <th>状态</th>
+                  <th>创建时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.map(c => `
+                  <tr>
+                    <td>${c.id}</td>
+                    <td style="font-family:monospace;font-size:13px;">${c.code}</td>
+                    <td>${typeMap[c.verification_type] || c.verification_type}</td>
+                    <td>${c.expire_days ? c.expire_days + '天' : '永久'}</td>
+                    <td>${c.max_uses_per_user}次</td>
+                    <td>${c.used_count}/${c.total_count}</td>
+                    <td>${c.is_active ? '<span style="color:#34C759;">启用</span>' : '<span style="color:#FF3B30;">已禁用</span>'}</td>
+                    <td>${c.created_at || '-'}</td>
+                    <td>${c.is_active ? `<button class="btn btn-danger btn-sm" onclick="disableRedemptionCode(${c.id})">禁用</button>` : ''} <button class="btn btn-primary btn-sm" onclick="viewCodeRecords('${c.code}')">兑换记录</button></td>
+                  </tr>
+                `).join('')}
+                ${list.length === 0 ? '<tr><td colspan="9" style="text-align:center;color:#8E8E93;padding:40px;">暂无兑换码</td></tr>' : ''}
+              </tbody>
+            </table>
+            ${renderPagination(total, 20)}
+          </div>
+        `;
+      });
+    }
+
+    function showCreateCodesModal() {
+      document.getElementById('modalBox').innerHTML = `
+        <div class="modal-title">生成兑换码</div>
+        <div class="form-group">
+          <label>认证类型</label>
+          <select id="codeVerifType">
+            <option value="advanced">进阶认证</option>
+            <option value="premium">高级认证</option>
+            <option value="enterprise">企业机构认证</option>
+            <option value="basic">普通认证</option>
+            <option value="personal">Beta内测纪念认证</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>认证有效期天数（留空为永久）</label>
+          <input id="codeExpireDays" type="number" min="1" max="36500" placeholder="留空=永久，例如30表示30天">
+        </div>
+        <div class="form-group">
+          <label>每人最多兑换次数</label>
+          <input id="codeMaxUses" type="number" min="1" max="100" value="1">
+        </div>
+        <div class="form-group">
+          <label>生成数量</label>
+          <input id="codeCount" type="number" min="1" max="1000" value="1">
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeModal()">取消</button>
+          <button class="btn btn-success" onclick="createRedemptionCodes()">确认生成</button>
+        </div>
+      `;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function createRedemptionCodes() {
+      const verification_type = document.getElementById('codeVerifType').value;
+      const expire_days = document.getElementById('codeExpireDays').value || null;
+      const max_uses_per_user = parseInt(document.getElementById('codeMaxUses').value) || 1;
+      const total_count = parseInt(document.getElementById('codeCount').value) || 1;
+      api('/api/admin/createRedemptionCodes', 'POST', { verification_type, expire_days, max_uses_per_user, total_count }).then(r => {
+        if (r.code === 1) {
+          const codes = r.data.codes;
+          document.getElementById('modalBox').innerHTML = `
+            <div class="modal-title">兑换码已生成 (${codes.length}个)</div>
+            <div style="max-height:400px;overflow-y:auto;margin:16px 0;">
+              <textarea style="width:100%;height:300px;font-family:monospace;font-size:14px;padding:12px;border:1px solid #D1D1D6;border-radius:8px;box-sizing:border-box;" readonly>${codes.join('\n')}</textarea>
+            </div>
+            <div style="font-size:13px;color:#6E6E73;margin-bottom:12px;">请复制保存，关闭后将无法再次查看完整兑换码</div>
+            <div class="modal-actions">
+              <button class="btn btn-primary" onclick="closeModal();loadRedemptionCodes();">关闭</button>
+            </div>
+          `;
+        } else {
+          alert(r.msg);
+        }
+      });
+    }
+
+    function disableRedemptionCode(id) {
+      if (!confirm('确定禁用该兑换码？')) return;
+      api('/api/admin/disableRedemptionCode', 'POST', { id }).then(r => {
+        if (r.code === 1) loadRedemptionCodes();
+        else alert(r.msg);
+      });
+    }
+
+    let rrKeyword = '';
+    const rrTypeNames = { enterprise: '企业机构认证', advanced: '进阶认证', premium: '高级认证', basic: '普通认证', personal: 'Beta内测纪念认证' };
+
+    function viewCodeRecords(code) {
+      rrKeyword = code || '';
+      switchPage('redemptionRecords');
+    }
+
+    function loadRedemptionRecords() {
+      const kw = encodeURIComponent(rrKeyword || '');
+      document.getElementById('page-redemptionRecords').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">兑换黑名单</div>
+          </div>
+          <div style="margin-bottom:12px;color:#8E8E93;font-size:13px;">加入黑名单后，该用户将无法兑换任何兑换码；已兑换的记录不受影响，可在下方单独撤销。</div>
+          <div class="search-bar" style="margin-bottom:12px;">
+            <input id="blacklistUidInput" type="text" placeholder="输入用户UID，例如 12345678" style="flex:1;max-width:280px;">
+            <button class="btn btn-danger" onclick="addRedemptionBlacklist()"><i class="fa-solid fa-ban"></i> 禁止兑换</button>
+          </div>
+          <div id="blacklistListBox" style="color:#8E8E93;font-size:13px;">加载中...</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">兑换记录</div>
+          </div>
+          <div class="search-bar">
+            <input id="rrSearchInput" type="text" placeholder="按兑换码 / UID / 昵称搜索" value="${(rrKeyword || '').replace(/"/g, '&quot;')}" style="flex:1;max-width:320px;" onkeydown="if(event.key==='Enter')searchRedemptionRecords()">
+            <button class="btn btn-primary" onclick="searchRedemptionRecords()"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button>
+            ${rrKeyword ? '<button class="btn" onclick="clearRedemptionRecordsSearch()">清空</button>' : ''}
+          </div>
+          <div id="rrRecordsBox" style="color:#8E8E93;font-size:13px;">加载中...</div>
+        </div>
+      `;
+      loadRedemptionBlacklist();
+      api(`/api/admin/redemptionRecords?page=${currentPageData.page}&pageSize=20&keyword=${kw}`).then(r => {
+        const box = document.getElementById('rrRecordsBox');
+        if (!box) return;
+        if (r.code !== 1) { box.innerHTML = '<span style="color:#FF3B30;">' + (r.msg || '加载失败') + '</span>'; return; }
+        const { list, total } = r.data;
+        currentPageData.total = total;
+        box.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>兑换码</th>
+                <th>兑换内容</th>
+                <th>兑换用户</th>
+                <th>兑换时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(x => `
+                <tr>
+                  <td>${x.id}</td>
+                  <td style="font-family:monospace;font-size:12px;">${x.code}</td>
+                  <td>${rrTypeNames[x.verification_type] || x.verification_type || '-'}${x.expire_days ? ' · ' + x.expire_days + '天' : ' · 永久'}</td>
+                  <td>${x.nickname || '用户' + x.user_id}<div style="font-size:12px;color:#8E8E93;">UID: ${x.user_id}</div></td>
+                  <td>${x.redeemed_at || '-'}</td>
+                  <td><button class="btn btn-danger btn-sm" onclick="revokeRedemptionRecord(${x.id}, '${x.user_id}', '${x.code}')">撤销</button></td>
+                </tr>
+              `).join('')}
+              ${list.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:#8E8E93;padding:40px;">暂无兑换记录</td></tr>' : ''}
+            </tbody>
+          </table>
+          ${renderPagination(total, 20)}
+        `;
+      });
+    }
+
+    function searchRedemptionRecords() {
+      const inp = document.getElementById('rrSearchInput');
+      rrKeyword = inp ? inp.value.trim() : '';
+      currentPageData.page = 1;
+      loadRedemptionRecords();
+    }
+
+    function clearRedemptionRecordsSearch() {
+      rrKeyword = '';
+      currentPageData.page = 1;
+      loadRedemptionRecords();
+    }
+
+    function revokeRedemptionRecord(id, uid, code) {
+      if (!confirm('确定撤销这条兑换记录？\n\n撤销后：\n1. 该兑换码的已用次数将返还 1 次；\n2. 若该用户没有其他同类型的有效兑换记录，且其认证来源于兑换码，对应认证将被收回。')) return;
+      api('/api/admin/revokeRedemption', 'POST', { id }).then(r => {
+        if (r.code === 1) {
+          alert(r.msg);
+          loadRedemptionRecords();
+        } else {
+          alert(r.msg || '撤销失败');
+        }
+      });
+    }
+
+    function loadRedemptionBlacklist() {
+      api('/api/admin/redemptionBlacklist').then(r => {
+        const box = document.getElementById('blacklistListBox');
+        if (!box) return;
+        if (r.code !== 1) { box.innerHTML = '<span style="color:#FF3B30;">' + (r.msg || '加载失败') + '</span>'; return; }
+        const list = r.data || [];
+        if (list.length === 0) {
+          box.innerHTML = '<div style="color:#8E8E93;font-size:13px;padding:8px 0;">黑名单为空，所有用户均可兑换</div>';
+          return;
+        }
+        box.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>UID</th>
+                <th>昵称</th>
+                <th>加入时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(b => `
+                <tr>
+                  <td>${b.user_id}</td>
+                  <td>${b.nickname || '-'}</td>
+                  <td>${b.created_at || '-'}</td>
+                  <td><button class="btn btn-primary btn-sm" onclick="removeRedemptionBlacklist('${b.user_id}')">移出黑名单</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      });
+    }
+
+    function addRedemptionBlacklist() {
+      const inp = document.getElementById('blacklistUidInput');
+      const uid = inp ? inp.value.trim() : '';
+      if (!uid) { alert('请输入用户UID'); return; }
+      api('/api/admin/addRedemptionBlacklist', 'POST', { uid }).then(r => {
+        if (r.code === 1) {
+          if (inp) inp.value = '';
+          loadRedemptionBlacklist();
+        } else {
+          alert(r.msg || '添加失败');
+        }
+      });
+    }
+
+    function removeRedemptionBlacklist(uid) {
+      if (!confirm('确定将该用户移出黑名单？移出后该用户可正常兑换。')) return;
+      api('/api/admin/removeRedemptionBlacklist', 'POST', { uid }).then(r => {
+        if (r.code === 1) loadRedemptionBlacklist();
+        else alert(r.msg || '操作失败');
+      });
+    }
+  </script>
+</body>
+</html>
