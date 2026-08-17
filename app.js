@@ -364,6 +364,15 @@
     function getToken() { return localStorage.getItem('zanhua_token') || ''; }
     let currentUsername = '';
     let currentNickname = '';
+    function requireLogin() { if (!getToken()) { showLoginModal(); return false; } return true; }
+    function handleActionError(res, fallbackMsg) {
+      if (res && res.msg && res.msg.indexOf('涉嫌') !== -1) {
+        showViolationBubble('已违规');
+        return true;
+      }
+      showToast((res && res.msg) || fallbackMsg);
+      return false;
+    }
     function setToken(t) { localStorage.setItem('zanhua_token', t); if (typeof dctWmClearTile === 'function') dctWmClearTile(); dctWmRemoveCanvas(); }
     function getUid() { try { return atob(getToken().replace(/^admin_/, '')).split(':')[0]; } catch(e) { return ''; } }
     function isAdminAccount() { return getToken().indexOf('admin_') === 0 || currentNickname === '管理员'; }
@@ -768,7 +777,7 @@
     let playerFirstTipShown = false;
 
     async function openVideoPlayer(src, poster, allowDownload = true) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       currentVideoSrc = src;
       currentVideoAllowDownload = allowDownload;
       let player = document.getElementById('custom-video-player');
@@ -1430,7 +1439,7 @@
     let homeFeedTab = 'recommend';
 
     function goSearchGuard() {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       goPage('search');
     }
     function renderNavbar(title, showSearch = true) {
@@ -1853,7 +1862,7 @@
     }
 
     async function approveFollowRequest(applicantId, btn) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       try {
         const r = await api('/approveFollow', 'POST', { applicantId });
         if (r.code === 1) {
@@ -1935,7 +1944,7 @@
     }
 
     function followUser(followId, btn) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       api('/follow', 'POST', { followId }).then(r => {
         if (r.code === 1) {
           const followed = r.data.followed;
@@ -2246,11 +2255,7 @@
           currentConfessionDetail.comment_count = (currentConfessionDetail.comment_count || 0) + 1;
         }
       } else {
-        if (res.msg && res.msg.indexOf('涉嫌') !== -1) {
-          showViolationBubble('已违规');
-        } else {
-          showToast(res.msg || '评论失败');
-        }
+        handleActionError(res, '评论失败');
       }
     }
 
@@ -2352,11 +2357,11 @@
 
     async function loadPosts(refresh = false) {
       if (loading) return;
+      const noMoreEl = document.getElementById('noMoreTip');
       if (refresh) {
         postPage = 1;
         posts = [];
         noMorePosts = false;
-        const noMoreEl = document.getElementById('noMoreTip');
         if (noMoreEl) noMoreEl.style.display = 'none';
       }
       if (noMorePosts) return;
@@ -2380,7 +2385,6 @@
           setTimeout(refreshCardExpandButtons, 0);
           if (res.limited) {
             noMorePosts = true;
-            const noMoreEl = document.getElementById('noMoreTip');
             if (noMoreEl && posts.length > 0) {
               if (getToken()) {
                 noMoreEl.innerHTML = '— 没有更多了 —';
@@ -2391,7 +2395,6 @@
             }
           } else if (list.length < 10) {
             noMorePosts = true;
-            const noMoreEl = document.getElementById('noMoreTip');
             if (noMoreEl && posts.length > 0) {
               noMoreEl.innerHTML = '— 没有更多了 —';
               noMoreEl.style.display = 'block';
@@ -2514,11 +2517,7 @@
           closeConfessionModal();
           loadDiscoverContent('confession');
         } else {
-          if (res.msg && res.msg.indexOf('涉嫌') !== -1) {
-            showViolationBubble('已违规');
-          } else {
-            showToast(res.msg || '发布失败');
-          }
+          handleActionError(res, '发布失败');
         }
       } catch (e) {
         showToast('网络异常');
@@ -2690,7 +2689,7 @@
 
     async function submitHomework() {
       if (isHomeworkPublishing) return;
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       if (isHomeworkUploading) { showToast('图片正在上传中，请稍候'); return; }
       const hasFailed = homeworkImages.some(f => f._uploadFailed);
       if (hasFailed) { showToast('有图片上传失败，请重试或删除'); return; }
@@ -2716,11 +2715,7 @@
           closeHomeworkModal();
           loadHomeworkList(subject);
         } else {
-          if (res.msg && res.msg.indexOf('涉嫌') !== -1) {
-            showViolationBubble('已违规');
-          } else {
-            showToast(res.msg || '发布失败');
-          }
+          handleActionError(res, '发布失败');
         }
       } catch (e) {
         showToast('网络异常');
@@ -2799,7 +2794,7 @@
     }
 
     function goHomeworkDetail(id) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       pageHistory.push(currentPage);
       prevPage = currentPage;
       currentPage = 'homeworkDetail';
@@ -2893,7 +2888,7 @@
     }
 
     async function toggleHomeworkLike(el) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       const res = await api('/likeHomework', 'POST', { id: homeworkDetailId });
       if (res.code === 1) {
         homeworkDetail.liked = res.data.liked;
@@ -2911,7 +2906,7 @@
     }
 
     async function toggleHomeworkCollect(el) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       const res = await api('/collectHomework', 'POST', { id: homeworkDetailId });
       if (res.code === 1) {
         homeworkDetail.collected = res.data.collected;
@@ -3003,7 +2998,7 @@
     }
 
     async function toggleHomeworkCommentLike(commentId, el) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       const res = await api('/likeHomeworkComment', 'POST', { commentId });
       if (res.code === 1) {
         const c = homeworkComments.find(x => x.id === commentId);
@@ -3047,7 +3042,7 @@
       const content = input?.value.trim();
       if (!content) { showToast('请输入内容'); return; }
       if (content.length > 150) { showToast('评论不能超过150字'); return; }
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       const parentSeq = homeworkReplyTargetSeq;
       input.value = '';
       input.placeholder = '说点什么...';
@@ -3059,11 +3054,7 @@
           homeworkDetail.comments = (homeworkDetail.comments || 0) + 1;
           loadHomeworkComments();
         } else {
-          if (res.msg && res.msg.indexOf('涉嫌') !== -1) {
-            showViolationBubble('已违规');
-          } else {
-            showToast(res.msg || '评论失败');
-          }
+          handleActionError(res, '评论失败');
         }
       } catch(e) { showToast('网络异常'); }
     }
@@ -4328,11 +4319,7 @@
           goPage('home');
           loadPosts(true);
         } else {
-          if (res && res.msg && res.msg.indexOf('涉嫌') !== -1) {
-            showViolationBubble('已违规');
-          } else {
-            showToast(res.msg || '发布失败');
-          }
+          handleActionError(res, '发布失败');
           resetPublishBtn();
         }
       } catch (e) {
@@ -4694,7 +4681,7 @@
     }
 
     function goPostDetailAndScroll(id) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       scrollToCommentFlag = true;
       goPostDetail(id);
     }
@@ -4983,11 +4970,7 @@
         list.onclick = () => loadComments(postId);
         return;
       }
-      if (!res || res.code !== 1) {
-        list.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#999;">还没有评论，快来抢沙发吧</div>';
-        return;
-      }
-      if (!res.data || res.data.length === 0) {
+      if (!res || res.code !== 1 || !res.data || res.data.length === 0) {
         list.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#999;">还没有评论，快来抢沙发吧</div>';
         return;
       }
@@ -5158,18 +5141,16 @@
     }
 
     async function sendComment() {
-      const content = document.getElementById('commentInput').value.trim();
+      const input = document.getElementById('commentInput');
+      const content = input.value.trim();
       if (!content) return;
       if (content.length > 150) {
         showToast('评论不能超过150字');
         return;
       }
-      if (!getToken()) {
-        showLoginModal();
-        return;
-      }
-      document.getElementById('commentInput').value = '';
-      document.getElementById('commentInput').placeholder = '说点什么...';
+      if (!requireLogin()) return;
+      input.value = '';
+      input.placeholder = '说点什么...';
       updateCharCount();
       replyTargetSeq = 0;
       const sendBtn = document.getElementById('commentSendBtn');
@@ -5188,11 +5169,7 @@
           currentPostDetail.comments = (currentPostDetail.comments || 0) + 1;
         }
       } else {
-        if (res.msg && res.msg.indexOf('涉嫌') !== -1) {
-          showViolationBubble('已违规');
-        } else {
-          showToast(res.msg || '评论失败');
-        }
+        handleActionError(res, '评论失败');
       }
     }
 
@@ -5300,26 +5277,26 @@
               </button>
             </div>
             ${listHtml}
-          `;
-          content.innerHTML += `<div class="modal-overlay" id="confessionModal" onclick="if(event.target===this)closeConfessionModal()">
-            <div class="modal-content" style="max-height:85vh;overflow-y:auto;">
-              <div class="modal-handler"></div>
-              <div style="font-weight:600;font-size:16px;margin-bottom:12px;">发布表白</div>
-              <textarea id="confessionContent" style="width:100%;min-height:120px;border:1px solid #eee;border-radius:8px;padding:12px;font-size:15px;resize:none;" placeholder="写下你的表白..."></textarea>
-              <div style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;">
-                <input type="checkbox" id="confessionAnonymous" style="width:18px;height:18px;accent-color:var(--color-primary);" onchange="toggleConfessionWarning()">
-                <span>匿名发布</span>
+            <div class="modal-overlay" id="confessionModal" onclick="if(event.target===this)closeConfessionModal()">
+              <div class="modal-content" style="max-height:85vh;overflow-y:auto;">
+                <div class="modal-handler"></div>
+                <div style="font-weight:600;font-size:16px;margin-bottom:12px;">发布表白</div>
+                <textarea id="confessionContent" style="width:100%;min-height:120px;border:1px solid #eee;border-radius:8px;padding:12px;font-size:15px;resize:none;" placeholder="写下你的表白..."></textarea>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;">
+                  <input type="checkbox" id="confessionAnonymous" style="width:18px;height:18px;accent-color:var(--color-primary);" onchange="toggleConfessionWarning()">
+                  <span>匿名发布</span>
+                </div>
+                <div id="confessionWarning" style="display:none;margin-top:12px;padding:12px;background:var(--color-red-light);border-radius:8px;font-size:13px;color:var(--color-red);line-height:1.6;">
+                  <div style="font-weight:600;margin-bottom:4px;">⚠️ 匿名发布须知</div>
+                  <div>• 请遵守平台社区准则及相关法律法规</div>
+                  <div>• 不得发布违法、违规、色情、暴力、侮辱性内容</div>
+                  <div>• 不得侵犯他人隐私或恶意诽谤</div>
+                  <div>• 违规发布将被封禁账号，情节严重者将追究法律责任</div>
+                </div>
+                <button onclick="submitConfession()" style="width:100%;height:48px;background:var(--color-primary);color:#fff;border-radius:12px;font-weight:600;margin-top:16px;">发布</button>
               </div>
-              <div id="confessionWarning" style="display:none;margin-top:12px;padding:12px;background:var(--color-red-light);border-radius:8px;font-size:13px;color:var(--color-red);line-height:1.6;">
-                <div style="font-weight:600;margin-bottom:4px;">⚠️ 匿名发布须知</div>
-                <div>• 请遵守平台社区准则及相关法律法规</div>
-                <div>• 不得发布违法、违规、色情、暴力、侮辱性内容</div>
-                <div>• 不得侵犯他人隐私或恶意诽谤</div>
-                <div>• 违规发布将被封禁账号，情节严重者将追究法律责任</div>
-              </div>
-              <button onclick="submitConfession()" style="width:100%;height:48px;background:var(--color-primary);color:#fff;border-radius:12px;font-weight:600;margin-top:16px;">发布</button>
             </div>
-          </div>`;
+          `;
         } else if (tab === 'topic') {
           const res = await api('/topics');
           if (res.code === 0 && res.msg === '未登录') {
@@ -5715,7 +5692,7 @@
     });
 
     function goPostDetail(id) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       if (!id || id === 'undefined') {
         showToast('帖子ID异常');
         return;
@@ -5835,7 +5812,7 @@
     let topicNoMore = false;
 
     function goTopicDetail(name) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       pageHistory.push(currentPage);
       prevPage = currentPage;
       currentPage = 'topicDetail';
@@ -5943,7 +5920,7 @@
     }
 
     function goCreatePostWithTopic(topicName) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       createContent = '#' + topicName + '# ';
       goPage('createPost');
       setTimeout(() => {
@@ -6551,7 +6528,7 @@
         let userProfileCurrentTab = 'posts';
 
     function goUserProfile(uid) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       userProfileCurrentTab = 'posts';
       pageHistory.push(currentPage);
       prevPage = currentPage;
@@ -7853,11 +7830,7 @@
           document.getElementById('editAvatar').src = resolveMediaUrl(res.data.avatar);
           showToast('头像上传成功');
         } else {
-          if (res.msg && res.msg.indexOf('涉嫌') !== -1) {
-            showViolationBubble('已违规');
-          } else {
-            showToast(res.msg || '上传失败');
-          }
+          handleActionError(res, '上传失败');
         }
       } catch(e) {
         showToast('上传失败');
@@ -8302,14 +8275,14 @@
     let fansListUid = '';
 
     function goFollowList(uid) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       followListUid = uid;
       followListSelected = new Set();
       goPage('followListPage');
     }
 
     function goFansList(uid) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       fansListUid = uid;
       goPage('fansListPage');
     }
@@ -9599,7 +9572,7 @@ async function renderMySubOrders() {
       { key: 'other', label: '其他违规', subs: ['侵犯隐私', '盗用原创', '未成年人不良内容', '其他'] }
     ];
     function goReport(targetType, targetId) {
-      if (!getToken()) { showLoginModal(); return; }
+      if (!requireLogin()) return;
       reportTargetType = targetType;
       reportTargetId = targetId;
       reportReason = '';
