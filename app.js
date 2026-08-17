@@ -7348,7 +7348,7 @@
             <label class="switch"><input type="checkbox" id="editStrangerMsg"><span class="slider"></span></label>
           </div>
         </div>
-        <div class="ep-section ep-section-animate" style="animation-delay:0.14s;">
+        <div class="ep-section ep-section-animate" style="animation-delay:0.14s;background:transparent;padding:4px 0;">
           <button class="ep-save-btn" onclick="saveProfile()">保存修改</button>
         </div>
         <div class="country-picker-overlay" id="countryPickerOverlay" onclick="closeCountryPicker()">
