@@ -6614,7 +6614,7 @@
       const blockedByPrivate = !isMine && isPrivate && !isApproved;
       let followBtnHtml = '';
       if (isMine) {
-        followBtnHtml = `<button id="followBtn" style="flex:1;padding:10px;border:none;border-radius:20px;font-size:15px;font-weight:600;cursor:pointer;background:#f5f5f5;color:#333;">编辑资料</button>`;
+        followBtnHtml = `<button id="followBtn" onclick="goPage('editProfile')" style="flex:1;padding:10px;border:none;border-radius:20px;font-size:15px;font-weight:600;cursor:pointer;background:#f5f5f5;color:#333;">编辑资料</button>`;
       } else if (isPending) {
         followBtnHtml = `<button id="followBtn" onclick="toggleFollow()" style="flex:1;padding:10px;border:none;border-radius:20px;font-size:15px;font-weight:600;cursor:pointer;background:#f5f5f5;color:#999;">申请中</button>`;
       } else if (u.followed) {
