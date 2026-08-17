@@ -26,6 +26,15 @@
       
       return MEDIA_BASE + '/' + s.replace(/^\/+/, '');
     }
+
+    function cleanProvince(p) {
+      if (!p) return '';
+      const s = String(p);
+      if (/台湾|臺灣|台灣|Taiwan|TW/i.test(s)) return '中国台湾';
+      if (/香港|Hong\s?Kong|HK/i.test(s)) return '中国香港';
+      if (/澳门|澳門|Macau|Macao|MO/i.test(s)) return '中国澳门';
+      return s;
+    }
     
     
     const _videoSignCache = new Map(); 
@@ -1418,8 +1427,7 @@
 
     let _lastRenderedPage = null;
     const PAGE_ANIM_SLIDE = new Set([
-      'postDetail','topicDetail','userProfile','chat','confessionDetail','homeworkDetail',
-      'violationDetail','report','feedback','editProfile','securitySettings','search',
+      'topicDetail','chat','violationDetail','report','feedback','editProfile','securitySettings','search',
       'strangerList','followListPage','fansListPage','notificationLikes','notificationFollows',
       'notificationComments','safetyCenter','rulesCenter','createPost','agreement','privacy','minorPrivacy'
     ]);
@@ -1427,6 +1435,9 @@
       const app = document.getElementById('app');
       if (!app) return;
       app.classList.remove('page-enter','page-enter-soft');
+
+      const NO_ANIM_PAGES = new Set(['postDetail','confessionDetail','homeworkDetail','userProfile']);
+      if (NO_ANIM_PAGES.has(currentPage)) return;
 
       void app.offsetWidth;
       if (PAGE_ANIM_SLIDE.has(currentPage)) {
@@ -1532,7 +1543,7 @@
       } else if (p.content) {
         contentBlock = `<div id="${cardId}-wrap" class="post-content-wrap">
           <div id="${cardId}-content" class="post-content post-content-collapsed">${contentHtml}</div>
-          <div id="${cardId}-btn" class="post-expand-btn" onclick="event.stopPropagation();togglePostExpand('${cardId}')"><span><i class="fa-solid fa-angles-down" style="margin-right:3px;"></i>展开全文</span></div>
+          <div id="${cardId}-btn" class="post-expand-btn"><span onclick="event.stopPropagation();togglePostExpand('${cardId}')"><i class="fa-solid fa-angles-down" style="margin-right:3px;"></i>展开全文</span></div>
         </div>`;
       }
       return `<div class="${cardClass}" onclick="goPostDetail('${p.id}')">
@@ -1540,7 +1551,7 @@
           <img class="avatar" src="${resolveMediaUrl(p.avatar)||DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${p.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
           <div class="post-user">
             <div class="post-nickname">${p.nickname || '用户'+p.user_id}${renderListVerification(p)}</div>
-            <div class="post-time">${timeAgo(p.create_time)} · ${p.province || '未知'}</div>
+            <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || '未知'}</div>
           </div>
           ${isMine ? `<div onclick="event.stopPropagation();showPostActionSheet('${p.id}')" style="cursor:pointer;padding:4px 8px;margin-left:auto;"><i class="fa-solid fa-ellipsis" style="color:#999;font-size:16px;"></i></div>` : ''}
         </div>
@@ -2081,7 +2092,7 @@
               <div class="c-meta">
                 <div class="c-meta-left">
                   <span class="c-time">${timeAgo(c.create_time)}</span>
-                  ${c.province ? `<span>${c.province}</span>` : ''}
+                  ${cleanProvince(c.province) ? `<span>${cleanProvince(c.province)}</span>` : ''}
                   <span class="c-action" onclick="setConfessionReply(${c.post_seq})">回复</span>
                 </div>
                 <span class="c-like" onclick="likeConfessionComment(${c.id},this)">
@@ -2768,9 +2779,9 @@
                 <div class="card" onclick="goHomeworkDetail(${item.id})">
                   <div class="post-header">
                     <img class="avatar" src="${resolveMediaUrl(item.avatar) || DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${item.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
-                    <div class="post-user" onclick="event.stopPropagation();goUserProfile('${item.user_id}')" style="cursor:pointer;">
+                    <div class="post-user">
                       <div class="post-nickname">${escapeHtml(item.nickname || '用户')}${renderListVerification(item)}</div>
-                      <div class="post-time">${timeAgo(item.create_time)} · ${item.province || '未知'}</div>
+                      <div class="post-time">${timeAgo(item.create_time)} · ${cleanProvince(item.province) || '未知'}</div>
                     </div>
                   </div>
                   <div style="padding:0 16px 6px;">
@@ -2865,9 +2876,9 @@
         <div style="padding-top:0;">
           <div class="post-header">
             <img class="avatar" src="${resolveMediaUrl(homeworkDetail.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${homeworkDetail.user_id}')" style="cursor:pointer;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
-            <div class="post-user" onclick="goUserProfile('${homeworkDetail.user_id}')" style="cursor:pointer;">
+            <div class="post-user">
               <div class="post-nickname">${escapeHtml(homeworkDetail.nickname || '用户')}${renderListVerification(homeworkDetail)}</div>
-              <div class="post-time">${timeAgo(homeworkDetail.create_time)} · ${homeworkDetail.province || '未知'}</div>
+              <div class="post-time">${timeAgo(homeworkDetail.create_time)} · ${cleanProvince(homeworkDetail.province) || '未知'}</div>
             </div>
           </div>
           <div style="padding:0 16px 8px;">
@@ -2951,7 +2962,7 @@
               <div class="c-meta">
                 <div class="c-meta-left">
                   <span class="c-time">${timeAgo(c.create_time)}</span>
-                  ${c.province ? `<span>${escapeHtml(c.province)}</span>` : ''}
+                  ${cleanProvince(c.province) ? `<span>${escapeHtml(cleanProvince(c.province))}</span>` : ''}
                   <span class="c-action" onclick="setHwReply(${c.post_seq})">回复</span>
                   ${isMine ? `<span class="c-action" onclick="deleteHomeworkComment(${c.id})" style="color:#ff2442;">删除</span>` : ''}
                 </div>
@@ -4738,9 +4749,9 @@
           <div class="pd-main">
           <div class="post-header">
             <img class="avatar" src="${resolveMediaUrl(p.avatar)||DEFAULT_AVATAR}" onclick="goUserProfile('${p.user_id}')" style="cursor:pointer;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
-            <div class="post-user" onclick="goUserProfile('${p.user_id}')" style="cursor:pointer;">
+            <div class="post-user">
             <div class="post-nickname">${p.nickname || '用户'+p.user_id}${renderListVerification(p)}</div>
-            <div class="post-time">${timeAgo(p.create_time)} · ${p.province || '未知'}</div>
+            <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || '未知'}</div>
           </div>
         </div>
         ${p.title ? `<div style="padding:0 16px 8px;font-size:18px;font-weight:600;">${p.title}</div>` : ''}
@@ -4994,7 +5005,7 @@
               <div class="c-meta">
                 <div class="c-meta-left">
                   <span class="c-time">${timeAgo(c.create_time)}</span>
-                  ${c.province ? `<span>${c.province}</span>` : ''}
+                  ${cleanProvince(c.province) ? `<span>${cleanProvince(c.province)}</span>` : ''}
                   <span class="c-action" onclick="setReply(${c.post_seq})">回复</span>
                 </div>
                 <span class="c-like" onclick="likeComment(${c.id},this)">
@@ -6396,9 +6407,9 @@
       return `<div class="card" onclick="goHomeworkDetail(${item.id})">
         <div class="post-header">
           <img class="avatar" src="${resolveMediaUrl(item.avatar) || DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${item.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
-          <div class="post-user" onclick="event.stopPropagation();goUserProfile('${item.user_id}')" style="cursor:pointer;">
+          <div class="post-user">
             <div class="post-nickname">${escapeHtml(item.nickname || '用户')}${renderListVerification(item)}</div>
-            <div class="post-time">${timeAgo(item.create_time)} · ${item.province || '未知'}</div>
+            <div class="post-time">${timeAgo(item.create_time)} · ${cleanProvince(item.province) || '未知'}</div>
           </div>
         </div>
         <div style="padding:0 16px 6px;">
@@ -6579,7 +6590,7 @@
             <img class="profile-avatar" src="${resolveMediaUrl(u.avatar)||DEFAULT_AVATAR}" style="width:60px;height:60px;border-radius:50%;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
             <div class="profile-info">
               <div class="profile-name">${u.nickname||'用户'+u.uid}${privateBadge}</div>
-              <div class="profile-id">赞话号: ${u.uid} · IP: ${u.province||'未知'}</div>
+              <div class="profile-id">赞话号: ${u.uid} · IP: ${cleanProvince(u.province)||'未知'}</div>
             </div>
           </div>
           ${(() => {
@@ -6604,6 +6615,7 @@
         ${blockedByPrivate ? '<div id="userProfileContent" style="text-align:center;padding:60px 20px;color:#999;"><i class="fa-solid fa-lock" style="font-size:32px;margin-bottom:12px;display:block;"></i>该用户已设为私密账号，关注通过后可查看内容</div>' : `<div class="profile-tabs">
           <div class="profile-tab ${userProfileCurrentTab==='posts'?'active':''}" onclick="switchUserProfileTab('posts')">帖子</div>
           <div class="profile-tab ${userProfileCurrentTab==='confession'?'active':''}" onclick="switchUserProfileTab('confession')">表白墙</div>
+          <div class="profile-tab ${userProfileCurrentTab==='homework'?'active':''}" onclick="switchUserProfileTab('homework')">作业</div>
         </div>
         <div id="userProfileContent" class="profile-grid">${new Array(6).fill(0).map(() => `
           <div class="profile-grid-item" style="background:#fff;">
@@ -6622,7 +6634,8 @@
       document.querySelectorAll('.profile-tabs .profile-tab').forEach(el => {
         el.classList.remove('active');
       });
-      const activeTab = document.querySelector(`.profile-tabs .profile-tab:nth-child(${tab==='posts'?1:2})`);
+      const tabIndex = tab==='posts'?1 : tab==='confession'?2 : 3;
+      const activeTab = document.querySelector(`.profile-tabs .profile-tab:nth-child(${tabIndex})`);
       if (activeTab) activeTab.classList.add('active');
       loadUserProfileContent();
     }
@@ -6661,6 +6674,44 @@
           } else {
             container.className = '';
             container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">TA还没有发过帖子</div>';
+          }
+        } catch(e) {
+          container.className = '';
+          container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">加载失败</div>';
+        }
+      } else if (userProfileCurrentTab === 'homework') {
+        try {
+          const res = await api('/homeworkList?uid=' + uid + '&page=1&size=20');
+          if (res.code === 1 && res.data.length > 0) {
+            container.className = '';
+            container.style.padding = '8px 0';
+            container.innerHTML = res.data.map(hw => {
+              const imgs = hw.images ? hw.images.split(',').filter(x => x) : [];
+              const hasImages = imgs.length > 0;
+              const hwImgs = hasImages ? imgs.map(i => `<div style="padding:0 12px 8px;"><img src="${resolveMediaUrl(i)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>`).join('') : '';
+              return `<div class="card" onclick="goHomeworkDetail(${hw.id})" style="margin:0 8px 8px;">
+                <div class="post-header" style="padding:10px 12px;">
+                  <img class="avatar" src="${resolveMediaUrl(hw.avatar)||DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${hw.user_id}')" style="width:32px;height:32px;cursor:pointer;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
+                  <div class="post-user">
+                    <div class="post-nickname" style="font-size:13px;">${escapeHtml(hw.nickname || '用户')}${renderListVerification(hw)}</div>
+                    <div class="post-time" style="font-size:11px;">${timeAgo(hw.create_time)} · ${cleanProvince(hw.province) || '未知'}</div>
+                  </div>
+                </div>
+                <div style="padding:0 12px 6px;">
+                  <span style="display:inline-block;padding:2px 10px;background:var(--color-primary-light);color:var(--color-primary);border-radius:10px;font-size:12px;font-weight:500;">${escapeHtml(hw.subject || '其它')}</span>
+                </div>
+                ${hw.content ? `<div class="post-content" style="padding:0 12px 8px;font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(hw.content).replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, '@$1').replace(/\n/g,' ')}</div>` : ''}
+                ${hwImgs}
+                <div class="post-actions" style="padding:6px 0 10px;font-size:12px;">
+                  <div class="action-item"><i class="fa-regular fa-eye"></i><span>${hw.views||0}</span></div>
+                  <div class="action-item"><i class="fa-regular fa-comment"></i><span>${hw.comments||0}</span></div>
+                  <div class="action-item"><i class="fa-regular fa-heart"></i><span>${hw.likes||0}</span></div>
+                </div>
+              </div>`;
+            }).join('');
+          } else {
+            container.className = '';
+            container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#999;">TA还没有发布过作业</div>';
           }
         } catch(e) {
           container.className = '';
