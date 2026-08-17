@@ -1,11 +1,16 @@
 (function() {
   var LATIN_FONT = 'https://154.201.81.86/zanhua/res/fonts/ZanhuaSans-Latin-Regular.woff2';
+  var FA_BASE = 'https://154.201.81.86/zanhua/static/fontawesome/webfonts/';
   var FONT_URLS = [
     'https://emoji-fonts-1342939114.cos.ap-nanjing.myqcloud.com/ZanhuaSans-SC-Regular-Decrease.woff2',
     'https://emoji-fonts-1342939114.cos.ap-nanjing.myqcloud.com/emoji.ttf',
-    LATIN_FONT
+    LATIN_FONT,
+    FA_BASE + 'fa-solid-900.woff2',
+    FA_BASE + 'fa-regular-400.woff2',
+    FA_BASE + 'fa-brands-400.woff2',
+    FA_BASE + 'fa-v4compatibility.woff2'
   ];
-  var CACHE_NAME = 'zanhua-fonts-v1';
+  var CACHE_NAME = 'zanhua-fonts-v2';
 
   function fetchWithCacheMode(url) {
     try {
@@ -20,16 +25,16 @@
   }
 
   self.addEventListener('install', function(event) {
-    
-    
     event.waitUntil(
       caches.open(CACHE_NAME).then(function(cache) {
-        return fetchWithCacheMode(LATIN_FONT).then(function(r) {
-          if (r && (r.ok || (r.status === 0 && r.type === 'opaque'))) {
-            try { cache.put(LATIN_FONT, r.clone()); } catch(e) {}
-          }
-          return r;
-        }).catch(function() {});
+        return Promise.all(FONT_URLS.map(function(url) {
+          return fetchWithCacheMode(url).then(function(r) {
+            if (r && (r.ok || (r.status === 0 && r.type === 'opaque'))) {
+              try { cache.put(url, r.clone()); } catch(e) {}
+            }
+            return r;
+          }).catch(function() {});
+        }));
       }).catch(function() {})
     );
     self.skipWaiting();

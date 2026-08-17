@@ -1381,6 +1381,31 @@
         setTimeout(finish, timeout || 8000);
       });
     }
+    function waitIconFontsReady(timeout) {
+      return new Promise(function(resolve) {
+        var done = false;
+        var finish = function() { if (!done) { done = true; resolve(); } };
+        try {
+          if (!document.fonts || typeof document.fonts.load !== 'function') { finish(); return; }
+          var loads = [
+            document.fonts.load('900 16px "Font Awesome 6 Free"'),
+            document.fonts.load('400 16px "Font Awesome 6 Free"'),
+            document.fonts.load('400 16px "Font Awesome 6 Brands"')
+          ];
+          Promise.all(loads.map(function(p) { return p.then(function(){}, function(){}); }))
+            .then(function() { finish(); });
+          setTimeout(finish, timeout || 5000);
+        } catch(e) {
+          finish();
+        }
+      });
+    }
+    function waitSkeletonReady(container, timeout) {
+      return Promise.all([
+        waitImagesLoaded(container, timeout),
+        waitIconFontsReady(5000)
+      ]).then(function() {});
+    }
 
     let _lastRenderedPage = null;
     const PAGE_ANIM_SLIDE = new Set([
@@ -2379,7 +2404,7 @@
         if (loadMoreEl) loadMoreEl.style.display = 'none';
       }
       loading = false;
-      waitImagesLoaded(document.getElementById('app'), 8000).then(function() {
+      waitSkeletonReady(document.getElementById('app'), 8000).then(function() {
         hideAppSkeleton();
       });
     }
