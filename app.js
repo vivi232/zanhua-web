@@ -3186,7 +3186,7 @@
             <div class="right"><i class="fa-solid fa-chevron-right"></i></div>
           </div>
         </div>
-        <div class="topic-suggest-bar" id="topicSuggestBar">
+        <div class="topic-suggest-bar" id="topicSuggestBar" style="display:none;">
           <div class="topic-suggest-header">
             <span>推荐话题</span>
             <span class="topic-suggest-close" onclick="hideTopicSuggest()"><i class="fa-solid fa-xmark"></i></span>
@@ -3451,6 +3451,7 @@
       const bar = document.getElementById('topicSuggestBar');
       const list = document.getElementById('topicSuggestList');
       if (!bar || !list) return;
+      bar.style.display = 'block';
       if (window._adjustTopicBarsKeyboard) {
         window._adjustTopicBarsKeyboard();
       } else {
@@ -3527,6 +3528,9 @@
     function hideTopicSuggest() {
       const bar = document.getElementById('topicSuggestBar');
       if (bar) bar.classList.remove('show');
+      setTimeout(function() {
+        if (bar && !bar.classList.contains('show')) bar.style.display = 'none';
+      }, 300);
       topicStartPos = -1;
       currentTopicKeyword = '';
     }
@@ -4164,6 +4168,7 @@
 
     function openAtUserModal() {
       const atM = document.getElementById('atUserModal');
+      if (atM) atM.style.display = 'block';
       if (window._adjustTopicBarsKeyboard) {
         window._adjustTopicBarsKeyboard();
       } else if (atM) {
@@ -4183,7 +4188,11 @@
     }
 
     function closeAtUserModal() {
-      document.getElementById('atUserModal').classList.remove('show');
+      const atM = document.getElementById('atUserModal');
+      if (atM) atM.classList.remove('show');
+      setTimeout(function() {
+        if (atM && !atM.classList.contains('show')) atM.style.display = 'none';
+      }, 300);
     }
 
     function searchAtUsers() {
