@@ -6140,6 +6140,7 @@
         <div class="profile-tabs">
           <div class="profile-tab ${profileCurrentTab==='posts'?'active':''}" onclick="switchProfileTab('posts')">帖子</div>
           <div class="profile-tab ${profileCurrentTab==='confession'?'active':''}" onclick="switchProfileTab('confession')">表白墙</div>
+          <div class="profile-tab ${profileCurrentTab==='homework'?'active':''}" onclick="switchProfileTab('homework')">作业</div>
         </div>
         <div id="myProfileContent" class="profile-grid">${gridSkel}</div>
         ${renderLogoutConfirmModal()}
@@ -6151,7 +6152,8 @@
       document.querySelectorAll('.profile-tabs .profile-tab').forEach(el => {
         el.classList.remove('active');
       });
-      const activeTab = document.querySelector(`.profile-tabs .profile-tab:nth-child(${tab==='posts'?1:2})`);
+      const tabIndex = tab==='posts'?1 : tab==='confession'?2 : 3;
+      const activeTab = document.querySelector(`.profile-tabs .profile-tab:nth-child(${tabIndex})`);
       if (activeTab) activeTab.classList.add('active');
       loadMyProfileContent();
     }
@@ -6190,6 +6192,44 @@
           } else {
             container.className = '';
             container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">还没有发过帖子</div>';
+          }
+        } catch(e) {
+          container.className = '';
+          container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">加载失败</div>';
+        }
+      } else if (profileCurrentTab === 'homework') {
+        try {
+          const res = await api('/homeworkList?uid=' + myUid + '&page=1&size=20');
+          if (res.code === 1 && res.data.length > 0) {
+            container.className = '';
+            container.style.padding = '8px 0';
+            container.innerHTML = res.data.map(hw => {
+              const imgs = hw.images ? hw.images.split(',').filter(x => x) : [];
+              const hasImages = imgs.length > 0;
+              const hwImgs = hasImages ? imgs.map(i => `<div style="padding:0 12px 8px;"><img src="${resolveMediaUrl(i)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>`).join('') : '';
+              return `<div class="card" onclick="goHomeworkDetail(${hw.id})" style="margin:0 8px 8px;">
+                <div class="post-header" style="padding:10px 12px;">
+                  <img class="avatar" src="${resolveMediaUrl(hw.avatar)||DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${hw.user_id}')" style="width:32px;height:32px;cursor:pointer;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
+                  <div class="post-user">
+                    <div class="post-nickname" style="font-size:13px;">${escapeHtml(hw.nickname || '用户')}${renderListVerification(hw)}</div>
+                    <div class="post-time" style="font-size:11px;">${timeAgo(hw.create_time)} · ${cleanProvince(hw.province) || '未知'}</div>
+                  </div>
+                </div>
+                <div style="padding:0 12px 6px;">
+                  <span style="display:inline-block;padding:2px 10px;background:var(--color-primary-light);color:var(--color-primary);border-radius:10px;font-size:12px;font-weight:500;">${escapeHtml(hw.subject || '其它')}</span>
+                </div>
+                ${hw.content ? `<div class="post-content" style="padding:0 12px 8px;font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(hw.content).replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, '@$1').replace(/\n/g,' ')}</div>` : ''}
+                ${hwImgs}
+                <div class="post-actions" style="padding:6px 0 10px;font-size:12px;">
+                  <div class="action-item"><i class="fa-regular fa-eye"></i><span>${hw.views||0}</span></div>
+                  <div class="action-item"><i class="fa-regular fa-comment"></i><span>${hw.comments||0}</span></div>
+                  <div class="action-item"><i class="fa-regular fa-heart"></i><span>${hw.likes||0}</span></div>
+                </div>
+              </div>`;
+            }).join('');
+          } else {
+            container.className = '';
+            container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#999;">还没有发布过作业</div>';
           }
         } catch(e) {
           container.className = '';
