@@ -322,6 +322,9 @@
       cursor: pointer;
       transition: background-color 200ms var(--ease-out), opacity 200ms var(--ease-out), transform 160ms var(--ease-out);
     }
+    .create-nav .btn-publish:active {
+      transform: scale(0.97);
+    }
     .create-nav .btn-publish.disabled {
       opacity: 0.6;
       pointer-events: none;
@@ -774,9 +777,11 @@
       font-weight: 600;
       margin-bottom: 16px;
       flex-shrink: 0;
+      transition: transform 160ms var(--ease-out), opacity 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
     }
     .auth-btn:active {
-      opacity: 0.8;
+      transform: scale(0.97);
+      opacity: 0.92;
     }
     .tip-text {
       color: #f53f3f;
@@ -1848,7 +1853,7 @@
       animation: dialogSlideUp 280ms var(--ease-out);
     }
         #toast-container > div {
-      animation: toastFadeIn 0.3s ease;
+      animation: toastFadeIn 200ms var(--ease-out);
     }
 
     
@@ -2900,3 +2905,49 @@
         transform: scale(1.1);
       }
     }
+
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  .tabbar.sidebar-nav .tab-item {
+    transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out), transform 160ms var(--ease-out);
+  }
+  .tabbar.sidebar-nav .tab-item:hover {
+    background: rgba(0,0,0,0.045);
+  }
+  .tabbar.sidebar-nav .tab-item:active {
+    transform: scale(0.97);
+  }
+  .tabbar.sidebar-nav .tab-item.active {
+    position: relative;
+    background: rgba(var(--color-primary-rgb), 0.12);
+    color: var(--color-primary);
+    transition: background-color 200ms var(--ease-out), color 200ms var(--ease-out);
+    @starting-style {
+      background: rgba(var(--color-primary-rgb), 0);
+    }
+  }
+  .tabbar.sidebar-nav .tab-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 3px;
+    height: 18px;
+    background: var(--color-primary);
+    border-radius: 0 3px 3px 0;
+    transform: translateY(-50%);
+    opacity: 1;
+    transform-origin: center;
+    transition: transform 200ms var(--ease-out), opacity 200ms var(--ease-out);
+    @starting-style {
+      transform: translateY(-50%) scaleY(0.4);
+      opacity: 0;
+    }
+  }
+  .sidebar-create:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(var(--color-primary-rgb), 0.4);
+  }
+  .auth-btn:hover {
+    box-shadow: 0 6px 20px rgba(var(--color-primary-rgb), 0.35);
+  }
+}

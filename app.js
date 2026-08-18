@@ -767,7 +767,7 @@
         document.body.appendChild(container);
       }
       const toast = document.createElement('div');
-      toast.style.cssText = 'background:rgba(0,0,0,0.8);color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;white-space:pre-line;max-width:85vw;min-width:200px;text-align:center;line-height:1.6;word-break:break-word;animation:toastFadeIn 0.3s ease;';
+      toast.style.cssText = 'background:rgba(0,0,0,0.8);color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;white-space:pre-line;max-width:85vw;min-width:200px;text-align:center;line-height:1.6;word-break:break-word;animation:toastFadeIn 200ms var(--ease-out);';
       toast.textContent = msg;
       container.appendChild(toast);
       setTimeout(() => {

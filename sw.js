@@ -10,7 +10,7 @@
     FA_BASE + 'fa-brands-400.woff2',
     FA_BASE + 'fa-v4compatibility.woff2'
   ];
-  var CACHE_NAME = 'zanhua-fonts-v2';
+  var CACHE_NAME = 'zanhua-fonts-v3';
 
   function fetchWithCacheMode(url) {
     try {
