@@ -4698,8 +4698,25 @@
       closeBtn.innerHTML = '<i class="fa-solid fa-xmark" style="color:#fff;font-size:28px;"></i>';
       closeBtn.style.cssText = `position:absolute;top:20px;left:20px;z-index:10000;cursor:pointer;padding:10px;background:rgba(0,0,0,0.6);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;`;
       const img = document.createElement('img');
+      img.style.cssText = `max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;display:none;`;
+      const spinner = document.createElement('div');
+      spinner.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:48px;color:#fff;"></i>';
+      spinner.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10001;`;
+      const failText = document.createElement('div');
+      failText.style.cssText = `position:absolute;top:calc(50% + 70px);left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.75);font-size:15px;text-align:center;line-height:1.6;`;
+      img.onload = function() {
+        spinner.style.display = 'none';
+        failText.style.display = 'none';
+        img.style.display = 'block';
+      };
+      img.onerror = function() {
+        spinner.style.display = 'none';
+        failText.textContent = '图片加载失败\n请检查网络后重试';
+        failText.style.display = 'block';
+      };
       img.src = withMediaAuth(src);
-      img.style.cssText = `max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;`;
+      overlay.appendChild(spinner);
+      overlay.appendChild(failText);
       overlay.appendChild(closeBtn);
       overlay.appendChild(img);
       document.body.appendChild(overlay);
