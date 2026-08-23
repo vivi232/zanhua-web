@@ -60,21 +60,32 @@
       const fixed = resolveMediaUrl(url);
       if (!fixed) return '';
       
-      if (/^(blob:|data:|https?:)/i.test(fixed)) return fixed;
+      if (/^(blob:|data:)/i.test(fixed)) return fixed;
+      let signPath = fixed;
+      if (/^https?:/i.test(fixed)) {
+        try {
+          const u = new URL(fixed);
+          const api = API_HOST ? new URL(API_HOST) : location;
+          if (u.host !== api.host || u.pathname.indexOf('/zanhua/uploads/') !== 0) return fixed;
+          signPath = u.pathname + u.search;
+        } catch(e) {
+          return fixed;
+        }
+      }
       
-      const cached = _videoSignCache.get(fixed);
+      const cached = _videoSignCache.get(signPath);
       if (cached && Math.floor(Date.now() / 1000) < cached.exp - 30) {
         return cached.url;
       }
       try {
-        const res = await api('/signVideo', 'POST', { path: fixed });
+        const res = await api('/signVideo', 'POST', { path: signPath });
         if (res.code === 1 && res.url) {
           let exp = 0;
           try {
             const u = new URL(res.url, location.origin);
             exp = parseInt(u.searchParams.get('exp')) || 0;
           } catch(e) {}
-          _videoSignCache.set(fixed, { url: res.url, exp });
+          _videoSignCache.set(signPath, { url: res.url, exp });
           return res.url;
         }
       } catch(e) {}
@@ -9069,7 +9080,8 @@ function renderBuyExposure() {
             list.innerHTML = res.data.map(p => {
               const title = p.title || '无标题帖子';
               const preview = (p.content || '').replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, '@$1').replace(/<[^>]*>/g, '').substring(0, 60);
-              const imgHtml = p.images ? `<img src="${resolveMediaUrl((JSON.parse(p.images)[0] || '').replace('thumb_',''))}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;flex-shrink:0;">` : '';
+              const firstImg = (p.images || '').split(',').map(s => s.trim()).filter(Boolean)[0] || '';
+              const imgHtml = firstImg ? `<img src="${resolveMediaUrl(firstImg.replace('thumb_',''))}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;flex-shrink:0;">` : '';
               return `<div class="post-select-item" data-post-id="${p.id}" onclick="selectPinPost(this)" style="background:rgba(255,255,255,0.06);border:2px solid transparent;border-radius:12px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:10px;">
                 ${imgHtml}
                 <div style="flex:1;min-width:0;">
