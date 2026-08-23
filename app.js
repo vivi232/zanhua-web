@@ -27,10 +27,20 @@
       return MEDIA_BASE + '/' + s.replace(/^\/+/, '');
     }
 
+    function withMediaAuth(url) {
+      const u = resolveMediaUrl(url);
+      if (!u) return '';
+      const tok = getToken();
+      if (!tok) return u;
+      return u + (u.indexOf('?') >= 0 ? '&' : '?') + 'token=' + encodeURIComponent(tok);
+    }
+
     function resolveThumb(url) {
       const u = resolveMediaUrl(url);
-      if (/\/uploads\/posts\/[^?]*\.webp/i.test(u)) {
-        return u + (u.indexOf('?') >= 0 ? '&' : '?') + 'thumb=1';
+      if (/\/uploads\/posts\/[^?]*\.(webp|jpe?g)/i.test(u)) {
+        const sep = u.indexOf('?') >= 0 ? '&' : '?';
+        const tok = getToken();
+        return u + sep + 'thumb=1' + (tok ? '&token=' + encodeURIComponent(tok) : '');
       }
       return u;
     }
@@ -949,7 +959,7 @@
         showToast('视频加载失败，请重试');
         return;
       }
-      const resolvedPoster = resolveMediaUrl(poster);
+      const resolvedPoster = withMediaAuth(poster);
       currentVideoSrc = resolvedSrc; 
       video.src = resolvedSrc;
       video.poster = resolvedPoster || '';
@@ -1565,10 +1575,10 @@
         </div>
         ${p.title ? `<div style="padding:0 16px 6px;font-size:16px;font-weight:600;">${escapeHtml(p.title)}</div>` : ''}
         ${contentBlock}
-        ${isProtected ? '' : `${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map(i=>`<img src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}</div>` : ''}`}
+        ${isProtected ? '' : `${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}</div>` : ''}`}
         ${isProtected ? '' : `${hasVideo ? `<div class="post-images single">
           <div onclick="event.stopPropagation();openVideoPlayer('${p.video}', '${p.video_cover || ''}', ${p.allow_download != 0 ? 'true' : 'false'})" style="position:relative;cursor:pointer;width:75%;aspect-ratio:1;border-radius:8px;overflow:hidden;">
-            ${p.video_cover ? `<img src="${resolveMediaUrl(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ''}
+            ${p.video_cover ? `<img loading="lazy" src="${resolveThumb(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ''}
             <div style="display:${p.video_cover ? 'none' : 'flex'};position:absolute;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);align-items:center;justify-content:center;">
               <div style="text-align:center;">
                 <i class="fa-solid fa-video" style="font-size:32px;color:rgba(255,255,255,0.9);"></i>
@@ -1732,7 +1742,7 @@
           </div>
         </div>
         <div class="post-content">${formatContentWithTopics(c.content||'')}</div>
-        ${imgs.length ? `<div class="post-images ${imgClass}" style="padding:0 16px 8px;">${imgs.map(i=>`<img src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}</div>` : ''}
+        ${imgs.length ? `<div class="post-images ${imgClass}" style="padding:0 16px 8px;">${imgs.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}</div>` : ''}
         <div class="post-actions" onclick="event.stopPropagation()">
           <div class="action-item" onclick="likeConfession(${c.id},this)"><i class="${c.liked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'}" style="color:${c.liked ? 'var(--color-red)' : ''}"></i><span>${c.likes||0}</span></div>
           <div class="action-item" onclick="goConfessionDetail(${c.id})"><i class="fa-regular fa-comment"></i><span>${c.comment_count||0}</span></div>
@@ -1811,7 +1821,7 @@
               <div style="font-size:12px;color:#999;margin-top:2px;">${timeAgo(n.create_time)}</div>
             </div>
             ${n.post_id ? `<div onclick="goPostDetail('${n.post_id}')" style="width:64px;height:64px;border-radius:8px;overflow:hidden;flex-shrink:0;cursor:pointer;background:#f5f5f5;">
-              <img src="${resolveMediaUrl(n.post_cover || DEFAULT_AVATAR)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='';this.style.backgroundColor='#f5f5f5';this.onerror=null">
+              <img src="${resolveThumb(n.post_cover || DEFAULT_AVATAR)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='';this.style.backgroundColor='#f5f5f5';this.onerror=null">
             </div>` : ''}
           </div>`;
         }).join('');
@@ -1948,7 +1958,7 @@
               </div>
             </div>
             ${n.post_id ? `<div onclick="goPostDetail('${n.post_id}')" style="width:64px;height:64px;border-radius:8px;overflow:hidden;flex-shrink:0;cursor:pointer;background:#f5f5f5;">
-              <img src="${resolveMediaUrl(n.post_cover || DEFAULT_AVATAR)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='';this.style.backgroundColor='#f5f5f5';this.onerror=null">
+              <img src="${resolveThumb(n.post_cover || DEFAULT_AVATAR)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='';this.style.backgroundColor='#f5f5f5';this.onerror=null">
             </div>` : ''}
           </div>`;
         }).join('');
@@ -2016,7 +2026,7 @@
             ${canChat ? `<button onclick="goChat('${c.user_id}', ${c.is_anonymous ? 'true' : 'false'}, ${c.id})" style="padding:6px 16px;background:var(--color-primary);color:#fff;border:none;border-radius:20px;font-size:13px;font-weight:500;">${c.is_anonymous ? '匿名私信' : '发私信'}</button>` : ''}
           </div>
           <div class="post-content">${formatContentWithTopics(c.content||'')}</div>
-          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map(i=>`<img src="${resolveThumb(i)}" onclick="showFullImage('${i}')">`).join('')}</div>` : ''}
+          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="showFullImage('${i}')">`).join('')}</div>` : ''}
           <div class="post-actions" style="border-bottom:1px solid #eee;border-top:1px solid #eee;margin:0 16px;">
             <div class="action-item" onclick="likeConfession(${c.id},this)"><i class="${liked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'}" style="color:${liked ? 'var(--color-red)' : ''}"></i><span>${c.likes||0}</span></div>
             <div class="action-item" id="confessionCommentScrollTarget"><i class="fa-regular fa-comment"></i><span>${c.comment_count||0}</span></div>
@@ -2765,16 +2775,16 @@
               let imagesHtml = '';
               if (imgs.length > 0) {
                 if (imgs.length <= 9) {
-                  imagesHtml = `<div class="post-images ${imgClass}">${imgs.map(i=>`<img src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}</div>`;
+                  imagesHtml = `<div class="post-images ${imgClass}">${imgs.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}</div>`;
                 } else {
                   const first8 = imgs.slice(0, 8);
                   const rest = imgs.slice(8);
                   const restCount = imgs.length - 8;
                   imagesHtml = `<div class="post-images">
-                    ${first8.map(i=>`<img src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}
+                    ${first8.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}
                     <div onclick="event.stopPropagation();showFullImage('${rest[0]}')" style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;border:0.5px solid rgba(0,0,0,0.08);box-sizing:border-box;">
                       <div style="display:grid;grid-template-columns:repeat(3,1fr);width:100%;height:100%;">
-                        ${rest.slice(0,9).map(i=>`<img src="${resolveThumb(i)}" style="width:100%;height:100%;aspect-ratio:1;object-fit:cover;border:none;">`).join('')}
+                        ${rest.slice(0,9).map(i=>`<img loading="lazy" src="${resolveThumb(i)}" style="width:100%;height:100%;aspect-ratio:1;object-fit:cover;border:none;">`).join('')}
                       </div>
                       <div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;">
                         <span style="color:#fff;font-size:22px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,0.5);">+${restCount}</span>
@@ -2893,7 +2903,7 @@
             <span style="display:inline-block;padding:2px 10px;background:var(--color-primary-light);color:var(--color-primary);border-radius:10px;font-size:12px;font-weight:500;">${escapeHtml(homeworkDetail.subject || '其它')}</span>
           </div>
           ${homeworkDetail.content ? `<div class="post-content">${formatContentWithTopics(homeworkDetail.content)}</div>` : ''}
-          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map(img => `<img src="${resolveThumb(img)}" onclick="showFullImage('${img}')">`).join('')}</div>` : ''}
+          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map(img => `<img loading="lazy" src="${resolveThumb(img)}" onclick="showFullImage('${img}')">`).join('')}</div>` : ''}
           <div class="post-actions" style="border-bottom:1px solid #eee;border-top:1px solid #eee;margin:0 16px;">
             <div class="action-item" onclick="toggleHomeworkLike(this)"><i class="${homeworkDetail.liked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'}" style="color:${homeworkDetail.liked ? 'var(--color-red)' : ''}"></i><span>${homeworkDetail.likes || 0}</span></div>
             <div class="action-item" id="hwCommentScrollTarget"><i class="fa-regular fa-comment"></i><span>${homeworkDetail.comments || 0}</span></div>
@@ -4674,11 +4684,12 @@
     }
 
     function showFullImage(src) {
+      if (!requireLogin()) return;
       const existing = document.getElementById('fullscreen-overlay');
       if (existing) existing.remove();
       const overlay = document.createElement('div');
       overlay.id = 'fullscreen-overlay';
-      overlay.style.cssText = `position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer;`;
+      overlay.style.cssText = `position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;`;
       overlay.onclick = function(e) {
         if (e.target === overlay || e.target === closeBtn || e.target.closest('.close-btn')) closeFullImage();
       };
@@ -4687,8 +4698,8 @@
       closeBtn.innerHTML = '<i class="fa-solid fa-xmark" style="color:#fff;font-size:28px;"></i>';
       closeBtn.style.cssText = `position:absolute;top:20px;left:20px;z-index:10000;cursor:pointer;padding:10px;background:rgba(0,0,0,0.6);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;`;
       const img = document.createElement('img');
-      img.src = resolveMediaUrl(src);
-      img.style.cssText = `max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;`;
+      img.src = withMediaAuth(src);
+      img.style.cssText = `max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;`;
       overlay.appendChild(closeBtn);
       overlay.appendChild(img);
       document.body.appendChild(overlay);
@@ -4767,10 +4778,10 @@
           ${p.location ? `<div style="padding:0 16px 8px;font-size:13px;color:#666;"><i class="fa-solid fa-location-dot" style="color:var(--color-primary);"></i> ${p.location}</div>` : ''}
           ${p.original_declaration ? `<div style="padding:0 16px 8px;font-size:13px;color:#999;">声明: ${p.original_declaration}</div>` : ''}
           ${pollHtml}
-          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map(i=>`<img src="${resolveThumb(i)}" onclick="showFullImage('${i}')">`).join('')}</div>` : ''}
+          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="showFullImage('${i}')">`).join('')}</div>` : ''}
           ${p.video ? `<div style="padding:0 16px 8px;">
             <div onclick="openVideoPlayer('${p.video}', '${p.video_cover || ''}', ${p.allow_download != 0 ? 'true' : 'false'})" style="position:relative;cursor:pointer;width:100%;aspect-ratio:1;border-radius:8px;overflow:hidden;">
-              ${p.video_cover ? `<img src="${resolveMediaUrl(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ''}
+              ${p.video_cover ? `<img loading="lazy" src="${resolveThumb(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ''}
               <div style="display:${p.video_cover ? 'none' : 'flex'};position:absolute;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);align-items:center;justify-content:center;">
                 <div style="text-align:center;">
                   <i class="fa-solid fa-video" style="font-size:48px;color:rgba(255,255,255,0.9);"></i>
@@ -6178,7 +6189,7 @@
             container.innerHTML = postRes.data.map(p => {
               const imgs = p.images ? p.images.split(',').filter(x => x) : [];
               const hasVideo = p.video && p.video.length > 0;
-              const cover = hasVideo ? resolveMediaUrl(p.video_cover || '') : resolveMediaUrl(imgs[0] || '');
+              const cover = hasVideo ? resolveThumb(p.video_cover || '') : resolveThumb(imgs[0] || '');
               const isVideo = hasVideo && !imgs.length;
               const isTextOnly = !cover && !isVideo;
               const textPreview = escapeHtml(p.content || '').replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, '@$1').slice(0, 80);
@@ -6214,7 +6225,7 @@
             container.innerHTML = res.data.map(hw => {
               const imgs = hw.images ? hw.images.split(',').filter(x => x) : [];
               const hasImages = imgs.length > 0;
-              const hwImgs = hasImages ? imgs.map(i => `<div style="padding:0 12px 8px;"><img src="${resolveThumb(i)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>`).join('') : '';
+              const hwImgs = hasImages ? imgs.map(i => `<div style="padding:0 12px 8px;"><img loading="lazy" src="${resolveThumb(i)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>`).join('') : '';
               return `<div class="card" onclick="goHomeworkDetail(${hw.id})" style="margin:0 8px 8px;">
                 <div class="post-header" style="padding:10px 12px;">
                   <img class="avatar" src="${resolveMediaUrl(hw.avatar)||DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${hw.user_id}')" style="width:32px;height:32px;cursor:pointer;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
@@ -6262,7 +6273,7 @@
                   </div>
                 </div>
                 <div class="post-content" style="padding:0 12px 8px;font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;height:78px;max-height:78px;box-sizing:content-box;">${escapeHtml(c.content||'').replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, '@$1').replace(/\n/g,' ')}</div>
-                ${hasImages ? `<div style="padding:0 12px 8px;"><img src="${resolveMediaUrl(cover)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>` : ''}
+                ${hasImages ? `<div style="padding:0 12px 8px;"><img loading="lazy" src="${resolveThumb(cover)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>` : ''}
                 <div class="post-actions" style="padding:6px 0 10px;font-size:12px;">
                   <div class="action-item"><i class="${c.liked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'}" style="color:${c.liked ? 'var(--color-red)' : ''}"></i><span>${c.likes||0}</span></div>
                   <div class="action-item"><i class="fa-regular fa-comment"></i><span>${c.comment_count||0}</span></div>
@@ -6435,16 +6446,16 @@
       const imgClass = imgs.length === 1 ? 'single' : '';
       let imagesHtml = '';
       if (imgs.length > 0 && imgs.length <= 9) {
-        imagesHtml = `<div class="post-images ${imgClass}">${imgs.map(i=>`<img src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}</div>`;
+        imagesHtml = `<div class="post-images ${imgClass}">${imgs.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}</div>`;
       } else if (imgs.length > 9) {
         const first8 = imgs.slice(0, 8);
         const rest = imgs.slice(8);
         const restCount = imgs.length - 8;
         imagesHtml = `<div class="post-images">
-          ${first8.map(i=>`<img src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}
+          ${first8.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}
           <div onclick="event.stopPropagation();showFullImage('${rest[0]}')" style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;border:0.5px solid rgba(0,0,0,0.08);box-sizing:border-box;">
             <div style="display:grid;grid-template-columns:repeat(3,1fr);width:100%;height:100%;">
-              ${rest.slice(0,9).map(i=>`<img src="${resolveThumb(i)}" style="width:100%;height:100%;aspect-ratio:1;object-fit:cover;border:none;">`).join('')}
+              ${rest.slice(0,9).map(i=>`<img loading="lazy" src="${resolveThumb(i)}" style="width:100%;height:100%;aspect-ratio:1;object-fit:cover;border:none;">`).join('')}
             </div>
             <div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;">
               <span style="color:#fff;font-size:22px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,0.5);">+${restCount}</span>
@@ -6700,7 +6711,7 @@
             container.innerHTML = res.data.map(p => {
               const imgs = p.images ? p.images.split(',').filter(x => x) : [];
               const hasVideo = p.video && p.video.length > 0;
-              const cover = hasVideo ? resolveMediaUrl(p.video_cover || '') : resolveMediaUrl(imgs[0] || '');
+              const cover = hasVideo ? resolveThumb(p.video_cover || '') : resolveThumb(imgs[0] || '');
               const isVideo = hasVideo && !imgs.length;
               const isTextOnly = !cover && !isVideo;
               const textPreview = escapeHtml(p.content || '').replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, '@$1').slice(0, 80);
@@ -6736,7 +6747,7 @@
             container.innerHTML = res.data.map(hw => {
               const imgs = hw.images ? hw.images.split(',').filter(x => x) : [];
               const hasImages = imgs.length > 0;
-              const hwImgs = hasImages ? imgs.map(i => `<div style="padding:0 12px 8px;"><img src="${resolveThumb(i)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>`).join('') : '';
+              const hwImgs = hasImages ? imgs.map(i => `<div style="padding:0 12px 8px;"><img loading="lazy" src="${resolveThumb(i)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>`).join('') : '';
               return `<div class="card" onclick="goHomeworkDetail(${hw.id})" style="margin:0 8px 8px;">
                 <div class="post-header" style="padding:10px 12px;">
                   <img class="avatar" src="${resolveMediaUrl(hw.avatar)||DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${hw.user_id}')" style="width:32px;height:32px;cursor:pointer;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
@@ -6784,7 +6795,7 @@
                   </div>
                 </div>
                 <div class="post-content" style="padding:0 12px 8px;font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;height:78px;max-height:78px;box-sizing:content-box;">${escapeHtml(c.content||'').replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, '@$1').replace(/\n/g,' ')}</div>
-                ${hasImages ? `<div style="padding:0 12px 8px;"><img src="${resolveMediaUrl(cover)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>` : ''}
+                ${hasImages ? `<div style="padding:0 12px 8px;"><img loading="lazy" src="${resolveThumb(cover)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>` : ''}
                 <div class="post-actions" style="padding:6px 0 10px;font-size:12px;">
                   <div class="action-item"><i class="${c.liked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'}" style="color:${c.liked ? 'var(--color-red)' : ''}"></i><span>${c.likes||0}</span></div>
                   <div class="action-item"><i class="fa-regular fa-comment"></i><span>${c.comment_count||0}</span></div>
@@ -7141,7 +7152,7 @@
             const isMe = m.from_user === myUid;
             const failed = isMe && (m.status === 0);
             const failReason = m.fail_reason || '';
-            const contentHtml = m.type==='image' ? `<img src="${resolveThumb(m.content)}" style="max-width:200px;border-radius:8px;" onclick="showFullImage('${m.content}')">` : (m.content||'');
+            const contentHtml = m.type==='image' ? `<img loading="lazy" src="${resolveThumb(m.content)}" style="max-width:200px;border-radius:8px;" onclick="showFullImage('${m.content}')">` : (m.content||'');
             const avatarUrl = isMe ? myAvatarUrl : otherAvatar;
             const avatarHtml = !isAnon && !isMe ? `<img src="${avatarUrl}" onclick="event.stopPropagation();goUserProfile('${m.from_user}')" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;cursor:pointer;margin-right:8px;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">` : (isMe ? '' : `<div style="width:36px;margin-right:8px;flex-shrink:0;"></div>`);
             const avatarRightHtml = !isAnon && isMe ? `<img src="${avatarUrl}" onclick="event.stopPropagation();goUserProfile('${myUid}')" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;cursor:pointer;margin-left:8px;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">` : (isMe ? '' : `<div style="width:36px;margin-left:8px;flex-shrink:0;"></div>`);
