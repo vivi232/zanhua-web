@@ -1,6 +1,6 @@
     const _pathFirst = (window.location.pathname.split('/').filter(Boolean)[0]) || '';
     const BASE_PATH = _pathFirst ? '/' + _pathFirst : '';
-    const API_HOST = 'https://154.201.81.86';
+    const API_HOST = "";
     const API_BASE = API_HOST + '/api';
     const MEDIA_BASE = API_HOST + '/zanhua';
     const DEFAULT_AVATAR = MEDIA_BASE + '/uploads/default_avatar.webp';
@@ -221,6 +221,8 @@
     let loginCaptchaIns = null;
     let captchaRequestLock = false;
     let loginCaptchaRequestLock = false;
+    let clientConfigPromise = null;
+    let clientConfig = { captchaSceneId: '' };
     let isPublishing = false;
     let isFileUploading = false;
     let scrollToCommentFlag = false;
@@ -1556,6 +1558,7 @@
 
     function renderPostCard(p) {
       const imgs = p.images ? p.images.split(',').filter(x => x) : [];
+      const imgsJson = imgsJsonStr(imgs);
       const hasVideo = p.video && p.video.length > 0;
       const hasMedia = imgs.length > 0 || hasVideo;
       const imgClass = imgs.length === 1 ? 'single' : '';
@@ -1586,7 +1589,7 @@
         </div>
         ${p.title ? `<div style="padding:0 16px 6px;font-size:16px;font-weight:600;">${escapeHtml(p.title)}</div>` : ''}
         ${contentBlock}
-        ${isProtected ? '' : `${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}</div>` : ''}`}
+        ${isProtected ? '' : `${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i,idx)=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join('')}</div>` : ''}`}
         ${isProtected ? '' : `${hasVideo ? `<div class="post-images single">
           <div onclick="event.stopPropagation();openVideoPlayer('${p.video}', '${p.video_cover || ''}', ${p.allow_download != 0 ? 'true' : 'false'})" style="position:relative;cursor:pointer;width:75%;aspect-ratio:1;border-radius:8px;overflow:hidden;">
             ${p.video_cover ? `<img loading="lazy" src="${resolveThumb(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ''}
@@ -1740,6 +1743,7 @@
 
     function renderConfessionCard(c) {
       const imgs = c.images ? c.images.split(',').filter(x => x) : [];
+      const imgsJson = imgsJsonStr(imgs);
       const imgClass = imgs.length === 1 ? 'single' : '';
       const showUser = !c.is_anonymous && c.user_id;
       const avatar = showUser ? (resolveMediaUrl(c.avatar) || DEFAULT_AVATAR) : DEFAULT_AVATAR;
@@ -1753,7 +1757,7 @@
           </div>
         </div>
         <div class="post-content">${formatContentWithTopics(c.content||'')}</div>
-        ${imgs.length ? `<div class="post-images ${imgClass}" style="padding:0 16px 8px;">${imgs.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}</div>` : ''}
+        ${imgs.length ? `<div class="post-images ${imgClass}" style="padding:0 16px 8px;">${imgs.map((i,idx)=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join('')}</div>` : ''}
         <div class="post-actions" onclick="event.stopPropagation()">
           <div class="action-item" onclick="likeConfession(${c.id},this)"><i class="${c.liked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'}" style="color:${c.liked ? 'var(--color-red)' : ''}"></i><span>${c.likes||0}</span></div>
           <div class="action-item" onclick="goConfessionDetail(${c.id})"><i class="fa-regular fa-comment"></i><span>${c.comment_count||0}</span></div>
@@ -2017,6 +2021,7 @@
       if (!currentConfessionDetail) return '<div style="padding:40px;text-align:center;">表白不存在或已删除</div>';
       const c = currentConfessionDetail;
       const imgs = c.images ? c.images.split(',').filter(x => x) : [];
+      const imgsJson = imgsJsonStr(imgs);
       const imgClass = imgs.length === 1 ? 'single' : '';
       const liked = c.liked || false;
       const showUser = !c.is_anonymous && c.user_id;
@@ -2037,7 +2042,7 @@
             ${canChat ? `<button onclick="goChat('${c.user_id}', ${c.is_anonymous ? 'true' : 'false'}, ${c.id})" style="padding:6px 16px;background:var(--color-primary);color:#fff;border:none;border-radius:20px;font-size:13px;font-weight:500;">${c.is_anonymous ? '匿名私信' : '发私信'}</button>` : ''}
           </div>
           <div class="post-content">${formatContentWithTopics(c.content||'')}</div>
-          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="showFullImage('${i}')">`).join('')}</div>` : ''}
+          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i,idx)=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="showFullImage('${i}','${imgsJson}',${idx})">`).join('')}</div>` : ''}
           <div class="post-actions" style="border-bottom:1px solid #eee;border-top:1px solid #eee;margin:0 16px;">
             <div class="action-item" onclick="likeConfession(${c.id},this)"><i class="${liked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'}" style="color:${liked ? 'var(--color-red)' : ''}"></i><span>${c.likes||0}</span></div>
             <div class="action-item" id="confessionCommentScrollTarget"><i class="fa-regular fa-comment"></i><span>${c.comment_count||0}</span></div>
@@ -2782,18 +2787,19 @@
           } else {
             listEl.innerHTML = list.map(item => {
               const imgs = item.images ? item.images.split(',').filter(x => x).map(img => img.includes('/') ? img : '/uploads/homework/' + img) : [];
+              const imgsJson = imgsJsonStr(imgs);
               const imgClass = imgs.length === 1 ? 'single' : '';
               let imagesHtml = '';
               if (imgs.length > 0) {
                 if (imgs.length <= 9) {
-                  imagesHtml = `<div class="post-images ${imgClass}">${imgs.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}</div>`;
+                  imagesHtml = `<div class="post-images ${imgClass}">${imgs.map((i,idx)=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join('')}</div>`;
                 } else {
                   const first8 = imgs.slice(0, 8);
                   const rest = imgs.slice(8);
                   const restCount = imgs.length - 8;
                   imagesHtml = `<div class="post-images">
-                    ${first8.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}
-                    <div onclick="event.stopPropagation();showFullImage('${rest[0]}')" style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;border:0.5px solid rgba(0,0,0,0.08);box-sizing:border-box;">
+                    ${first8.map((i,idx)=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join('')}
+                    <div onclick="event.stopPropagation();showFullImage('${rest[0]}','${imgsJson}',8)" style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;border:0.5px solid rgba(0,0,0,0.08);box-sizing:border-box;">
                       <div style="display:grid;grid-template-columns:repeat(3,1fr);width:100%;height:100%;">
                         ${rest.slice(0,9).map(i=>`<img loading="lazy" src="${resolveThumb(i)}" style="width:100%;height:100%;aspect-ratio:1;object-fit:cover;border:none;">`).join('')}
                       </div>
@@ -2900,6 +2906,7 @@
         }
       }
       const imgs = homeworkDetail.images ? homeworkDetail.images.split(',').filter(x => x).map(img => img.includes('/') ? img : '/uploads/homework/' + img) : [];
+      const imgsJson = imgsJsonStr(imgs);
       const imgClass = imgs.length === 1 ? 'single' : '';
       content.innerHTML = `
         <div style="padding-top:0;">
@@ -2914,7 +2921,7 @@
             <span style="display:inline-block;padding:2px 10px;background:var(--color-primary-light);color:var(--color-primary);border-radius:10px;font-size:12px;font-weight:500;">${escapeHtml(homeworkDetail.subject || '其它')}</span>
           </div>
           ${homeworkDetail.content ? `<div class="post-content">${formatContentWithTopics(homeworkDetail.content)}</div>` : ''}
-          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map(img => `<img loading="lazy" src="${resolveThumb(img)}" onclick="showFullImage('${img}')">`).join('')}</div>` : ''}
+          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((img,idx) => `<img loading="lazy" src="${resolveThumb(img)}" onclick="showFullImage('${img}','${imgsJson}',${idx})">`).join('')}</div>` : ''}
           <div class="post-actions" style="border-bottom:1px solid #eee;border-top:1px solid #eee;margin:0 16px;">
             <div class="action-item" onclick="toggleHomeworkLike(this)"><i class="${homeworkDetail.liked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'}" style="color:${homeworkDetail.liked ? 'var(--color-red)' : ''}"></i><span>${homeworkDetail.likes || 0}</span></div>
             <div class="action-item" id="hwCommentScrollTarget"><i class="fa-regular fa-comment"></i><span>${homeworkDetail.comments || 0}</span></div>
@@ -4694,16 +4701,25 @@
       }
     }
 
-    function showFullImage(src) {
+    function imgsJsonStr(arr) {
+      if (!arr || !arr.length) return "''";
+      return JSON.stringify(arr).replace(/"/g, '&quot;').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+
+    function showFullImage(src, imgsJson, idx) {
       if (!requireLogin()) return;
+      let all = [];
+      if (typeof imgsJson === 'string' && imgsJson) {
+        try { const parsed = JSON.parse(imgsJson); if (Array.isArray(parsed) && parsed.length) all = parsed; } catch(e) {}
+      }
+      if (!all.length) all = [src];
+      let cur = (typeof idx === 'number' && idx >= 0 && idx < all.length) ? idx : 0;
+      const multi = all.length > 1;
       const existing = document.getElementById('fullscreen-overlay');
       if (existing) existing.remove();
       const overlay = document.createElement('div');
       overlay.id = 'fullscreen-overlay';
-      overlay.style.cssText = `position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;`;
-      overlay.onclick = function(e) {
-        if (e.target === overlay || e.target === closeBtn || e.target.closest('.close-btn')) closeFullImage();
-      };
+      overlay.style.cssText = `position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;`;
       const closeBtn = document.createElement('div');
       closeBtn.className = 'close-btn';
       closeBtn.innerHTML = '<i class="fa-solid fa-xmark" style="color:#fff;font-size:28px;"></i>';
@@ -4715,6 +4731,28 @@
       spinner.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10001;`;
       const failText = document.createElement('div');
       failText.style.cssText = `position:absolute;top:calc(50% + 70px);left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.75);font-size:15px;text-align:center;line-height:1.6;`;
+      let counter = null;
+      if (multi) {
+        counter = document.createElement('div');
+        counter.style.cssText = `position:absolute;top:20px;right:20px;z-index:10000;color:#fff;font-size:15px;background:rgba(0,0,0,0.6);padding:6px 14px;border-radius:20px;`;
+      }
+      const prevBtn = document.createElement('div');
+      prevBtn.innerHTML = '<i class="fa-solid fa-chevron-left" style="color:#fff;font-size:26px;"></i>';
+      prevBtn.style.cssText = `position:absolute;left:8px;top:50%;transform:translateY(-50%);z-index:10000;cursor:pointer;padding:12px;background:rgba(0,0,0,0.5);border-radius:50%;width:46px;height:46px;display:flex;align-items:center;justify-content:center;`;
+      prevBtn.onclick = function(e) { e.stopPropagation(); cur = (cur - 1 + all.length) % all.length; showCur(); };
+      const nextBtn = document.createElement('div');
+      nextBtn.innerHTML = '<i class="fa-solid fa-chevron-right" style="color:#fff;font-size:26px;"></i>';
+      nextBtn.style.cssText = `position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:10000;cursor:pointer;padding:12px;background:rgba(0,0,0,0.5);border-radius:50%;width:46px;height:46px;display:flex;align-items:center;justify-content:center;`;
+      nextBtn.onclick = function(e) { e.stopPropagation(); cur = (cur + 1) % all.length; showCur(); };
+      function showCur() {
+        spinner.style.display = 'block';
+        failText.style.display = 'none';
+        img.style.display = 'none';
+        img.src = withMediaAuth(all[cur]);
+        if (counter) counter.textContent = (cur + 1) + ' / ' + all.length;
+        prevBtn.style.display = multi ? 'flex' : 'none';
+        nextBtn.style.display = multi ? 'flex' : 'none';
+      }
       img.onload = function() {
         spinner.style.display = 'none';
         failText.style.display = 'none';
@@ -4725,12 +4763,28 @@
         failText.textContent = '图片加载失败\n请检查网络后重试';
         failText.style.display = 'block';
       };
-      img.src = withMediaAuth(src);
+      let touchX = 0;
+      overlay.addEventListener('touchstart', function(e) { touchX = e.touches[0].clientX; }, { passive: true });
+      overlay.addEventListener('touchend', function(e) {
+        if (!multi) return;
+        const dx = e.changedTouches[0].clientX - touchX;
+        if (Math.abs(dx) > 50) {
+          if (dx < 0) { cur = (cur + 1) % all.length; } else { cur = (cur - 1 + all.length) % all.length; }
+          showCur();
+        }
+      }, { passive: true });
+      overlay.onclick = function(e) {
+        if (e.target === overlay || e.target === closeBtn || (closeBtn && e.target.closest && e.target.closest('.close-btn'))) closeFullImage();
+      };
+      if (counter) overlay.appendChild(counter);
+      overlay.appendChild(prevBtn);
+      overlay.appendChild(nextBtn);
       overlay.appendChild(spinner);
       overlay.appendChild(failText);
       overlay.appendChild(closeBtn);
       overlay.appendChild(img);
       document.body.appendChild(overlay);
+      showCur();
     }
 
     function closeFullImage() {
@@ -4748,6 +4802,7 @@
       if (!currentPostDetail) return '<div style="padding:40px;text-align:center;">帖子不存在或已删除</div>';
       const p = currentPostDetail;
       const imgs = p.images ? p.images.split(',').filter(x => x) : [];
+      const imgsJson = imgsJsonStr(imgs);
       const imgClass = imgs.length === 1 ? 'single' : '';
       const liked = p.liked || false;
       const collected = p.collected || false;
@@ -4806,7 +4861,7 @@
           ${p.location ? `<div style="padding:0 16px 8px;font-size:13px;color:#666;"><i class="fa-solid fa-location-dot" style="color:var(--color-primary);"></i> ${p.location}</div>` : ''}
           ${p.original_declaration ? `<div style="padding:0 16px 8px;font-size:13px;color:#999;">声明: ${p.original_declaration}</div>` : ''}
           ${pollHtml}
-          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="showFullImage('${i}')">`).join('')}</div>` : ''}
+          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i,idx)=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="showFullImage('${i}','${imgsJson}',${idx})">`).join('')}</div>` : ''}
           ${p.video ? `<div style="padding:0 16px 8px;">
             <div onclick="openVideoPlayer('${p.video}', '${p.video_cover || ''}', ${p.allow_download != 0 ? 'true' : 'false'})" style="position:relative;cursor:pointer;width:100%;aspect-ratio:1;border-radius:8px;overflow:hidden;">
               ${p.video_cover ? `<img loading="lazy" src="${resolveThumb(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ''}
@@ -5459,6 +5514,21 @@
     }
 
     let captchaSdkPromise = null;
+    function getClientConfig() {
+      if (clientConfigPromise) return clientConfigPromise;
+      clientConfigPromise = api('/clientConfig').then(function(res) {
+        if (res && res.code === 1 && res.data) clientConfig = res.data;
+        return clientConfig;
+      }).catch(function() {
+        return clientConfig;
+      });
+      return clientConfigPromise;
+    }
+    function getCaptchaSceneId() {
+      return getClientConfig().then(function(cfg) {
+        return cfg.captchaSceneId || '';
+      });
+    }
     function ensureCaptchaSdk() {
       if (typeof window.initAliyunCaptcha === 'function') return Promise.resolve();
       if (captchaSdkPromise) return captchaSdkPromise;
@@ -5475,11 +5545,13 @@
 
     function initCaptchaIfNeeded() {
       if (captchaIns) return;
-      ensureCaptchaSdk().then(function() {
+      Promise.all([ensureCaptchaSdk(), getCaptchaSceneId()]).then(function(results) {
+        const sceneId = results[1];
         if (captchaIns) return;
         if (typeof window.initAliyunCaptcha !== 'function') return;
+        if (!sceneId) return;
         window.initAliyunCaptcha({
-        SceneId: "eh5it1ar",
+        SceneId: sceneId,
         mode: "popup",
         element: "#captchaBox",
         language: "cn",
@@ -5616,11 +5688,13 @@
 
     function initLoginCaptchaIfNeeded() {
       if (loginCaptchaIns) return;
-      ensureCaptchaSdk().then(function() {
+      Promise.all([ensureCaptchaSdk(), getCaptchaSceneId()]).then(function(results) {
+        const sceneId = results[1];
         if (loginCaptchaIns) return;
         if (typeof window.initAliyunCaptcha !== 'function') return;
+        if (!sceneId) return;
         window.initAliyunCaptcha({
-        SceneId: "eh5it1ar",
+        SceneId: sceneId,
         mode: "popup",
         element: "#loginCaptchaBox",
         language: "cn",
@@ -6471,17 +6545,18 @@
 
     function renderSearchHomeworkCard(item) {
       const imgs = item.images ? item.images.split(',').filter(x => x).map(img => img.includes('/') ? img : '/uploads/homework/' + img) : [];
+      const imgsJson = imgsJsonStr(imgs);
       const imgClass = imgs.length === 1 ? 'single' : '';
       let imagesHtml = '';
       if (imgs.length > 0 && imgs.length <= 9) {
-        imagesHtml = `<div class="post-images ${imgClass}">${imgs.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}</div>`;
+        imagesHtml = `<div class="post-images ${imgClass}">${imgs.map((i,idx)=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join('')}</div>`;
       } else if (imgs.length > 9) {
         const first8 = imgs.slice(0, 8);
         const rest = imgs.slice(8);
         const restCount = imgs.length - 8;
         imagesHtml = `<div class="post-images">
-          ${first8.map(i=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}')">`).join('')}
-          <div onclick="event.stopPropagation();showFullImage('${rest[0]}')" style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;border:0.5px solid rgba(0,0,0,0.08);box-sizing:border-box;">
+          ${first8.map((i,idx)=>`<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join('')}
+          <div onclick="event.stopPropagation();showFullImage('${rest[0]}','${imgsJson}',8)" style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;border:0.5px solid rgba(0,0,0,0.08);box-sizing:border-box;">
             <div style="display:grid;grid-template-columns:repeat(3,1fr);width:100%;height:100%;">
               ${rest.slice(0,9).map(i=>`<img loading="lazy" src="${resolveThumb(i)}" style="width:100%;height:100%;aspect-ratio:1;object-fit:cover;border:none;">`).join('')}
             </div>
@@ -8336,13 +8411,18 @@
           }
         }
 
-        function tryInit() {
+        function tryInit(sceneId) {
           if (typeof window.initAliyunCaptcha !== 'function') {
-            setTimeout(tryInit, 200);
+            setTimeout(function() { tryInit(sceneId); }, 200);
+            return;
+          }
+          if (!sceneId) {
+            if (!resolved) { resolve(null); resolved = true; }
+            cleanup();
             return;
           }
           window.initAliyunCaptcha({
-            SceneId: "eh5it1ar",
+            SceneId: sceneId,
             mode: "popup",
             element: '#' + boxId,
             language: "cn",
@@ -8380,7 +8460,12 @@
             }
           });
         }
-        tryInit();
+        Promise.all([ensureCaptchaSdk(), getCaptchaSceneId()]).then(function(results) {
+          tryInit(results[1]);
+        }).catch(function() {
+          if (!resolved) { resolve(null); resolved = true; }
+          cleanup();
+        });
       });
     }
 
