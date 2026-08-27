@@ -402,6 +402,32 @@
     let uploadProgressCache = {};
 
     function getToken() { return localStorage.getItem('zanhua_token') || ''; }
+    function getDeviceId() {
+      let did = localStorage.getItem('zanhua_device_id');
+      if (!did) {
+        did = 'd_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 12);
+        localStorage.setItem('zanhua_device_id', did);
+      }
+      return did;
+    }
+    function showBanNotice(msg) {
+      let popup = document.getElementById('ban-notice-popup');
+      if (!popup) {
+        popup = document.createElement('div');
+        popup.id = 'ban-notice-popup';
+        popup.style.cssText = 'position:fixed;top:0;left:0;right:0;background:rgba(255,36,66,0.97);color:#fff;text-align:center;padding:12px 16px;font-size:14px;font-weight:500;z-index:999999;transform:translateY(-100%);transition:transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);';
+        document.body.appendChild(popup);
+      }
+      popup.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> ' + (msg || '您的账号已被限制登录') +
+        ' <a href="javascript:void(0)" onclick="goPage(\'violationDetail\')" style="color:#ffe58f;text-decoration:underline;margin-left:6px;">查看详情</a>';
+      popup.style.display = 'block';
+      requestAnimationFrame(() => { popup.style.transform = 'translateY(0)'; });
+      clearTimeout(window._banNoticeTimer);
+      window._banNoticeTimer = setTimeout(() => {
+        popup.style.transform = 'translateY(-100%)';
+        setTimeout(() => { popup.style.display = 'none'; }, 300);
+      }, 6000);
+    }
     let currentUsername = '';
     let currentNickname = '';
     function requireLogin() { if (!getToken()) { showLoginModal(); return false; } return true; }
@@ -422,7 +448,7 @@
       const timeoutId = setTimeout(() => controller.abort(), 15000);
       const opts = {
         method,
-        headers: { 'Authorization': getToken() },
+        headers: { 'Authorization': getToken(), 'X-Device-Id': getDeviceId() },
         signal: controller.signal
       };
       if (data && method === 'POST') {
@@ -439,12 +465,12 @@
         if (json && json.code === 403 && json.forceLogout) {
           localStorage.removeItem('zanhua_token');
           const info = (json.banInfo && typeof json.banInfo === 'object') ? json.banInfo : {};
+          localStorage.setItem('zanhua_ban_info', JSON.stringify(info));
           const tip = info.permanent
             ? '账号已被永久封禁，无法继续使用。'
-            : (info.endTime ? `账号已被封禁，至 ${String(info.endTime).slice(0,16)} 解除。` : '账号已被封禁。');
-          const msg = json.msg || (tip + ' 请联系管理员申诉。');
-          try { showToast(msg); } catch(_) {}
-          setTimeout(() => { try { showLoginModal && showLoginModal(msg); } catch(_) { location.reload(); } }, 300);
+            : (info.endTime ? `账号已被封禁，至 ${String(info.endTime).slice(0,16)} 解除。` : '账号已被限制登录。');
+          const msg = json.msg || tip;
+          showBanNotice(msg);
           throw new Error('账号已封禁');
         }
         return json;
@@ -461,6 +487,7 @@
         if (xhrRef) xhrRef.xhr = xhr;
         xhr.open('POST', API_BASE + url, true);
         xhr.setRequestHeader('Authorization', getToken());
+        xhr.setRequestHeader('X-Device-Id', getDeviceId());
         if (onProgress && typeof onProgress === 'function') {
           xhr.upload.onprogress = (e) => {
             if (e.lengthComputable) {
@@ -5652,7 +5679,12 @@
           showToast('登录成功');
           goPage('home');
         } else {
-          showToast(res.msg || '登录失败');
+          if (res.banInfo && res.banInfo.blocked) {
+            try { localStorage.setItem('zanhua_ban_info', JSON.stringify(res.banInfo)); } catch(_) {}
+            showBanNotice(res.msg || '您的账号已被限制登录');
+          } else {
+            showToast(res.msg || '登录失败');
+          }
         }
       } catch (e) {
         showToast('网络异常，请重试');
@@ -5798,7 +5830,12 @@
             loadPosts(true);
           }
         } else {
-          showToast(res.msg || '登录失败');
+          if (res.banInfo && res.banInfo.blocked) {
+            try { localStorage.setItem('zanhua_ban_info', JSON.stringify(res.banInfo)); } catch(_) {}
+            showBanNotice(res.msg || '您的账号已被限制登录');
+          } else {
+            showToast(res.msg || '登录失败');
+          }
         }
       } catch (e) {
         showToast('网络异常，请重试');
@@ -9683,14 +9720,69 @@ async function renderMySubOrders() {
     async function bindViolationDetailEvents() {
       await loadViolationDetail();
     }
+    function renderCachedBanDetail(container) {
+      if (!container) return;
+      let info = {};
+      try { info = JSON.parse(localStorage.getItem('zanhua_ban_info') || '{}'); } catch(_) {}
+      if (!info || !info.blocked) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">没有可查看的封禁记录</div>';
+        return;
+      }
+      const tip = info.permanent ? '账号已被永久封禁，无法继续使用。' : (info.endTime ? `账号已被封禁，至 ${String(info.endTime).slice(0,16)} 解除。` : '账号已被限制登录，无法继续使用。');
+      const reason = info.reason || '违反《赞话社区准则》';
+      const remark = info.remark || '';
+      container.innerHTML = `<div style="padding:12px;">
+        <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;">
+          <div style="text-align:center;margin-bottom:16px;">
+            <div style="width:60px;height:60px;border-radius:50%;background:#FFF1F0;display:inline-flex;align-items:center;justify-content:center;color:#ff2442;font-size:28px;"><i class="fa-solid fa-circle-exclamation"></i></div>
+            <div style="font-size:16px;font-weight:600;color:#333;margin-top:10px;">账号限制通知</div>
+          </div>
+          <div style="background:#FFF1F0;border-radius:8px;padding:12px;margin-bottom:12px;">
+            <div style="font-size:14px;color:#ff2442;margin-bottom:6px;">${info.loginBlocked ? '禁止登录' : ''}${info.receiveBlocked ? (info.loginBlocked ? '、' : '') + '禁止接收新内容' : ''}</div>
+            <div style="font-size:13px;color:#666;line-height:1.6;">${tip}</div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <div style="font-size:14px;font-weight:500;color:#333;margin-bottom:8px;">处理详情</div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #f0f0f0;">
+              <span style="font-size:13px;color:#999;">限制原因</span>
+              <span style="font-size:13px;color:#333;text-align:right;max-width:70%;">${reason}</span>
+            </div>
+            ${remark ? `
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #f0f0f0;">
+              <span style="font-size:13px;color:#999;">备注</span>
+              <span style="font-size:13px;color:#333;text-align:right;max-width:70%;">${remark}</span>
+            </div>` : ''}
+            ${info.endTime ? `
+            <div style="display:flex;justify-content:space-between;padding:8px 0;">
+              <span style="font-size:13px;color:#999;">解除时间</span>
+              <span style="font-size:13px;color:#333;">${String(info.endTime).slice(0,16)}</span>
+            </div>` : ''}
+          </div>
+          <div style="text-align:center;padding:8px;background:#f5f5f7;border-radius:8px;">
+            <span style="font-size:13px;color:#666;">如有疑问，请联系管理员申诉。</span>
+          </div>
+        </div>
+        <div onclick="goPage('rulesCenter')" style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:12px;cursor:pointer;">
+          <div style="display:flex;align-items:center;">
+            <i class="fa-solid fa-book-open" style="color:var(--color-primary);font-size:16px;"></i>
+            <span style="margin-left:8px;font-size:14px;color:#333;">查看赞话社区内容管理规范</span>
+            <i class="fa-solid fa-chevron-right" style="margin-left:auto;color:#ccc;"></i>
+          </div>
+        </div>
+      </div>`;
+    }
     async function loadViolationDetail() {
       const id = window._currentViolationId;
-      if (!id) return;
+      const container = document.getElementById('violationDetailContent');
+      if (!container) return;
+      if (!id || !getToken()) {
+        renderCachedBanDetail(container);
+        return;
+      }
       try {
         const res = await api('/violationDetail?id=' + id);
-        const container = document.getElementById('violationDetailContent');
         if (!container || res.code !== 1) {
-          container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">获取失败</div>';
+          renderCachedBanDetail(container);
           return;
         }
         const v = res.data;
@@ -10360,6 +10452,7 @@ async function renderMySubOrders() {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', API_BASE + '/uploadImage', true);
         xhr.setRequestHeader('Authorization', getToken());
+        xhr.setRequestHeader('X-Device-Id', getDeviceId());
         xhr.onload = function() {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
