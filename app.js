@@ -9940,6 +9940,7 @@ async function renderMySubOrders() {
             <p style="margin-bottom:8px;padding-left:2em;">（4）封禁账号；</p>
             <p style="margin-bottom:12px;padding-left:2em;">（5）涉嫌违法犯罪的，移交司法机关处理。</p>
             <p style="margin-bottom:12px;text-indent:2em;"><strong>关于内容保护与截图溯源的特别约定：</strong>本平台对部分受保护帖子采用暗码水印技术，在页面展示时自动嵌入不可见的数字水印信息。任何对该类内容的截图均携带可溯源的数字标识，平台可通过技术手段追踪到截图的来源用户。未经授权截图、传播受保护内容的用户，一经溯源核实，账号将被<strong style="color:#e53e3e;">永久封禁</strong>，同时禁止登录及接收新帖子。情节严重涉嫌违法犯罪的，将移交司法机关处理。</p>
+            <p style="margin-bottom:12px;text-indent:2em;"><strong>关于风控名单的特别约定：</strong>对存在恶意注册、内容盗用、严重违规等行为的账号，本平台有权将其账号关联的手机号、IP地址及设备标识纳入平台风控名单，并限制相关设备、手机号或IP的注册、登录及发布行为。风控名单中的信息仅用于平台内部风险控制与违规处理，我们不会向任何第三方披露。</p>
             <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">七、未成年人保护</h3>
             <p style="margin-bottom:12px;text-indent:2em;">未成年人使用本平台服务应在监护人的指导和监督下进行。本平台重视未成年人的保护，如发现未成年人发布或传播不当内容，将及时处理。</p>
             <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">八、免责声明</h3>
@@ -9950,7 +9951,7 @@ async function renderMySubOrders() {
             <p style="margin-bottom:12px;text-indent:2em;">您有权随时注销账号，本协议自账号注销之日起终止。本平台有权根据法律法规及政策变化、业务调整等原因终止本协议，并提前通知您。</p>
             <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">十、联系方式</h3>
             <p style="margin-bottom:12px;text-indent:2em;">如您对本协议有任何疑问或建议，请通过平台内"反馈"功能与我们联系，或发送邮件至官方邮箱：<span style="color:#1D9BF0;">zanhuadev@163.com</span>。</p>
-            <p style="margin-top:30px;text-align:right;color:#999;font-size:12px;">最后更新日期：2026年7月22日</p>
+            <p style="margin-top:30px;text-align:right;color:#999;font-size:12px;">最后更新日期：2026年8月27日</p>
           </div>
         </div>
       `;
@@ -10217,14 +10218,19 @@ async function renderMySubOrders() {
             <p style="margin-bottom:12px;text-indent:2em;">"赞话"（以下简称"我们"）深知个人信息对您的重要性，我们将按照法律法规要求，采取相应安全保护措施，尽力保护您的个人信息安全可控。</p>
             <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">一、我们收集的信息</h3>
             <p style="margin-bottom:12px;font-weight:600;">（一）注册信息</p>
-            <p style="margin-bottom:12px;text-indent:2em;">当您注册账号时，我们会收集您的手机号、昵称、头像等信息，用于创建账号和提供服务。</p>
+            <p style="margin-bottom:12px;text-indent:2em;">当您注册账号时，我们会收集您的手机号、昵称、头像、性别、生日、国家或地区等信息，用于创建账号和提供服务。您的账号密码将经过加密处理后存储。</p>
             <p style="margin-bottom:12px;font-weight:600;">（二）使用信息</p>
             <p style="margin-bottom:12px;text-indent:2em;">当您使用本平台服务时，我们会收集以下信息：</p>
-            <p style="margin-bottom:8px;padding-left:2em;">1. 发布的内容：您发布的帖子、评论、点赞、收藏等操作记录；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">2. 日志信息：设备型号、操作系统版本、IP地址、访问时间等；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">3. 位置信息：经您授权后获取的地理位置信息。</p>
+            <p style="margin-bottom:8px;padding-left:2em;">1. 发布与互动内容：您发布的帖子、评论，以及点赞、收藏、关注等操作记录；</p>
+            <p style="margin-bottom:8px;padding-left:2em;">2. 日志信息：设备型号、操作系统版本、IP地址、访问时间、浏览记录等；</p>
+            <p style="margin-bottom:8px;padding-left:2em;">3. 设备信息：为保障账号安全与进行风险控制，我们会收集您设备的唯一标识（设备ID）；</p>
+            <p style="margin-bottom:12px;padding-left:2em;">4. 位置信息：我们可能根据您的IP地址解析您所在省份等大致地理位置，经您授权后也可获取更精确的地理位置信息，用于内容展示与服务优化。</p>
             <p style="margin-bottom:12px;font-weight:600;">（三）图片/视频信息</p>
-            <p style="margin-bottom:12px;text-indent:2em;">当您上传图片或视频时，我们会存储您上传的内容，用于在平台展示。</p>
+            <p style="margin-bottom:12px;text-indent:2em;">当您上传图片或视频时，我们会存储您上传的内容，用于在平台展示。为保护内容版权并实现截图溯源，部分受保护内容的图片在展示时会嵌入不可见的数字水印信息。</p>
+            <p style="margin-bottom:12px;font-weight:600;">（四）认证信息</p>
+            <p style="margin-bottom:12px;text-indent:2em;">当您申请实名认证或企业认证时，我们会收集并加密存储您的身份信息或企业资质材料，仅用于身份核验。</p>
+            <p style="margin-bottom:12px;font-weight:600;">（五）违规与风控信息</p>
+            <p style="margin-bottom:12px;text-indent:2em;">当您的账号被举报或触发平台风控规则时，我们可能会收集并记录您的手机号、IP地址、设备标识及违规记录等信息，用于核实处理违规行为、维护平台秩序。对存在严重违规行为的账号，其关联的手机号、IP地址、设备标识等信息可能被纳入平台风控名单，以防止其继续使用本平台服务。</p>
             <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">二、我们如何使用信息</h3>
             <p style="margin-bottom:12px;text-indent:2em;">我们收集您的信息用于以下目的：</p>
             <p style="margin-bottom:8px;padding-left:2em;">1. 提供、维护、改进我们的服务；</p>
@@ -10232,6 +10238,7 @@ async function renderMySubOrders() {
             <p style="margin-bottom:8px;padding-left:2em;">3. 内容审核，保障平台内容合规；</p>
             <p style="margin-bottom:8px;padding-left:2em;">4. 向您发送通知、消息；</p>
             <p style="margin-bottom:12px;padding-left:2em;">5. 统计分析，优化产品体验。</p>
+            <p style="margin-bottom:12px;padding-left:2em;">6. 风险控制与账号安全：防范恶意注册、内容盗用、诈骗等违法违规行为，核实并处理违规与举报事项。</p>
             <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">三、信息共享与披露</h3>
             <p style="margin-bottom:12px;text-indent:2em;">我们不会向第三方出售您的个人信息。仅在以下情况下，我们可能会共享您的信息：</p>
             <p style="margin-bottom:8px;padding-left:2em;">1. 获得您的明确同意；</p>
@@ -10257,7 +10264,7 @@ async function renderMySubOrders() {
             <p style="margin-bottom:12px;text-indent:2em;">我们可能会适时更新本隐私政策。当政策发生重大变更时，我们将在平台内通知您。请您及时查看最新版本的隐私政策。</p>
             <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">九、联系我们</h3>
             <p style="margin-bottom:12px;text-indent:2em;">如您对本隐私政策有任何疑问、意见或建议，请通过平台内"反馈"功能与我们联系，或发送邮件至官方邮箱：<span style="color:#1D9BF0;">zanhuadev@163.com</span>。我们将在收到您的反馈后尽快处理。</p>
-            <p style="margin-top:30px;text-align:right;color:#999;font-size:12px;">最后更新日期：2026年7月22日</p>
+            <p style="margin-top:30px;text-align:right;color:#999;font-size:12px;">最后更新日期：2026年8月27日</p>
           </div>
         </div>
       `;
@@ -10285,7 +10292,7 @@ async function renderMySubOrders() {
             <p style="margin-bottom:12px;font-weight:600;">（二）使用行为信息</p>
             <p style="margin-bottom:12px;text-indent:2em;">未成年人使用本平台时，我们会收集其发布内容、互动行为（点赞、评论、收藏）等信息，用于提供和优化服务。</p>
             <p style="margin-bottom:12px;font-weight:600;">（三）设备与日志信息</p>
-            <p style="margin-bottom:12px;text-indent:2em;">我们会收集设备型号、操作系统版本、IP地址、访问时间等日志信息，用于账号安全保护和服务优化。</p>
+            <p style="margin-bottom:12px;text-indent:2em;">我们会收集设备型号、操作系统版本、设备唯一标识、IP地址、访问时间等日志信息，用于账号安全保护、风险控制和服务优化。</p>
             <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">四、信息使用原则</h3>
             <p style="margin-bottom:12px;text-indent:2em;">我们收集未成年人个人信息，将严格遵循以下原则：</p>
             <p style="margin-bottom:8px;padding-left:2em;">1. 最小必要原则：仅收集实现服务所必需的最少信息；</p>
@@ -10317,7 +10324,7 @@ async function renderMySubOrders() {
             <p style="margin-bottom:12px;text-indent:2em;">我们可能会适时更新本政策。当政策发生重大变更时，我们将通过平台显著位置通知监护人和未成年人。请您及时查看最新版本的政策内容。</p>
             <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">十、联系我们</h3>
             <p style="margin-bottom:12px;text-indent:2em;">如对本政策有任何疑问、意见或建议，或需要行使您的权利，请通过平台内"反馈"功能与我们联系，或发送邮件至官方邮箱：<span style="color:#1D9BF0;">zanhuadev@163.com</span>。我们将在收到您的反馈后尽快处理。</p>
-            <p style="margin-top:30px;text-align:right;color:#999;font-size:12px;">最后更新日期：2026年7月23日</p>
+            <p style="margin-top:30px;text-align:right;color:#999;font-size:12px;">最后更新日期：2026年8月27日</p>
           </div>
         </div>
       `;
