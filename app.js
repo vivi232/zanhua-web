@@ -1,4 +1,8 @@
-    const _pathFirst = (window.location.pathname.split('/').filter(Boolean)[0]) || '';
+    const _pathFirst = (function() {
+      const _segs = window.location.pathname.split('/').filter(Boolean);
+      if (_segs.length && _segs[0] === 'appeal') return '';
+      return _segs[0] || '';
+    })();
     const BASE_PATH = _pathFirst ? '/' + _pathFirst : '';
     const API_HOST = "";
     const API_BASE = API_HOST + '/api';
@@ -834,6 +838,101 @@
         toast.style.transform = 'translateY(-10px)';
         setTimeout(() => toast.remove(), 300);
       }, 2500);
+    }
+
+    function buildAppealUrl(token) {
+      var base = window.__BASE || '';
+      return window.location.origin + base + '/appeal/' + token;
+    }
+    function fallbackCopyText(text, okCb, errCb) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try { document.execCommand('copy'); okCb(); } catch(e) { errCb(); }
+      document.body.removeChild(ta);
+    }
+    function copyAppealLink(token, el) {
+      const url = buildAppealUrl(token);
+      const done = () => {
+        if (el) {
+          el.classList.remove('fa-copy');
+          el.classList.add('fa-check');
+          el.style.color = '#52c41a';
+          setTimeout(() => {
+            el.classList.add('fa-copy');
+            el.classList.remove('fa-check');
+            el.style.color = '';
+          }, 2000);
+        }
+        showToast('复制成功');
+      };
+      const fail = () => showToast('复制失败');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(() => fallbackCopyText(url, done, fail));
+      } else {
+        fallbackCopyText(url, done, fail);
+      }
+    }
+    function renderAppealLinkSection(token) {
+      const url = buildAppealUrl(token);
+      return `<div style="background:#F0F7FF;border:0.5px solid #D6E8FF;border-radius:10px;padding:12px;margin-top:10px;">
+        <div style="font-size:13px;color:#1677ff;margin-bottom:8px;">您可通过以下链接查询申诉进度与结果</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <i class="fa-solid fa-copy" onclick="copyAppealLink('${token}', this)" style="font-size:16px;color:#1677ff;cursor:pointer;flex-shrink:0;"></i>
+          <span style="font-size:12px;color:#333;word-break:break-all;">${url}</span>
+        </div>
+      </div>`;
+    }
+
+    function showCustomDialog(opts) {
+      const overlay = document.createElement('div');
+      overlay.className = 'dialog-modal';
+      const confirmBtnStyle = opts.danger
+        ? 'background:#ff2442;color:#fff;border:none;border-radius:22px;padding:11px 0;font-size:15px;font-weight:600;cursor:pointer;flex:1;'
+        : 'background:var(--color-primary);color:#fff;border:none;border-radius:22px;padding:11px 0;font-size:15px;font-weight:600;cursor:pointer;flex:1;';
+      overlay.innerHTML = `<div class="dialog-modal-content" style="width:84%;max-width:360px;padding:24px 20px;text-align:center;" onclick="event.stopPropagation()">
+        ${opts.title ? `<div class="dialog-title" style="font-size:17px;font-weight:600;color:#1a1a1a;margin-bottom:12px;"></div>` : ''}
+        <div class="dialog-message" style="font-size:14px;color:#5f6368;line-height:1.7;white-space:pre-line;word-break:break-word;margin-bottom:20px;"></div>
+        <div style="display:flex;gap:12px;${opts.hideCancel ? 'justify-content:center;' : ''}">
+          ${opts.hideCancel ? '' : `<button class="dialog-cancel-btn" style="background:#f5f5f7;color:#333;border:none;border-radius:22px;padding:11px 0;font-size:15px;cursor:pointer;flex:1;">取消</button>`}
+          <button class="dialog-ok-btn" style="${confirmBtnStyle}">${opts.okText || '确定'}</button>
+        </div>
+      </div>`;
+      document.body.appendChild(overlay);
+      const titleEl = overlay.querySelector('.dialog-title');
+      if (titleEl) titleEl.textContent = opts.title;
+      overlay.querySelector('.dialog-message').textContent = opts.message;
+      requestAnimationFrame(() => overlay.classList.add('active'));
+      overlay._resolve = null;
+      const done = (val) => {
+        overlay.classList.remove('active');
+        setTimeout(() => overlay.remove(), 250);
+        if (overlay._resolve) overlay._resolve(val);
+      };
+      overlay.querySelector('.dialog-ok-btn').addEventListener('click', () => done(true));
+      const cancelBtn = overlay.querySelector('.dialog-cancel-btn');
+      if (cancelBtn) cancelBtn.addEventListener('click', () => done(false));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay && !opts.hideCancel) done(false); });
+      return new Promise((resolve) => { overlay._resolve = resolve; });
+    }
+    function customConfirm(message, okText) {
+      return showCustomDialog({ title: '提示', message, okText: okText || '确定' });
+    }
+    function customAlert(message, okText) {
+      return showCustomDialog({ title: '提示', message, okText: okText || '知道了', hideCancel: true });
+    }
+    function customDangerConfirm(message, okText) {
+      return showCustomDialog({ title: '提示', message, okText: okText || '确定', danger: true });
+    }
+    async function replaceNativeConfirm(message, okText, danger) {
+      const res = await (danger ? customDangerConfirm(message, okText) : customConfirm(message, okText));
+      return res;
+    }
+    async function replaceNativeAlert(message, okText) {
+      await customAlert(message, okText);
     }
 
     let currentVideoSrc = '';
@@ -3085,7 +3184,7 @@
     }
 
     async function deleteHomeworkComment(commentId) {
-      if (!confirm('确定删除这条评论吗？')) return;
+      if (!(await customConfirm('确定删除这条评论吗？'))) return;
       try {
         const res = await api('/deleteHomeworkComment', 'POST', { commentId });
         if (res.code === 1) {
@@ -3099,7 +3198,7 @@
     }
 
     async function deleteHomework(id) {
-      if (!confirm('确定删除这条作业吗？')) return;
+      if (!(await customConfirm('确定删除这条作业吗？'))) return;
       try {
         const res = await api('/deleteHomework', 'POST', { id });
         if (res.code === 1) {
@@ -7298,9 +7397,10 @@
             const avatarRightHtml = !isAnon && isMe ? `<img src="${avatarUrl}" onclick="event.stopPropagation();goUserProfile('${myUid}')" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;cursor:pointer;margin-left:8px;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">` : (isMe ? '' : `<div style="width:36px;margin-left:8px;flex-shrink:0;"></div>`);
             if (failed) {
               const safeReason = failReason.replace(/'/g, '\\\'').replace(/"/g, '&quot;');
+              const safeReasonAttr = safeReason.replace(/</g, '&lt;').replace(/>/g, '&gt;');
               return `<div style="display:flex;flex-direction:column;align-items:flex-end;margin-bottom:10px;">
                 <div style="display:flex;justify-content:flex-end;align-items:center;gap:6px;">
-                  <i class="fa-solid fa-circle-exclamation" title="${safeReason}" style="color:#ff2442;font-size:18px;cursor:pointer;" onclick="alert('发送失败：${safeReason}')"></i>
+                  <i class="fa-solid fa-circle-exclamation" title="${safeReasonAttr}" style="color:#ff2442;font-size:18px;cursor:pointer;" onclick="customAlert('发送失败：${safeReasonAttr.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n')}')"></i>
                   <div class="chat-bubble" style="max-width:70%;padding:10px 14px;border-radius:16px;font-size:15px;line-height:1.4;background:#fafafa;color:#888;border:0.5px dashed #ff9bab;border-bottom-right-radius:4px;">${contentHtml}</div>
                   ${avatarRightHtml}
                 </div>
@@ -9601,7 +9701,7 @@ async function renderMySubOrders() {
     }
     function bindMySubOrdersEvents() {
       window.requestRefund = async function(orderId) {
-        if (!confirm('确定要申请退款吗？退款后认证将被收回。')) return;
+        if (!(await customDangerConfirm('确定要申请退款吗？退款后认证将被收回。'))) return;
         try {
           const r = await api('/requestRefund', 'POST', { order_id: orderId });
           if (r.code === 1) { showToast('退款申请已提交'); setTimeout(() => render(), 1000); }
@@ -9720,6 +9820,240 @@ async function renderMySubOrders() {
     async function bindViolationDetailEvents() {
       await loadViolationDetail();
     }
+    function renderCachedAppealSection(info) {
+      const token = (info && info.appealToken) || '';
+      if (!token) {
+        return `<div style="text-align:center;padding:8px;background:#f5f5f7;border-radius:8px;">
+          <span style="font-size:13px;color:#666;">如有疑问，请联系管理员申诉。</span>
+        </div>`;
+      }
+      const status = localStorage.getItem('zanhua_appeal_status_' + token) || (info.appealStatus || '');
+      if (status === 'processing') {
+        return `<div style="margin-bottom:12px;">
+          <div style="text-align:center;padding:12px;background:#E8F0FE;border-radius:8px;margin-bottom:10px;">
+            <span style="font-size:13px;color:#1677ff;">申诉处理中，我们会在1-3个工作日内审核</span>
+          </div>
+          ${renderAppealLinkSection(token)}
+        </div>`;
+      }
+      if (status === 'approved') {
+        return `<div style="text-align:center;padding:12px;background:#E6F7EC;border-radius:8px;">
+          <span style="font-size:13px;color:#52c41a;">申诉通过，已解除相关限制</span>
+        </div>`;
+      }
+      if (status === 'revoked') {
+        return `<div style="text-align:center;padding:12px;background:#FFF1F0;border-radius:8px;">
+          <span style="font-size:13px;color:#ff2442;">申诉失败，维持原有处罚</span>
+        </div>`;
+      }
+      return `<div style="margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:500;color:#333;margin-bottom:8px;">申诉理由</div>
+        <textarea id="appealReasonByToken" placeholder="请输入申诉理由，说明您认为此处理有误的原因..." style="width:100%;height:80px;border:0.5px solid #ddd;border-radius:8px;padding:10px;font-size:13px;resize:none;box-sizing:border-box;"></textarea>
+        <button onclick="submitAppealByToken('${token}')" style="width:100%;background:var(--color-primary);color:#fff;border:none;border-radius:20px;padding:12px;font-size:15px;font-weight:600;margin-top:10px;">提交申诉</button>
+      </div>`;
+    }
+    async function submitAppealByToken(token) {
+      const reasonEl = document.getElementById('appealReasonByToken');
+      const reason = reasonEl ? reasonEl.value.trim() : '';
+      if (!reason) {
+        showToast('请输入申诉理由');
+        return;
+      }
+      try {
+        const res = await api('/appealSubmit', 'POST', { token, reason });
+        if (res.code === 1) {
+          try { localStorage.setItem('zanhua_appeal_status_' + token, 'processing'); } catch(_) {}
+          showToast(res.msg || '申诉已提交');
+          const appealContainer = document.getElementById('appealDetailContent');
+          if (appealContainer) {
+            const cached = getCachedAppealData(token) || {};
+            renderAppealDetail(appealContainer, Object.assign({}, cached, { appeal_status: 'processing', appeal_token: token }), token);
+          }
+          const container = document.getElementById('violationDetailContent');
+          if (container) renderCachedBanDetail(container);
+        } else {
+          showToast(res.msg || '申诉失败');
+        }
+      } catch(e) {
+        showToast('申诉失败');
+      }
+    }
+    function getAppealPathToken() {
+      const m = window.location.pathname.match(/\/appeal\/([0-9a-f]{32})/);
+      return m ? m[1] : '';
+    }
+    let appealCaptchaIns = null;
+    let appealCaptchaResult = null;
+    function cacheAppealData(token, data) {
+      try { localStorage.setItem('zanhua_appeal_' + token, JSON.stringify(data)); } catch(_) {}
+    }
+    function getCachedAppealData(token) {
+      try { return JSON.parse(localStorage.getItem('zanhua_appeal_' + token) || 'null'); } catch(_) { return null; }
+    }
+    function bootAppealPage(token) {
+      setTabbarVisible(false);
+      hideAppSkeleton();
+      const app = document.getElementById('app');
+      const navbarBack = window.history.length > 1
+        ? `onclick="history.back()"`
+        : `onclick="window.location.href=(window.__BASE||'')+'/'"`;
+      app.innerHTML = `<div class="page" style="background:#f5f5f7;min-height:100vh;">
+        <div class="navbar"><div ${navbarBack} style="font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div><h1 style="flex:1;text-align:center;font-size:17px;font-weight:600;">申诉查询</h1><div style="width:40px;"></div></div>
+        <div id="appealDetailContent"></div>
+      </div>`;
+      loadAppealDetail(token);
+    }
+    function loadAppealDetail(token, captchaParam) {
+      const container = document.getElementById('appealDetailContent');
+      if (!container) return;
+      container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">加载中...</div>';
+      const qs = 'token=' + encodeURIComponent(token) + (captchaParam ? '&captchaVerifyParam=' + encodeURIComponent(captchaParam) : '');
+      fetch(API_BASE + '/appealStatus?' + qs, { headers: { 'Content-Type': 'application/json' } })
+        .then(res => res.json())
+        .then(data => {
+          if (!container) return;
+          if (data.code === 1 && data.data) {
+            cacheAppealData(token, data.data);
+            renderAppealDetail(container, data.data, token);
+            return;
+          }
+          if (data.code === 1 && data.needCaptcha) {
+            showAppealCaptcha(token);
+            return;
+          }
+          if (data.code === 1 && data.rateLimited) {
+            const cached = getCachedAppealData(token);
+            if (cached) {
+              renderAppealDetail(container, cached, token);
+              container.insertAdjacentHTML('afterbegin', '<div style="padding:12px 12px 0;"><div style="background:#FFF7E6;border:0.5px solid #FFE7BA;border-radius:8px;padding:10px 12px;font-size:13px;color:#fa8c16;">您的查询次数过于频繁，请稍后再试！</div></div>');
+            } else {
+              container.innerHTML = `<div style="text-align:center;padding:40px;color:#999;">${data.msg || '查询次数过于频繁，请稍后再试'}</div>`;
+            }
+            return;
+          }
+          container.innerHTML = `<div style="text-align:center;padding:40px;color:#999;">${data.msg || '查询失败'}</div>`;
+        })
+        .catch(() => {
+          if (container) container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">网络异常，请稍后重试</div>';
+        });
+    }
+    function showAppealCaptcha(token) {
+      let mask = document.getElementById('appealCaptchaMask');
+      if (!mask) {
+        mask = document.createElement('div');
+        mask.id = 'appealCaptchaMask';
+        mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;z-index:99998;display:flex;align-items:center;justify-content:center;flex-direction:column;';
+        mask.innerHTML = `<div style="text-align:center;font-size:14px;color:#666;margin-bottom:16px;">请完成安全验证后查看申诉结果</div>
+          <div id="appealCaptchaBox"></div>
+          <div style="text-align:center;font-size:12px;color:#bbb;margin-top:16px;">第3次及以上查询需完成安全验证</div>`;
+        document.body.appendChild(mask);
+      }
+      appealCaptchaResult = null;
+      Promise.all([ensureCaptchaSdk(), getCaptchaSceneId()]).then(results => {
+        const sceneId = results[1];
+        if (!sceneId) return;
+        if (!appealCaptchaIns && typeof window.initAliyunCaptcha === 'function') {
+          window.initAliyunCaptcha({
+            SceneId: sceneId,
+            mode: "embed",
+            element: "#appealCaptchaBox",
+            language: "cn",
+            timeout: 10000,
+            getInstance: function(ins) { appealCaptchaIns = ins; },
+            captchaVerifyCallback: function(param) { return appealCaptchaCallback(token, param); },
+            onBizResultCallback: function(bizResult) {
+              if (bizResult) {
+                const container = document.getElementById('appealDetailContent');
+                if (container && appealCaptchaResult) {
+                  cacheAppealData(token, appealCaptchaResult);
+                  renderAppealDetail(container, appealCaptchaResult, token);
+                }
+                const m = document.getElementById('appealCaptchaMask');
+                if (m) m.remove();
+              }
+            }
+          });
+        }
+        if (appealCaptchaIns) appealCaptchaIns.show();
+      });
+    }
+    function appealCaptchaCallback(token, param) {
+      return fetch(API_BASE + '/appealStatus?token=' + encodeURIComponent(token) + '&captchaVerifyParam=' + encodeURIComponent(param), { headers: { 'Content-Type': 'application/json' } })
+        .then(res => res.json())
+        .then(data => {
+          if (data.code === 1 && data.data) {
+            appealCaptchaResult = data.data;
+            return { captchaResult: true, bizResult: true };
+          }
+          return { captchaResult: false, bizResult: false };
+        })
+        .catch(() => ({ captchaResult: false, bizResult: false }));
+    }
+    function renderAppealDetail(container, v, token) {
+      const isPermanent = v.permanent || v.penalty_type === '永久封禁';
+      const tip = isPermanent ? '账号已被永久封禁，无法继续使用。' : (v.penalty_end_time ? `账号已被封禁，至 ${String(v.penalty_end_time).slice(0,16)} 解除。` : '账号已被限制登录，无法继续使用。');
+      const reason = v.violation_reason || '违反《赞话社区准则》';
+      const blockedLabel = (v.loginBlocked ? '禁止登录' : '') + (v.receiveBlocked ? (v.loginBlocked ? '、' : '') + '禁止接收新内容' : '');
+      let appealArea = '';
+      if (v.appeal_status === 'processing' || v.appeal_status === 'approved' || v.appeal_status === 'revoked') {
+        let statusHtml = '';
+        if (v.appeal_status === 'processing') {
+          statusHtml = `<div style="text-align:center;padding:12px;background:#E8F0FE;border-radius:8px;margin-bottom:10px;">
+            <span style="font-size:13px;color:#1677ff;">申诉处理中，我们会在1-3个工作日内审核</span>
+          </div>`;
+        } else if (v.appeal_status === 'approved') {
+          statusHtml = `<div style="text-align:center;padding:12px;background:#E6F7EC;border-radius:8px;">
+            <span style="font-size:13px;color:#52c41a;">申诉通过，已解除相关限制</span>
+          </div>`;
+        } else {
+          statusHtml = `<div style="text-align:center;padding:12px;background:#FFF1F0;border-radius:8px;">
+            <span style="font-size:13px;color:#ff2442;">申诉失败，维持原有处罚</span>
+          </div>`;
+        }
+        appealArea = `<div style="margin-bottom:12px;">${statusHtml}${v.appeal_status === 'processing' ? renderAppealLinkSection(v.appeal_token || token) : ''}</div>`;
+      } else {
+        appealArea = `<div style="margin-bottom:12px;">
+          <div style="font-size:14px;font-weight:500;color:#333;margin-bottom:8px;">申诉理由</div>
+          <textarea id="appealReasonByToken" placeholder="请输入申诉理由，说明您认为此处理有误的原因..." style="width:100%;height:80px;border:0.5px solid #ddd;border-radius:8px;padding:10px;font-size:13px;resize:none;box-sizing:border-box;"></textarea>
+          <button onclick="submitAppealByToken('${token}')" style="width:100%;background:var(--color-primary);color:#fff;border:none;border-radius:20px;padding:12px;font-size:15px;font-weight:600;margin-top:10px;">提交申诉</button>
+        </div>`;
+      }
+      container.innerHTML = `<div style="padding:12px;">
+        <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;">
+          <div style="text-align:center;margin-bottom:16px;">
+            <div style="width:60px;height:60px;border-radius:50%;background:#FFF1F0;display:inline-flex;align-items:center;justify-content:center;color:#ff2442;font-size:28px;"><i class="fa-solid fa-circle-exclamation"></i></div>
+            <div style="font-size:16px;font-weight:600;color:#333;margin-top:10px;">账号限制通知</div>
+          </div>
+          <div style="background:#FFF1F0;border-radius:8px;padding:12px;margin-bottom:12px;">
+            <div style="font-size:14px;color:#ff2442;margin-bottom:6px;">${blockedLabel}</div>
+            <div style="font-size:13px;color:#666;line-height:1.6;">${tip}</div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <div style="font-size:14px;font-weight:500;color:#333;margin-bottom:8px;">处理详情</div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #f0f0f0;">
+              <span style="font-size:13px;color:#999;">限制原因</span>
+              <span style="font-size:13px;color:#333;text-align:right;max-width:70%;">${reason}</span>
+            </div>
+            ${v.content ? `
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #f0f0f0;">
+              <span style="font-size:13px;color:#999;">违规内容</span>
+              <span style="font-size:13px;color:#333;text-align:right;max-width:70%;">${v.content}</span>
+            </div>` : ''}
+            ${v.penalty_end_time ? `
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #f0f0f0;">
+              <span style="font-size:13px;color:#999;">解除时间</span>
+              <span style="font-size:13px;color:#333;">${String(v.penalty_end_time).slice(0,16)}</span>
+            </div>` : ''}
+            ${v.create_time ? `
+            <div style="display:flex;justify-content:space-between;padding:8px 0;">
+              <span style="font-size:13px;color:#999;">处理时间</span>
+              <span style="font-size:13px;color:#333;">${String(v.create_time).slice(0,16)}</span>
+            </div>` : ''}
+          </div>
+          ${appealArea}
+        </div>
+      </div>`;
+    }
     function renderCachedBanDetail(container) {
       if (!container) return;
       let info = {};
@@ -9758,9 +10092,7 @@ async function renderMySubOrders() {
               <span style="font-size:13px;color:#333;">${String(info.endTime).slice(0,16)}</span>
             </div>` : ''}
           </div>
-          <div style="text-align:center;padding:8px;background:#f5f5f7;border-radius:8px;">
-            <span style="font-size:13px;color:#666;">如有疑问，请联系管理员申诉。</span>
-          </div>
+          ${renderCachedAppealSection(info)}
         </div>
         <div onclick="goPage('rulesCenter')" style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:12px;cursor:pointer;">
           <div style="display:flex;align-items:center;">
@@ -9822,9 +10154,10 @@ async function renderMySubOrders() {
               </div>
               <button onclick="submitAppeal(${id})" style="width:100%;background:var(--color-primary);color:#fff;border:none;border-radius:20px;padding:12px;font-size:15px;font-weight:600;">提交申诉</button>
             ` : v.appeal_status === 'processing' ? `
-              <div style="text-align:center;padding:12px;background:#E8F0FE;border-radius:8px;">
+              <div style="margin-bottom:10px;text-align:center;padding:12px;background:#E8F0FE;border-radius:8px;">
                 <span style="font-size:13px;color:#1677ff;">申诉处理中，我们会在1-3个工作日内审核</span>
               </div>
+              ${v.appeal_token ? renderAppealLinkSection(v.appeal_token) : ''}
             ` : v.appeal_status === 'approved' ? `
               <div style="text-align:center;padding:12px;background:#E6F7EC;border-radius:8px;">
                 <span style="font-size:13px;color:#52c41a;">申诉通过，已解除相关限制</span>
@@ -10567,13 +10900,18 @@ async function renderMySubOrders() {
       }
       setTimeout(() => { isPopState = false; }, 300);
     });
-    try {
-      history.replaceState({ page: 'home' }, '', '#home');
-    } catch(e) {}
-    render();
-    updateTabbar();
-    checkAccountValid();
-    if (getToken()) startBadgeRefresh();
+    const _appealPathToken = getAppealPathToken();
+    if (_appealPathToken) {
+      bootAppealPage(_appealPathToken);
+    } else {
+      try {
+        history.replaceState({ page: 'home' }, '', '#home');
+      } catch(e) {}
+      render();
+      updateTabbar();
+      checkAccountValid();
+      if (getToken()) startBadgeRefresh();
+    }
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => { ensureChatInputVisible(); ensureCommentInputVisible(); ensureFabVisible(); adjustModalsToKeyboard(); });
       window.visualViewport.addEventListener('scroll', () => { ensureChatInputVisible(); ensureCommentInputVisible(); ensureFabVisible(); adjustModalsToKeyboard(); });
