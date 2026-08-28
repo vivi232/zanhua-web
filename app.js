@@ -4,7 +4,7 @@
       return _segs[0] || '';
     })();
     const BASE_PATH = _pathFirst ? '/' + _pathFirst : '';
-    const API_HOST = "";
+    const API_HOST = "https://154.201.81.86";
     const API_BASE = API_HOST + '/api';
     const MEDIA_BASE = API_HOST + '/zanhua';
     const DEFAULT_AVATAR = MEDIA_BASE + '/uploads/default_avatar.webp';
@@ -423,7 +423,7 @@
         document.body.appendChild(popup);
       }
       popup.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> ' + (msg || '您的账号已被限制登录') +
-        ' <a href="javascript:void(0)" onclick="goPage(\'violationDetail\')" style="color:#ffe58f;text-decoration:underline;margin-left:6px;">查看详情</a>';
+        ' <a href="javascript:void(0)" onclick="hideLoginModal();goPage(\'violationDetail\')" style="color:#ffe58f;text-decoration:underline;margin-left:6px;">查看详情</a>';
       popup.style.display = 'block';
       requestAnimationFrame(() => { popup.style.transform = 'translateY(0)'; });
       clearTimeout(window._banNoticeTimer);
@@ -9824,7 +9824,7 @@ async function renderMySubOrders() {
       const token = (info && info.appealToken) || '';
       if (!token) {
         return `<div style="text-align:center;padding:8px;background:#f5f5f7;border-radius:8px;">
-          <span style="font-size:13px;color:#666;">如有疑问，请联系管理员申诉。</span>
+          <span style="font-size:13px;color:#666;">如需申诉，请点击下方查看详情。</span>
         </div>`;
       }
       const status = localStorage.getItem('zanhua_appeal_status_' + token) || (info.appealStatus || '');
@@ -9955,7 +9955,7 @@ async function renderMySubOrders() {
         if (!appealCaptchaIns && typeof window.initAliyunCaptcha === 'function') {
           window.initAliyunCaptcha({
             SceneId: sceneId,
-            mode: "embed",
+            mode: "popup",
             element: "#appealCaptchaBox",
             language: "cn",
             timeout: 10000,
@@ -10229,66 +10229,372 @@ async function renderMySubOrders() {
       reportImages = [];
       goPage('report');
     }
-    function renderAgreementPage() {
-      return `
-        <div class="page">
-          <div class="navbar" style="position:fixed;top:0;left:0;right:0;z-index:100;background:#fff;">
-            <div onclick="goBack()" style="font-size:22px;cursor:pointer;color:#333;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div>
-            <h1 style="flex:1;text-align:center;font-size:17px;font-weight:600;">赞话用户服务协议</h1>
-            <div style="width:28px;"></div>
-          </div>
-          <div style="padding-top:calc(50px + env(safe-area-inset-top));"></div>
-          <div style="padding:20px 16px;line-height:1.8;font-size:14px;color:#333;">
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">一、协议的接受与修改</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">欢迎使用"赞话"社交平台（以下简称"本平台"）。本协议是您与本平台之间关于使用本平台服务的协议。在使用本平台服务之前，请您务必仔细阅读并充分理解本协议的全部内容。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">您在使用本平台提供的各项服务之前，应仔细阅读并同意本协议。如您不同意本协议，请勿使用本平台服务。您通过注册或使用本平台服务，即视为您已阅读并同意本协议的全部内容。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">本平台有权根据需要不时修订本协议内容，修订后的协议一经公布即有效替代原协议。您继续使用本平台服务，即视为您接受修订后的协议。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">二、账号注册与使用</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">1. 您在注册账号时需提供真实、准确、完整的个人资料，并在资料发生变更时及时更新。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">2. 您应妥善保管账号和密码，因您保管不善造成的损失由您自行承担。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">3. 您不得将账号转让、出借给他人使用。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">4. 本平台有权对您提交的资料进行审核，如发现虚假信息，有权拒绝注册或暂停账号使用。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">三、用户行为规范</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">您在使用本平台服务时，应当遵守国家法律法规，不得发布、传播以下内容：</p>
-            <p style="margin-bottom:8px;padding-left:2em;">（1）违反宪法确定的基本原则的；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">（2）危害国家安全，泄露国家秘密，颠覆国家政权，破坏国家统一的；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">（3）损害国家荣誉和利益的；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">（4）煽动民族仇恨、民族歧视，破坏民族团结的；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">（5）破坏国家宗教政策，宣扬邪教和封建迷信的；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">（6）散布谣言，扰乱社会秩序，破坏社会稳定的；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">（7）散布淫秽、色情、赌博、暴力、凶杀、恐怖或者教唆犯罪的；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">（8）侮辱或者诽谤他人，侵害他人合法权益的；</p>
-            <p style="margin-bottom:12px;padding-left:2em;">（9）含有法律、行政法规禁止的其他内容的。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">四、内容发布与知识产权</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">1. 您在本平台发布的内容，您保证对其享有合法的知识产权或已获得相关授权。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">2. 您在本平台发布的内容，授予本平台在全球范围内免费的、非独占的、可再许可的使用权，包括但不限于展示、传播、复制、改编等。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">3. 本平台有权对您发布的内容进行审核，对违反法律法规或本协议的内容进行删除。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">五、隐私保护</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">本平台重视您的个人信息保护。我们将按照《隐私政策》的规定收集、存储、使用、披露和保护您的个人信息。同时，您也应当尊重他人的隐私，不得发布、传播他人的隐私信息。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">六、账号处罚规则</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">如您违反本协议或相关法律法规，本平台有权视情节轻重采取以下措施：</p>
-            <p style="margin-bottom:8px;padding-left:2em;">（1）警告；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">（2）删除违规内容；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">（3）限制账号功能；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">（4）封禁账号；</p>
-            <p style="margin-bottom:12px;padding-left:2em;">（5）涉嫌违法犯罪的，移交司法机关处理。</p>
-            <p style="margin-bottom:12px;text-indent:2em;"><strong>关于内容保护与截图溯源的特别约定：</strong>本平台对部分受保护帖子采用暗码水印技术，在页面展示时自动嵌入不可见的数字水印信息。任何对该类内容的截图均携带可溯源的数字标识，平台可通过技术手段追踪到截图的来源用户。未经授权截图、传播受保护内容的用户，一经溯源核实，账号将被<strong style="color:#e53e3e;">永久封禁</strong>，同时禁止登录及接收新帖子。情节严重涉嫌违法犯罪的，将移交司法机关处理。</p>
-            <p style="margin-bottom:12px;text-indent:2em;"><strong>关于风控名单的特别约定：</strong>对存在恶意注册、内容盗用、严重违规等行为的账号，本平台有权将其账号关联的手机号、IP地址及设备标识纳入平台风控名单，并限制相关设备、手机号或IP的注册、登录及发布行为。风控名单中的信息仅用于平台内部风险控制与违规处理，我们不会向任何第三方披露。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">七、未成年人保护</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">未成年人使用本平台服务应在监护人的指导和监督下进行。本平台重视未成年人的保护，如发现未成年人发布或传播不当内容，将及时处理。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">八、免责声明</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">1. 因不可抗力或本平台不能控制的原因造成的服务中断，本平台不承担责任。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">2. 用户发布的内容仅代表用户个人观点，不代表本平台立场。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">3. 因用户违反本协议造成的损失，由用户自行承担。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">九、协议的终止</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">您有权随时注销账号，本协议自账号注销之日起终止。本平台有权根据法律法规及政策变化、业务调整等原因终止本协议，并提前通知您。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">十、联系方式</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">如您对本协议有任何疑问或建议，请通过平台内"反馈"功能与我们联系，或发送邮件至官方邮箱：<span style="color:#1D9BF0;">zanhuadev@163.com</span>。</p>
-            <p style="margin-top:30px;text-align:right;color:#999;font-size:12px;">最后更新日期：2026年8月27日</p>
-          </div>
+    function renderAgreementDoc(title, contentHtml) {
+      return `<div class="page">
+        <div class="navbar" style="position:fixed;top:0;left:0;right:0;z-index:100;background:#fff;">
+          <div onclick="goBack()" style="font-size:22px;cursor:pointer;color:#333;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div>
+          <h1 style="flex:1;text-align:center;font-size:17px;font-weight:600;">${title}</h1>
+          <div style="width:28px;"></div>
         </div>
-      `;
+        <div style="padding-top:calc(50px + env(safe-area-inset-top));"></div>
+        <div style="padding:20px 16px;line-height:1.8;font-size:14px;color:#333;">${contentHtml}</div>
+      </div>`;
     }
+
+    const _AGREE_TEXT_MINOR = `
+<h2 style="font-size:17px;font-weight:700;margin:0 0 12px;color:#333;text-align:center;">赞话未成年人（含儿童）隐私政策</h2>
+<p style="margin-bottom:14px;font-size:12px;color:#999;text-align:center;">版本更新日期：2026年8月28日</p>
+<p style="margin-bottom:14px;font-size:12px;color:#999;text-align:center;">生效日期：2026年8月28日</p>
+<h2 style="font-size:17px;font-weight:700;margin:0 0 12px;color:#333;text-align:center;">赞话（以下简称“我们”或“本平台”）深知未成年人，尤其是不满十四周岁儿童个人信息安全的重要性。未成年人的心智尚未完全成熟，个人信息一旦遭到不当收集、使用、披露或传播，可能对其人格尊严、人身财产安全及未来发展造成难以估量的损害。因此，我们依据《中华人民共和国民法典》《中华人民共和国网络安全法》《中华人民共和国数据安全法》《中华人民共和国个人信息保护法》《中华人民共和国未成年人保护法》《儿童个人信息网络保护规定》《未成年人网络保护条例》以及《信息安全技术 个人信息安全规范》（GB/T 35273—2020）等法律法规、部门规章及国家标准的有关规定，制定本《赞话未成年人（含儿童）隐私政策》（以下简称“本政策”）。</h2>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">本政策是《赞话用户隐私政策》不可分割的特别组成部分，专门就未成年人在使用赞话平台服务过程中涉及的个人信息处理规则作出更为严格、细化的规定。我们恳请阁下及阁下的监护人务必认真、完整地阅读并充分理解本政策全部内容，特别是以加粗、下划线或其他显著方式提示的条款。若阁下为未成年人，请在阁下的父母或其他监护人（以下统称“监护人”）陪同下阅读本政策，并在取得监护人明确同意后，方可使用本平台服务。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第一条 定义与适用范围</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 未成年人：指不满十八周岁的自然人。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 儿童：指不满十四周岁的未成年人。根据《中华人民共和国个人信息保护法》及《儿童个人信息网络保护规定》，儿童个人信息属于敏感个人信息，受到更高等级的法律保护。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 监护人：指依法对未成年人承担监护职责的父母或者其他具有监护资格的个人或组织。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 未成年人个人信息：指以电子或者其他方式记录的，能够单独或者与其他信息结合识别特定未成年人身份或者反映特定未成年人活动情况的各种信息，包括但不限于姓名、出生日期、身份证件号码、生物识别信息、住址、电话号码、电子邮箱、健康信息、行踪信息、网络身份标识、设备信息以及未成年人使用服务过程中产生的内容信息与行为信息等。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 处理：包括个人信息的收集、存储、使用、加工、传输、提供、公开、删除等行为。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">本政策适用于赞话平台向未成年人提供的所有产品及服务。凡本政策与《赞话用户隐私政策》不一致之处，以本政策为准；本政策未作特别规定的，适用《赞话用户隐私政策》及《赞话用户服务协议》的相关约定。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第二条 处理未成年人个人信息的基本原则</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">我们处理未成年人个人信息，将严格遵循以下基本原则：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 合法性原则：处理未成年人个人信息应当具有明确、合理的目的，并遵循合法、正当、必要的原则，不得过度处理。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 最小必要原则：仅收集与实现服务功能直接相关、且为实现该功能所必需的最少类型的个人信息，不得收集与其提供服务无关的信息。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 监护人同意原则：处理不满十四周岁儿童个人信息前，应当通过显著、清晰、易于理解的方式，真实、准确、完整地向监护人告知处理事项，并取得监护人的单独同意。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 目的限定原则：处理未成年人个人信息应当限于实现特定目的，不得扩大使用范围；确需变更处理目的的，应当重新取得监护人同意。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 安全保障原则：采取与未成年人个人信息风险相适应的安全技术措施和管理制度，防止信息泄露、篡改、丢失。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">6. 公开透明原则：以明确、易懂的方式公开处理规则，并接受监护人及社会监督。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">7. 分级保护原则：对不满十四周岁儿童的个人信息给予特别保护；对已满十四周岁不满十八周岁未成年人的个人信息，依法予以适当保护。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第三条 监护人同意机制</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 若阁下为不满十四周岁的儿童，在使用本平台任何服务前，应当由阁下的监护人完整阅读并同意《赞话用户服务协议》《赞话用户隐私政策》及本政策。未经监护人依法同意，我们不会主动收集、使用儿童个人信息。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 我们采取以下方式之一取得监护人同意：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（1）通过注册页面弹窗、短信验证、邮件确认、勾选声明等方式，由监护人作出明确同意；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（2）通过上传监护人身份证明、监护关系证明等材料进行核验后，取得同意；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（3）根据法律、行政法规规定可以不经监护人同意的其他情形除外。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 若阁下为已满十四周岁不满十八周岁的未成年人，应当在监护人的指导和监督下阅读本政策及《赞话用户服务协议》，并在监护人同意后使用本平台服务。我们有权在合理范围内核验监护关系及同意有效性。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 监护人应当加强对未成年人使用网络行为的监督和引导，教育未成年人增强个人信息保护意识，不随意向他人泄露个人信息，不轻信网络信息，不参与网络欺凌等违法活动。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 若我们发现平台在未事先获得可证实的监护人同意的情况下收集了儿童个人信息，将尽快删除相关信息。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第四条 未成年人个人信息的收集</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">我们仅在实现下列功能所必需的范围内收集未成年人个人信息：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（一）账号注册与身份识别信息</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">未成年人注册账号时，我们仅收集必要的网络身份标识信息，例如手机号码、昵称、头像等，用于创建账号、登录验证和身份识别。我们不会主动收集未成年人的真实姓名、身份证件号码、生物识别信息、住址等敏感个人信息；如特定功能依法确需收集的，将另行取得监护人单独同意。我们不会向未成年人开放需提交身份证件号码、企业资质等敏感信息的认证功能。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（二）使用行为信息</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">未成年人使用本平台时，我们会收集其发布内容、点赞、评论、收藏、关注、分享、浏览记录、搜索记录等使用行为信息，用于提供、维护和优化服务，保障平台内容安全与用户体验。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（三）设备与日志信息</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">为保障账号安全、防范网络攻击与欺诈行为，我们会收集设备型号、操作系统版本、设备唯一标识符（如 Android ID、IDFA、OAID 等）、IP 地址、网络接入方式、访问时间、操作日志等信息。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（四）经授权调用的设备权限</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">未经监护人明确同意，我们不会开启未成年人设备的相机、麦克风、相册、位置等敏感权限。如特定服务确需调用，我们将以弹窗等方式单独提示，并取得监护人同意。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（五）依法无需同意的情形</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">根据《中华人民共和国个人信息保护法》第十三条第二款等相关规定，以下情形处理个人信息不需要取得个人同意；涉及儿童个人信息的，我们仍会审慎评估，并在法律允许范围内处理：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 为订立、履行个人作为一方当事人的合同所必需；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 为履行法定职责或者法定义务所必需；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 为应对突发公共卫生事件，或者紧急情况下为保护自然人的生命健康和财产安全所必需；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 为公共利益实施新闻报道、舆论监督等行为，在合理的范围内处理个人信息；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 依照法律规定在合理的范围内处理个人自行公开或者其他已经合法公开的个人信息；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">6. 法律、行政法规规定的其他情形。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第五条 未成年人个人信息的使用</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">我们仅在下列目的范围内使用未成年人个人信息：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 创建、维护未成年人账号，提供账号登录、身份验证、密码找回等服务；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 展示、发布、推送未成年人自主创作的内容及互动信息；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 保障未成年人账号及平台安全，防范网络诈骗、恶意注册、账号盗用、内容滥用等风险；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 依法对平台内容进行审核，过滤暴力、色情、赌博、恐怖、邪教、欺凌等不适宜未成年人接触的信息；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 提供青少年模式、防沉迷等保护功能；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">6. 向监护人提供必要的通知、提示；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">7. 根据法律、行政法规规定或有权机关要求，配合调查取证、举报处理等。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">除另有约定外，我们不会利用未成年人个人信息进行自动化决策或用户画像，不会向未成年人推送定向广告，不会实施与未成年人年龄、认知能力明显不符的个性化推荐。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第六条 未成年人个人信息的共享、委托处理、转移与披露</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">我们高度重视未成年人个人信息的安全，原则上不会向第三方共享、转让或公开披露未成年人个人信息。仅在以下情形下，可能依法进行共享或披露：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 取得监护人单独同意：在事先获得监护人的明确、单独同意后，向特定第三方提供；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 法律法规要求：根据法律、行政法规、司法裁判、行政机关的决定或命令，必须提供；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 保护重大利益所必需：为保护未成年人或其他用户的生命、身体、财产等重大合法权益所必需，且难以取得监护人同意的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 委托处理：与经过严格筛选并签署数据处理协议的授权合作伙伴共享必要信息，仅用于提供技术支持、云存储、内容审核、短信发送等服务，且未经我们授权不得用于其他目的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 合并、分立、解散、被宣告破产等原因转移：需要转移个人信息的，我们将向接收方告知接收方的名称或者姓名和联系方式，并要求接收方继续履行本政策及法律法规规定的义务；接收方变更处理目的、处理方式的，应当依法重新取得监护人同意。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">除上述情形外，我们不会向任何第三方出售、出租、交换或非法提供未成年人个人信息。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第七条 未成年人个人信息的存储与跨境传输</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 未成年人个人信息原则上存储于中华人民共和国境内，不向境外传输。如确因业务需要向境外提供的，将依照《中华人民共和国个人信息保护法》第三十八条至第四十条的规定，通过国家网信部门组织的安全评估、专业机构认证或者签订标准合同等方式，保障境外接收方处理活动达到法定保护标准，并取得监护人单独同意。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 我们仅在实现处理目的所必需的期限内保存未成年人个人信息。保存期限届满的，将采取删除、匿名化处理等措施。法律法规另有规定的，从其规定。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 未成年人注销账号后，我们将及时删除或匿名化其个人信息；但依据《中华人民共和国网络安全法》等规定需要留存日志不少于六个月的，依法留存。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第八条 安全保护措施</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 我们已任命专门的未成年人个人信息保护负责人，负责统筹未成年人个人信息安全工作，受理投诉举报，并定期开展个人信息保护影响评估。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 我们采取下列安全技术措施：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（1）对未成年人个人信息进行加密存储、加密传输；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（2）建立分级访问控制机制，仅限经授权的必要人员访问；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（3）部署防火墙、入侵检测系统、防病毒系统等网络安全防护措施；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（4）建立日志留存与审计制度，对信息处理行为进行记录和追溯；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（5）定期开展安全漏洞扫描与渗透测试。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 我们建立未成年人个人信息安全事件应急预案。一旦发生或者可能发生信息泄露、篡改、丢失的，我们将立即启动应急预案，采取补救措施，并按照法律法规要求及时告知监护人和相关部门。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 我们定期对从业人员进行未成年人个人信息保护培训，并与其签订保密协议，明确保密义务和违约责任。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第九条 未成年人及监护人的权利</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">为保障未成年人及其监护人的合法权益，依据《中华人民共和国个人信息保护法》等规定，监护人及未成年人享有以下权利：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 知情权：有权要求我们告知未成年人个人信息的处理目的、方式、种类、保存期限、行使权利的方式等；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 查阅、复制权：有权查阅、复制未成年人个人信息；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 更正、补充权：发现信息不准确或不完整的，有权要求更正、补充；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 删除权：符合法定情形时，有权要求删除未成年人个人信息；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 撤回同意权：有权撤回先前作出的同意，撤回后不影响撤回前基于同意已进行的处理的效力；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">6. 限制处理权：在特定情形下，有权要求我们限制对未成年人个人信息的处理；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">7. 可携带权：符合法定条件的，有权要求将个人信息转移至其他指定平台；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">8. 投诉举报权：有权向我们的未成年人个人信息保护负责人投诉，或向国家网信部门、市场监督管理部门等监管机构举报。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">监护人行使上述权利的，可以通过本政策第十二条载明的联系方式向我们提出。我们将在核实身份后15个工作日内予以处理，法律法规另有规定或情况复杂的，可依法延长。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十条 内容安全与防沉迷保护</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 我们建立内容审核机制，通过机器审核与人工审核相结合的方式，对未成年人可接触的内容进行筛选，过滤不适宜未成年人身心健康的暴力、色情、低俗、恐怖、赌博、邪教、封建迷信、欺凌等内容。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 我们提供青少年模式。该模式下：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（1）限制单次使用时长及每日累计使用时长；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（2）限制部分功能的使用权限；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（3）过滤不适宜内容，提供适龄内容池；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（4）不提供充值打赏、付费服务或大额消费功能。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 我们鼓励监护人开启家长监督功能，参与未成年人网络使用管理，共同营造健康网络环境。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 若发现未成年人发布或传播违法违规信息，我们将依法采取删除、限制功能、封禁账号等措施，并视情况通知监护人。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 若监护人发现未成年人账号存在异常使用情况或接到未成年人关于网络欺凌、不良信息等投诉，可通过本政策载明的联系方式与我们联系，我们将在核实后依法及时处理。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十一条 未成年人个人信息保护负责人</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">我们设立未成年人个人信息保护负责人，负责监督本政策的执行，处理监护人及未成年人提出的权利请求与投诉，定期向管理层报告未成年人个人信息保护情况。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">未成年人个人信息保护负责人联系方式：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">邮箱：zanhuadev@163.com</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">平台内“反馈”功能：请注明“未成年人个人信息保护”。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十二条 政策的更新</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">我们可能根据法律法规变化、产品功能调整、安全能力升级等原因适时更新本政策。发生下列重大变更时，我们将通过平台显著位置公告、弹窗提示、邮件通知等方式告知监护人和未成年人，并依法重新取得监护人同意（如涉及儿童个人信息处理目的、方式等重大变更）：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 处理目的、处理方式发生重大变化；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 共享、转让、公开披露的对象发生重大变化；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 用户权利及其行使方式发生重大变化；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 安全措施发生重大变化；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 其他可能对未成年人个人信息权益产生重大影响的变更。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">更新后的政策自公告载明的生效日期起生效。监护人及未成年人继续使用本平台服务的，视为已阅读并接受更新后的政策；但涉及需要重新取得同意的变更，我们将在取得同意后再生效。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十三条 法律适用与争议解决</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">本政策的订立、执行、解释及争议解决均适用中华人民共和国法律。因本政策产生的争议，双方应友好协商解决；协商不成的，任何一方均可向本平台运营者住所地有管辖权的人民法院提起诉讼。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">----------</p>
+    `;
+    const _AGREE_TEXT_PRIVACY = `
+<h2 style="font-size:17px;font-weight:700;margin:0 0 12px;color:#333;text-align:center;">赞话用户隐私政策</h2>
+<p style="margin-bottom:14px;font-size:12px;color:#999;text-align:center;">版本更新日期：2026年8月28日</p>
+<p style="margin-bottom:14px;font-size:12px;color:#999;text-align:center;">生效日期：2026年8月28日</p>
+<h2 style="font-size:17px;font-weight:700;margin:0 0 12px;color:#333;text-align:center;">赞话（以下简称“我们”或“本平台”）深知个人信息对阁下人格尊严、人身财产安全及隐私权益的重要性。我们始终致力于依法保护阁下的个人信息，遵守《中华人民共和国民法典》《中华人民共和国网络安全法》《中华人民共和国数据安全法》《中华人民共和国个人信息保护法》《网络信息内容生态治理规定》《互联网用户账号信息管理规定》《移动互联网应用程序信息服务管理规定》以及《信息安全技术 个人信息安全规范》（GB/T 35273—2020）等法律法规、部门规章及国家标准，建立健全个人信息保护制度，采取相应的安全保护措施，尽力保障阁下的个人信息安全可控。</h2>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">本《赞话用户隐私政策》（以下简称“本政策”）旨在向阁下清晰说明：我们如何收集、使用、存储、共享、转移、公开披露阁下的个人信息，以及阁下享有的权利和行使方式。请阁下在使用本平台服务前，务必审慎阅读、充分理解本政策全部内容。阁下注册或使用本平台服务，即表示阁下已充分理解并同意本政策。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">特别提示：若阁下为未满十八周岁的未成年人，请阁下的监护人仔细阅读本政策及《赞话未成年人（含儿童）隐私政策》，并在监护人同意后使用本平台服务。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第一条 定义</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 个人信息：指以电子或者其他方式记录的与已识别或者可识别的自然人有关的各种信息，不包括匿名化处理后的信息。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 敏感个人信息：指一旦泄露或者非法使用，容易导致自然人的人格尊严受到侵害或者人身、财产安全受到危害的个人信息，包括生物识别、宗教信仰、特定身份、医疗健康、金融账户、行踪轨迹等信息，以及不满十四周岁未成年人的个人信息。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 处理：包括个人信息的收集、存储、使用、加工、传输、提供、公开、删除等。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 匿名化：指个人信息经过处理无法识别特定自然人且不能复原的过程。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 去标识化：指个人信息经过处理，使其在不借助额外信息的情况下无法识别特定自然人的过程。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第二条 适用范围</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">本政策适用于赞话平台通过网站、移动应用程序、小程序等形式向阁下提供的全部产品及服务。第三方通过本平台向阁下提供的服务，适用其自身隐私政策，不适用本政策。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第三条 信息收集</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（一）注册与账号信息</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">当阁下注册账号时，我们可能收集：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 手机号码：用于账号注册、登录验证及安全保护；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 昵称、头像：用于展示阁下的网络身份；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 性别、生日、国家或地区：用于内容推荐与功能适配；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 账号密码：经不可逆加密后存储，我们无法获知明文密码。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（二）使用信息</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">当阁下使用本平台服务时，我们可能收集：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 发布与互动内容：阁下发布的文字、图片、视频、音频、评论，以及点赞、收藏、关注、分享等操作记录；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 日志信息：设备型号、操作系统版本、IP 地址、网络接入方式、访问时间、浏览记录、搜索记录、崩溃日志等；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 设备信息：为保障账号安全与风险控制，我们可能收集设备唯一标识符（如 Android ID、IDFA、OAID）、设备序列号、设备 MAC 地址等；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 位置信息：基于 IP 地址解析的大致地理位置，用于内容展示与风控；经阁下单独授权后，可获取精确定位信息。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（三）图片/视频信息</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">当阁下上传图片、视频时，我们会存储相应内容用于平台展示。为保护版权、防止恶意盗用并实现截图溯源，部分受保护内容在展示时会嵌入不可见的数字水印信息。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（四）认证信息</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">当阁下申请实名认证或企业认证时，我们可能收集并加密存储阁下的真实姓名、身份证件号码、企业名称、统一社会信用代码、营业执照等资质信息，仅用于身份核验与合规审查。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">特别说明：未成年人账号不开放需收集身份证件号码的实名认证或企业认证功能。如特定功能确需收集未满十四周岁儿童上述信息的，我们将另行取得其监护人的单独同意；已满十四周岁不满十八周岁的未成年人申请认证的，应取得监护人同意。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（五）违规与风控信息</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">当阁下账号被举报或触发平台风控规则时，我们可能收集并记录阁下的手机号码、IP 地址、设备标识、违规记录、举报信息等，用于核实处理违规行为、维护平台秩序。对存在严重违规行为的账号，其关联的手机号码、IP 地址、设备标识等信息可能被纳入平台风控名单，以防止其继续使用本平台服务。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">风控名单信息仅用于平台内部风险控制与违规处理，保存期限为实现上述目的所必需的最短时间，一般不超过账号封禁后两年；法律法规另有规定的，从其规定。阁下如因他人违规导致自身受到风控措施影响，或对风控名单信息有异议，可通过本政策第十三条载明的联系方式提出申诉，我们将在核实后及时处理。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（六）设备权限调用</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">我们可能申请调用阁下的下列设备权限：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 相机：用于拍摄并上传图片、视频；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 相册：用于选择并上传图片、视频；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 麦克风：用于录制音频、视频；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 通知：用于向阁下发送通知消息；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 位置：用于提供基于位置的服务。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">上述权限均需阁下单独授权，阁下可随时在设备设置中关闭。关闭权限可能导致部分功能无法正常使用，但不影响其他功能。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第四条 信息使用</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">我们收集的个人信息用于以下目的：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 提供、维护、改进和优化平台服务；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 保障账号与网络安全，防范欺诈、恶意注册、内容盗用等违法活动；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 内容审核与平台治理，保障平台内容合法合规；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 向阁下发送与账号、服务相关的通知、验证码、安全提示；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 统计分析、运营分析，优化产品体验；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">6. 风险控制与安全审计；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">7. 依据法律法规要求，配合有关机关查询、调查、取证；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">8. 其他经阁下明确同意的用途。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第五条 Cookie 及同类技术</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">我们可能使用 Cookie、Web Beacon、脚本及其他同类技术，以提升用户体验、保障安全、进行统计。阁下可以通过浏览器或设备设置管理或清除 Cookie。关闭 Cookie 可能影响部分功能的正常使用。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第六条 第三方 SDK 与授权合作伙伴</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">为实现特定功能，我们可能接入第三方提供的软件开发工具包（SDK）。第三方 SDK 将依据其自身规则处理部分个人信息。我们仅会与具备合法资质并签署数据处理协议的伙伴合作，并采取必要措施监督其合规性。我们目前使用的第三方 SDK 及服务包括：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 高德地图 SDK</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">功能类型：定位、地图展示</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">收集个人信息类型：位置信息（精确或大致）、设备信息（设备标识符、操作系统版本等）、网络信息</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">使用目的：提供基于位置的内容推荐、距离展示、附近功能等</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">隐私政策链接：https://lbs.amap.com/pages/privacy/</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 腾讯云 SDK</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">功能类型：云存储、内容分发、安全防护</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">收集个人信息类型：设备信息、日志信息、用户上传的内容（加密存储）</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">使用目的：数据存储、内容加速、基础安全防护</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">隐私政策链接：https://cloud.tencent.com/document/product/301/11470</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 阿里云 SDK</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">功能类型：云存储、安全防护、短信发送、内容安全</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">收集个人信息类型：手机号码、日志信息、设备信息、用户上传的内容</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">使用目的：短信验证码发送、数据存储、内容审核</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">隐私政策链接：https://www.aliyun.com/sswd/168614-1.html</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. Cloudflare SDK</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">功能类型：网络安全、内容分发、DDoS 防护</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">收集个人信息类型：IP 地址、访问日志、设备信息</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">使用目的：保障平台网络安全、防止恶意攻击</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">隐私政策链接：https://www.cloudflare.com/privacypolicy/</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 亚马逊云中国区 SDK（由北京光环新网科技有限公司运营）</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">功能类型：云存储、计算资源</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">收集个人信息类型：用户上传的内容、日志信息</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">使用目的：数据存储、服务部署</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">隐私政策链接：https://www.amazonaws.cn/privacy/</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">6. 华为云 SDK</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">功能类型：云存储、推送服务</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">收集个人信息类型：设备标识符、日志信息、推送令牌</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">使用目的：消息推送、数据存储</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">隐私政策链接：https://www.huaweicloud.com/declaration/sa_prp.html</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">以上第三方服务仅用于实现特定功能，我们不会向其提供与服务无关的个人信息。阁下可查阅各第三方隐私政策了解详情。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第七条 信息共享、转让与公开披露</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 我们不会向第三方出售阁下的个人信息。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 仅在下列情形下，我们可能共享阁下信息：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（1）获得阁下单独同意；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（2）根据法律法规要求或司法/行政机关的强制性要求；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（3）为保护我们及用户的合法权益所必需，且难以取得阁下同意的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">（4）与授权合作伙伴共享，仅用于实现本政策声明的目的。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 我们不会公开披露阁下的个人信息，但依法公开或取得阁下单独同意的除外。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 发生合并、分立、解散、被宣告破产等情形时，我们将依法处理个人信息转移，并告知接收方信息。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第八条 信息存储与跨境传输</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 阁下的个人信息存储于中华人民共和国境内。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 我们仅在实现处理目的所必需的期限内保存个人信息，超出期限后删除或匿名化；但法律、行政法规另有规定，或为履行法定义务、保障网络安全和风控所必需的除外。例如，依据《中华人民共和国网络安全法》规定，网络日志留存时间不少于六个月；依据平台安全风控需要，涉及严重违规的账号关联手机号码、IP地址、设备标识等信息可能在必要期限内保留。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 确需向境外提供个人信息的，将依法通过安全评估、认证或签订标准合同等方式进行，并取得阁下的单独同意（如涉及敏感个人信息）。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第九条 安全保护</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">我们采取下列安全措施保护阁下的个人信息：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 采用加密、脱敏、去标识化等技术手段；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 建立访问控制与权限管理制度；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 部署防火墙、入侵检测、防病毒等安全设施；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 定期开展安全审计与风险评估；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 制定安全事件应急预案并开展演练；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">6. 对从业人员进行安全培训并签订保密协议。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">但请阁下知悉，互联网环境并非绝对安全，我们无法保证百分之百不受攻击或泄露。若发生安全事件，我们将依法及时通知阁下及监管部门。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十条 阁下的权利</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">依据《中华人民共和国个人信息保护法》，阁下享有以下权利：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 知情权、决定权：有权知悉并决定阁下的个人信息如何处理；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 限制或拒绝处理权：有权限制或拒绝我们处理阁下的个人信息；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 查阅、复制权：有权查阅、复制阁下的个人信息；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 更正、补充权：有权要求更正、补充不准确或不完整的个人信息；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 删除权：符合法定情形时，有权要求删除个人信息；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">6. 注销权：有权注销账号；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">7. 撤回同意权：有权撤回对处理的同意；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">8. 可携带权：符合法定条件时，有权要求将个人信息转移至指定平台；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">9. 投诉举报权：有权向我们的个人信息保护负责人投诉或向监管机构举报。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十一条 未成年人特别保护</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">我们非常重视未成年人个人信息保护。若阁下为未成年人，请在使用本平台服务前，务必取得监护人的同意。对于经监护人同意而收集的未成年人信息，我们仅在法律允许、监护人明确同意或保护未成年人所必要的情况下使用或披露。专门适用于未成年人的规则，请查阅《赞话未成年人（含儿童）隐私政策》。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十二条 政策的更新</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">本政策可能根据法律法规变化、产品功能调整等原因更新。发生重大变更时，我们将在平台内通过显著方式通知阁下，并在必要时重新取得阁下的同意。阁下继续使用服务即视为接受更新后的政策，但涉及需要重新取得同意的变更，我们将在取得同意后再生效。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十三条 联系方式</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">如阁下对本政策有任何疑问、意见或建议，或需要行使阁下的权利，请通过以下方式联系我们：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 平台内“反馈”功能；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 官方邮箱：zanhuadev@163.com。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">我们将在收到阁下反馈后尽快处理，一般不超过15个工作日。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十四条 法律适用与争议解决</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">本政策适用中华人民共和国法律。因本政策产生的争议，双方应协商解决；协商不成的，向本平台运营者住所地有管辖权的人民法院提起诉讼。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">----------</p>
+    `;
+    const _AGREE_TEXT_SERVICE = `
+<h2 style="font-size:17px;font-weight:700;margin:0 0 12px;color:#333;text-align:center;">赞话用户服务协议</h2>
+<p style="margin-bottom:14px;font-size:12px;color:#999;text-align:center;">版本更新日期：2026年8月28日</p>
+<p style="margin-bottom:14px;font-size:12px;color:#999;text-align:center;">生效日期：2026年8月28日</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第一条 总则与协议的接受</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">欢迎阁下使用“赞话”社交平台（以下简称“本平台”）！</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">为使用赞话平台服务，阁下应当阅读并遵守《赞话用户服务协议》（以下简称“本协议”）以及《赞话用户隐私政策》《赞话未成年人（含儿童）隐私政策》。请阁下务必审慎阅读、充分理解各条款内容，特别是免除或限制责任的条款，以及开通或使用某项服务的单独约定，并选择接受或不接受。限制、免责条款可能以显著形式提示阁下注意。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">除非阁下已阅读并接受本协议所有条款，否则阁下无权注册、登录或使用本平台服务。阁下的注册、登录、使用等行为即视为阁下已阅读并同意上述协议的约束。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">如果阁下未满18周岁，请在法定监护人的陪同下阅读本协议及上述其他协议，并特别注意未成年人使用条款。特别地，如果阁下是未满14周岁的儿童，则在完成账号注册前，还应请阁下的监护人仔细阅读本平台专门制定的《赞话未成年人（含儿童）隐私政策》。只有在取得监护人对《赞话未成年人（含儿童）隐私政策》的同意后，未满14周岁的儿童方可使用本平台服务。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">本协议是阁下与本平台运营者之间就阁下使用本平台产品及服务所订立的具有法律约束力的合同。本平台运营者依据《中华人民共和国民法典》《中华人民共和国网络安全法》《中华人民共和国数据安全法》《中华人民共和国个人信息保护法》《网络信息内容生态治理规定》《互联网用户账号信息管理规定》等法律法规制定本协议。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">本平台有权根据法律法规、监管政策及产品运营需要，不时修订本协议。修订后的协议将在平台显著位置公布，自公布之日起生效。阁下继续使用本平台服务，即视为接受修订后的协议；但涉及重大变更的，我们将以适当方式通知阁下。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第二条 定义</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 用户：指注册、登录或使用本平台服务的自然人、法人或其他组织，本协议中敬称“阁下”。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 账号：指阁下为使用本平台服务而注册的账户。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 内容：指阁下在本平台发布的文字、图片、视频、音频、链接、文件等信息。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 风控名单：指本平台为防范恶意注册、内容盗用、严重违规等风险，对关联手机号、IP 地址、设备标识等信息采取限制措施的内部名单。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第三条 账号注册与管理</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 阁下在注册账号时，应当提供真实、准确、完整、合法的个人资料，并在资料发生变更时及时更新。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 阁下的账号名称、头像、简介等身份信息不得含有违法或不良内容，不得冒用他人身份，不得侵害他人合法权益。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 阁下应妥善保管账号和密码。因阁下保管不善或主动向他人泄露导致的损失，由阁下自行承担。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 阁下不得将账号转让、出借、出租或出售给他人使用。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 本平台有权对阁下提交的资料进行审核。如发现虚假、不实或违法违规信息，有权拒绝注册、暂停或终止账号使用。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">6. 账号所有权：赞话账号的所有权归本平台所有，阁下完成注册后仅获得账号的使用权，且该使用权仅属于初始注册人。未经本平台书面同意，阁下不得以任何方式赠与、借用、租用、转让或售卖账号。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第四条 用户行为规范</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">阁下在使用本平台服务时，应当遵守国家法律法规及社会公序良俗，不得发布、传播含有下列内容的信息：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 违反宪法确定的基本原则的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 危害国家安全，泄露国家秘密，颠覆国家政权，破坏国家统一的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 损害国家荣誉和利益的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 歪曲、丑化、亵渎、否定英雄烈士事迹和精神，以侮辱、诽谤或者其他方式侵害英雄烈士的姓名、肖像、名誉、荣誉的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 宣扬恐怖主义、极端主义或者煽动实施恐怖活动、极端主义活动的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">6. 煽动民族仇恨、民族歧视，破坏民族团结的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">7. 破坏国家宗教政策，宣扬邪教和封建迷信的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">8. 散布谣言，扰乱社会秩序，破坏社会稳定的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">9. 散布淫秽、色情、赌博、暴力、凶杀、恐怖或者教唆犯罪的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">10. 煽动非法集会、结社、游行、示威、聚众扰乱社会秩序的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">11. 侮辱、诽谤他人，侵害他人名誉、隐私、肖像等合法权益的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">12. 侵犯他人知识产权、商业秘密的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">13. 侵害未成年人合法权益或者损害未成年人身心健康的；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">14. 其他违反法律法规、公序良俗或《网络信息内容生态治理规定》的内容。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">此外，阁下还不得实施下列行为：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 恶意注册、批量注册账号；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 利用技术手段攻击、干扰、破坏平台正常运行；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 爬取、抓取、复制平台数据用于非法用途；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 发布虚假广告、垃圾信息、诈骗信息；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 侵犯未成年人合法权益；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">6. 其他违反法律法规或本协议的行为。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第五条 内容发布与知识产权</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 阁下在本平台发布的内容，应当保证对其享有合法权利，或已取得权利人充分授权，且不侵犯任何第三方的知识产权、肖像权、名誉权、隐私权等合法权益。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 阁下在本平台发布的内容，授予本平台在全球范围内免费的、非独占的、可再许可的使用权，包括但不限于复制、展示、传播、修改、汇编、翻译、制作衍生品等，用于平台运营、推广、安全保护等目的。该授权不因账号注销而当然终止，但法律另有规定的除外。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 本平台有权对阁下发布的内容进行审核、筛选、删除，对违反法律法规或本协议的内容采取必要措施。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第六条 内容保护与截图溯源特别约定</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 本平台对部分受保护内容采用暗码水印技术。该技术在内容展示时自动嵌入不可见的数字水印信息，用于版权保护与违规溯源。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 任何对该类受保护内容的截图均携带可溯源的数字标识。本平台可通过技术手段追踪截图来源用户。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 未经授权，任何用户不得对受保护内容进行截图、下载、复制、传播、二次发布。一经溯源核实，本平台有权采取包括但不限于永久封禁账号、禁止登录、禁止接收新内容等措施；情节严重、涉嫌违法犯罪的，将移交司法机关依法处理。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第七条 风控名单特别约定</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 对存在恶意注册、内容盗用、严重违规、欺诈、攻击平台等行为的账号，本平台有权将该账号关联的手机号码、IP 地址及设备标识纳入平台风控名单。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 纳入风控名单的，本平台有权限制相关设备、手机号码或 IP 地址的注册、登录及发布行为。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 风控名单信息仅用于平台内部风险控制与违规处理。除法律法规另有规定或有权机关依法要求外，本平台不会向任何第三方披露。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 申诉机制：阁下如因他人违规导致自身受到风控措施影响，或对风控名单信息有异议，可通过本协议第十六条载明的联系方式提出申诉，本平台将在核实后及时处理。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第八条 账号处罚规则</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">如阁下违反本协议或相关法律法规，本平台有权视情节轻重，单方采取以下一项或多项措施：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 警告；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 删除违规内容；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 限制账号部分功能；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 临时封禁账号；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 永久封禁账号；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">6. 纳入风控名单；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">7. 涉嫌违法犯罪的，移交司法机关处理。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">本平台采取处罚措施后，将通过站内信、短信或其他合理方式通知阁下。阁下对处罚有异议的，可通过本协议载明的联系方式提出申诉。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第九条 隐私与个人信息保护</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">本平台重视阁下的个人信息保护。我们将依照《赞话用户隐私政策》《赞话未成年人（含儿童）隐私政策》的规定，收集、存储、使用、共享、转移和保护阁下的个人信息。同时，阁下应当尊重他人隐私，不得发布、传播他人隐私信息，不得非法获取、使用、买卖他人个人信息。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十条 未成年人保护</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 未成年人使用本平台服务，应当在监护人的指导和监督下进行。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 不满十四周岁儿童使用本平台服务前，必须取得监护人的明确同意。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 本平台提供青少年模式，限制未成年人的使用时长和可访问内容。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 如发现未成年人发布或传播不当内容，本平台将依法及时处理，并视情况通知监护人。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 未成年人个人信息的处理，适用《赞话未成年人（含儿童）隐私政策》。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十一条 第三方服务</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">本平台可能链接、嵌入第三方服务。该等第三方服务由第三方独立运营，其服务内容和责任由第三方承担。本平台对第三方服务的合法性、安全性、准确性不作保证，阁下在使用第三方服务时应自行判断并承担相应风险。因第三方服务引发的任何争议、纠纷或损失，由阁下与第三方自行解决，本平台在法律允许的范围内不承担责任。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十二条 免责声明与责任限制</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 因不可抗力或本平台不能控制的原因造成的服务中断、数据丢失等，本平台不承担责任。不可抗力包括但不限于自然灾害、战争、政府行为、网络攻击、基础电信运营故障等。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 用户发布的内容仅代表用户个人观点，不代表本平台立场。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 因用户违反本协议或法律法规造成的损失，由用户自行承担；给本平台或第三方造成损害的，用户应依法赔偿。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 本平台对用户的间接损失、预期利益损失、数据丢失导致的损失，在法律允许的最大范围内不承担责任。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">5. 阁下理解并同意，本平台无法保证服务绝对不中断、不延迟、不出错。任何网络服务均存在一定风险，阁下应自行备份重要数据。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十三条 协议的变更与终止</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 本平台有权根据法律法规、政策变化、业务调整等原因修改本协议。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 阁下有权随时注销账号，本协议自账号注销之日起终止，但法律或本协议另有约定的条款继续有效。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">3. 本平台有权根据国家规定、监管要求、运营策略等终止本协议，并提前通知阁下。</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">4. 如阁下长期未登录账号，本平台有权在合理期限后回收账号，以免资源浪费，由此带来的损失由阁下自行承担。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十四条 通知与送达</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">本平台向阁下发出的通知，可以通过站内信、弹窗、短信、邮件、公告等方式进行。通过公告方式通知的，自公告发布之日起视为送达。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十五条 法律适用与争议解决</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">本协议的订立、执行、解释及争议解决适用中华人民共和国法律。因本协议产生的争议，双方应友好协商解决；协商不成的，任何一方均可向本平台运营者住所地有管辖权的人民法院提起诉讼。</p>
+<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十六条 联系方式</h3>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">如阁下对本协议有任何疑问、意见或建议，请通过以下方式联系我们：</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 平台内“反馈”功能；</p>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 官方邮箱：zanhuadev@163.com。</p>
+    `;
+        function renderAgreementPage() { return renderAgreementDoc("赞话用户服务协议", _AGREE_TEXT_SERVICE); }
     function renderVerifSubAgreementPage() {
       return `
         <div class="page">
@@ -10538,130 +10844,8 @@ async function renderMySubOrders() {
       }
       if (btn) btn.disabled = false;
     }
-    function renderPrivacyPage() {
-      return `
-        <div class="page">
-          <div class="navbar" style="position:fixed;top:0;left:0;right:0;z-index:100;background:#fff;">
-            <div onclick="goBack()" style="font-size:22px;cursor:pointer;color:#333;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div>
-            <h1 style="flex:1;text-align:center;font-size:17px;font-weight:600;">赞话用户隐私政策</h1>
-            <div style="width:28px;"></div>
-          </div>
-          <div style="padding-top:calc(50px + env(safe-area-inset-top));"></div>
-          <div style="padding:20px 16px;line-height:1.8;font-size:14px;color:#333;">
-            <p style="margin-bottom:12px;text-indent:2em;">"赞话"（以下简称"我们"）深知个人信息对您的重要性，我们将按照法律法规要求，采取相应安全保护措施，尽力保护您的个人信息安全可控。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">一、我们收集的信息</h3>
-            <p style="margin-bottom:12px;font-weight:600;">（一）注册信息</p>
-            <p style="margin-bottom:12px;text-indent:2em;">当您注册账号时，我们会收集您的手机号、昵称、头像、性别、生日、国家或地区等信息，用于创建账号和提供服务。您的账号密码将经过加密处理后存储。</p>
-            <p style="margin-bottom:12px;font-weight:600;">（二）使用信息</p>
-            <p style="margin-bottom:12px;text-indent:2em;">当您使用本平台服务时，我们会收集以下信息：</p>
-            <p style="margin-bottom:8px;padding-left:2em;">1. 发布与互动内容：您发布的帖子、评论，以及点赞、收藏、关注等操作记录；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">2. 日志信息：设备型号、操作系统版本、IP地址、访问时间、浏览记录等；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">3. 设备信息：为保障账号安全与进行风险控制，我们会收集您设备的唯一标识（设备ID）；</p>
-            <p style="margin-bottom:12px;padding-left:2em;">4. 位置信息：我们可能根据您的IP地址解析您所在省份等大致地理位置，经您授权后也可获取更精确的地理位置信息，用于内容展示与服务优化。</p>
-            <p style="margin-bottom:12px;font-weight:600;">（三）图片/视频信息</p>
-            <p style="margin-bottom:12px;text-indent:2em;">当您上传图片或视频时，我们会存储您上传的内容，用于在平台展示。为保护内容版权并实现截图溯源，部分受保护内容的图片在展示时会嵌入不可见的数字水印信息。</p>
-            <p style="margin-bottom:12px;font-weight:600;">（四）认证信息</p>
-            <p style="margin-bottom:12px;text-indent:2em;">当您申请实名认证或企业认证时，我们会收集并加密存储您的身份信息或企业资质材料，仅用于身份核验。</p>
-            <p style="margin-bottom:12px;font-weight:600;">（五）违规与风控信息</p>
-            <p style="margin-bottom:12px;text-indent:2em;">当您的账号被举报或触发平台风控规则时，我们可能会收集并记录您的手机号、IP地址、设备标识及违规记录等信息，用于核实处理违规行为、维护平台秩序。对存在严重违规行为的账号，其关联的手机号、IP地址、设备标识等信息可能被纳入平台风控名单，以防止其继续使用本平台服务。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">二、我们如何使用信息</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">我们收集您的信息用于以下目的：</p>
-            <p style="margin-bottom:8px;padding-left:2em;">1. 提供、维护、改进我们的服务；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">2. 保障账号安全，防范欺诈等违法行为；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">3. 内容审核，保障平台内容合规；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">4. 向您发送通知、消息；</p>
-            <p style="margin-bottom:12px;padding-left:2em;">5. 统计分析，优化产品体验。</p>
-            <p style="margin-bottom:12px;padding-left:2em;">6. 风险控制与账号安全：防范恶意注册、内容盗用、诈骗等违法违规行为，核实并处理违规与举报事项。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">三、信息共享与披露</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">我们不会向第三方出售您的个人信息。仅在以下情况下，我们可能会共享您的信息：</p>
-            <p style="margin-bottom:8px;padding-left:2em;">1. 获得您的明确同意；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">2. 根据法律法规要求或司法/行政机关的强制性要求；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">3. 为保护我们及用户的合法权益所必需；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">4. 与授权合作伙伴共享：仅为实现本政策中声明的目的，我们的某些服务将由授权合作伙伴提供。我们可能会与合作伙伴共享您的某些个人信息，以提供更好的客户服务和用户体验。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">四、信息存储与安全</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">我们采取符合行业标准的安全措施保护您的个人信息安全，包括但不限于数据加密、访问控制、防火墙、定期安全审计等。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">我们将在中华人民共和国境内存储和处理您的个人信息。如需跨境传输，我们将按照法律法规执行。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">五、您的权利</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">您对您的个人信息享有以下权利：</p>
-            <p style="margin-bottom:8px;padding-left:2em;">1. 访问权：您可以在个人中心查看您的个人信息；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">2. 更正权：您可以修改您的个人资料；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">3. 删除权：您可以要求删除您的个人信息；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">4. 注销权：您可以注销您的账号；</p>
-            <p style="margin-bottom:12px;padding-left:2em;">5. 投诉举报权：如您认为我们侵犯了您的个人信息权益，可以进行投诉举报。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">六、未成年人保护</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">我们非常重视对未成年人个人信息的保护。若您是未成年人，在使用我们的产品和/或服务前，应事先取得您监护人的同意。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">对于经监护人同意而收集的未成年人信息，我们只会在受到法律允许、监护人明确同意或者保护未成年人所必要的情况下使用或披露。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">七、Cookie及类似技术</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">我们可能会使用Cookie等技术来提升用户体验。您可以通过浏览器设置管理Cookie。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">八、政策的更新</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">我们可能会适时更新本隐私政策。当政策发生重大变更时，我们将在平台内通知您。请您及时查看最新版本的隐私政策。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">九、联系我们</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">如您对本隐私政策有任何疑问、意见或建议，请通过平台内"反馈"功能与我们联系，或发送邮件至官方邮箱：<span style="color:#1D9BF0;">zanhuadev@163.com</span>。我们将在收到您的反馈后尽快处理。</p>
-            <p style="margin-top:30px;text-align:right;color:#999;font-size:12px;">最后更新日期：2026年8月27日</p>
-          </div>
-        </div>
-      `;
-    }
-    function renderMinorPrivacyPage() {
-      return `
-        <div class="page">
-          <div class="navbar" style="position:fixed;top:0;left:0;right:0;z-index:100;background:#fff;">
-            <div onclick="goBack()" style="font-size:22px;cursor:pointer;color:#333;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div>
-            <h1 style="flex:1;text-align:center;font-size:17px;font-weight:600;">赞话未成年人（含儿童）隐私政策</h1>
-            <div style="width:28px;"></div>
-          </div>
-          <div style="padding-top:calc(50px + env(safe-area-inset-top));"></div>
-          <div style="padding:20px 16px;line-height:1.8;font-size:14px;color:#333;">
-            <p style="margin-bottom:12px;text-indent:2em;">"赞话"（以下简称"我们"）深知未成年人个人信息对未成年人及其监护人的重要性。我们将按照《中华人民共和国未成年人保护法》《中华人民共和国个人信息保护法》等法律法规要求，严格保护未成年人的个人信息安全。本政策专门适用于不满十四周岁的未成年人（以下简称"儿童"），十四周岁以上的未成年人适用《隐私政策》及本政策中相关特别规定。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">一、适用范围</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">本政策是《隐私政策》的特别组成部分，专门规定我们在收集、使用、存储、共享和保护未成年人个人信息时的做法。如本政策与《隐私政策》存在不一致，以本政策为准；本政策未规定的，适用《隐私政策》。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">二、未成年人使用前提</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">1. 若您是不满十四周岁的儿童，在使用本平台任何服务前，应事先取得您的父母或其他监护人（以下统称"监护人"）的书面同意，并在监护人指导下使用。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">2. 若您是已满十四周岁不满十八周岁的未成年人，应在监护人的指导和监督下阅读本政策及《用户服务协议》，并在监护人同意后使用本平台服务。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">3. 监护人应指导未成年人树立良好的网络安全和个人信息保护意识，提醒未成年人不要随意向他人透露个人信息。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">三、我们收集的未成年人信息</h3>
-            <p style="margin-bottom:12px;font-weight:600;">（一）注册与账号信息</p>
-            <p style="margin-bottom:12px;text-indent:2em;">未成年人注册账号时，我们仅收集必要的信息，如手机号、昵称、头像，用于创建账号和身份识别。我们不会主动收集未成年人的真实姓名、身份证号、住址等敏感个人信息。</p>
-            <p style="margin-bottom:12px;font-weight:600;">（二）使用行为信息</p>
-            <p style="margin-bottom:12px;text-indent:2em;">未成年人使用本平台时，我们会收集其发布内容、互动行为（点赞、评论、收藏）等信息，用于提供和优化服务。</p>
-            <p style="margin-bottom:12px;font-weight:600;">（三）设备与日志信息</p>
-            <p style="margin-bottom:12px;text-indent:2em;">我们会收集设备型号、操作系统版本、设备唯一标识、IP地址、访问时间等日志信息，用于账号安全保护、风险控制和服务优化。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">四、信息使用原则</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">我们收集未成年人个人信息，将严格遵循以下原则：</p>
-            <p style="margin-bottom:8px;padding-left:2em;">1. 最小必要原则：仅收集实现服务所必需的最少信息；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">2. 监护人同意原则：收集儿童个人信息前，将通过显著方式告知监护人并取得同意；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">3. 合法正当原则：严格按照法律法规和本政策使用信息；</p>
-            <p style="margin-bottom:12px;padding-left:2em;">4. 安全保护原则：采取加密、访问控制等措施保护信息安全。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">五、信息共享与披露</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">我们不会向第三方出售未成年人的个人信息。仅在以下情况下，我们可能共享或披露未成年人信息：</p>
-            <p style="margin-bottom:8px;padding-left:2em;">1. 事先获得监护人的明确同意；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">2. 根据法律法规要求或司法/行政机关的强制性要求；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">3. 为保护未成年人或其他用户的人身、财产安全所必需；</p>
-            <p style="margin-bottom:12px;padding-left:2em;">4. 与经过严格筛选的授权合作伙伴共享，且仅限于实现服务目的所必需的信息。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">六、信息存储与安全</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">1. 未成年人个人信息将在中华人民共和国境内存储和处理。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">2. 我们设立专门的未成年人个人信息保护负责人，对未成年人信息采取加密存储、访问权限控制、定期安全审计等保护措施。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">3. 未成年人账号注销后，我们将及时删除相关个人信息，法律法规另有规定的除外。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">七、监护人的权利</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">监护人对未成年人的个人信息享有以下权利：</p>
-            <p style="margin-bottom:8px;padding-left:2em;">1. 知情权：了解我们收集、使用未成年人信息的情况；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">2. 访问权：查阅未成年人的个人信息；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">3. 更正权：要求更正不准确的信息；</p>
-            <p style="margin-bottom:8px;padding-left:2em;">4. 删除权：要求删除未成年人的个人信息；</p>
-            <p style="margin-bottom:12px;padding-left:2em;">5. 撤回同意权：撤回之前给予的同意。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">八、内容安全与防沉迷</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">1. 我们建立了内容审核机制，对未成年人接触的内容进行严格筛选，过滤不适宜未成年人的内容。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">2. 我们提供青少年模式，限制未成年人的使用时长和可访问内容，保护未成年人健康上网。</p>
-            <p style="margin-bottom:12px;text-indent:2em;">3. 我们积极引导未成年人树立正确的网络使用观念，鼓励监护人参与和监督。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">九、政策的更新</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">我们可能会适时更新本政策。当政策发生重大变更时，我们将通过平台显著位置通知监护人和未成年人。请您及时查看最新版本的政策内容。</p>
-            <h3 style="font-size:16px;font-weight:600;margin:20px 0 10px;">十、联系我们</h3>
-            <p style="margin-bottom:12px;text-indent:2em;">如对本政策有任何疑问、意见或建议，或需要行使您的权利，请通过平台内"反馈"功能与我们联系，或发送邮件至官方邮箱：<span style="color:#1D9BF0;">zanhuadev@163.com</span>。我们将在收到您的反馈后尽快处理。</p>
-            <p style="margin-top:30px;text-align:right;color:#999;font-size:12px;">最后更新日期：2026年8月27日</p>
-          </div>
-        </div>
-      `;
-    }
+        function renderPrivacyPage() { return renderAgreementDoc("赞话用户隐私政策", _AGREE_TEXT_PRIVACY); }
+        function renderMinorPrivacyPage() { return renderAgreementDoc("赞话未成年人（含儿童）隐私政策", _AGREE_TEXT_MINOR); }
     function renderReportPage() {
       const reasonHtml = REPORT_REASONS.map(r => `
         <div class="report-reason-item ${reportReason === r.key ? 'active' : ''}" onclick="selectReportReason('${r.key}')">
