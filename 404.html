@@ -29,7 +29,7 @@
       window.__BASE = _pf ? '/' + _pf : '';
     })();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register(window.__BASE + '/sw.js?v=9').catch(function(){});
+      navigator.serviceWorker.register(window.__BASE + '/sw.js?v=10').catch(function(){});
     }
   </script>
   <style>
@@ -123,8 +123,8 @@
     }
     .sk-tabbar-item { width: 24px; height: 24px; border-radius: 4px; }
   </style>
-  <link id="faCss" rel="stylesheet" data-src="https://154.201.81.86/zanhua/static/fontawesome/css/all.min.css?v=1">
-  <link id="appCss" rel="stylesheet" data-src="/app.css?v=5">
+  <link id="faCss" rel="stylesheet" data-src="https://154.201.81.86/zanhua/static/fontawesome/css/all.min.css?v=2">
+  <link id="appCss" rel="stylesheet" data-src="/app.css?v=6">
   <script>
     (function(){
       ['faCss','appCss'].forEach(function(id){
@@ -360,7 +360,7 @@
   <script>
     (function(){
       var s = document.createElement('script');
-      s.src = window.__BASE + '/app.js?v=11';
+      s.src = window.__BASE + '/app.js?v=13';
       document.body.appendChild(s);
     })();
   </script>

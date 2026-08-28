@@ -49,6 +49,90 @@
       return u;
     }
 
+    function thumbToOrig(thumbUrl) {
+      try {
+        const u = new URL(thumbUrl, location.href);
+        u.searchParams.delete('thumb');
+        return u.href;
+      } catch (e) { return ''; }
+    }
+
+    const imgPrefetch = (function() {
+      let queue = [];
+      let active = 0;
+      let paused = false;
+      const seen = new Set();
+      const MAX_ACTIVE = 2;
+      function pump() {
+        if (paused) return;
+        while (active < MAX_ACTIVE && queue.length) {
+          const url = queue.shift();
+          if (!url || seen.has(url)) continue;
+          seen.add(url);
+          active++;
+          const img = new Image();
+          img.onload = img.onerror = function() { active--; pump(); };
+          img.src = url;
+        }
+      }
+      return {
+        push: function(urls) {
+          for (let i = 0; i < urls.length; i++) { if (urls[i] && !seen.has(urls[i])) queue.push(urls[i]); }
+          pump();
+        },
+        pause: function() { paused = true; },
+        resume: function() { paused = false; pump(); }
+      };
+    })();
+
+    function trackImagesContainer(container) {
+      if (!container) return;
+      if (container._prefetchTracked) return;
+      container._prefetchTracked = true;
+      const imgs = container.querySelectorAll('img[src*="thumb=1"]');
+      if (!imgs.length) return;
+      const origUrls = [];
+      let done = 0;
+      const total = imgs.length;
+      function onOne() {
+        done++;
+        if (done >= total) imgPrefetch.push(origUrls);
+      }
+      for (let i = 0; i < imgs.length; i++) {
+        const orig = thumbToOrig(imgs[i].currentSrc || imgs[i].src);
+        if (orig) origUrls.push(orig);
+        if (imgs[i].complete) { done++; }
+        else {
+          imgs[i].addEventListener('load', onOne);
+          imgs[i].addEventListener('error', onOne);
+        }
+      }
+      if (done >= total) imgPrefetch.push(origUrls);
+    }
+
+    function initImagePrefetchObserver() {
+      const root = document.getElementById('app') || document.body;
+      if (!root || root._prefetchObserverInit) return;
+      root._prefetchObserverInit = true;
+      const mo = new MutationObserver(function(muts) {
+        for (let i = 0; i < muts.length; i++) {
+          const m = muts[i];
+          if (m.type !== 'childList') continue;
+          const nodes = m.addedNodes;
+          for (let j = 0; j < nodes.length; j++) {
+            const node = nodes[j];
+            if (node.nodeType !== 1) continue;
+            if (node.classList && node.classList.contains('post-images')) { trackImagesContainer(node); continue; }
+            if (node.querySelectorAll) {
+              const containers = node.querySelectorAll('.post-images');
+              for (let k = 0; k < containers.length; k++) trackImagesContainer(containers[k]);
+            }
+          }
+        }
+      });
+      mo.observe(root, { childList: true, subtree: true });
+    }
+
     function cleanProvince(p) {
       if (!p) return '';
       const s = String(p);
@@ -2508,6 +2592,7 @@
     }
 
     function bindHomeEvents() {
+      initImagePrefetchObserver();
       document.querySelectorAll('.home-tab').forEach(tab => {
         tab.onclick = () => {
           if (tab.dataset.tab === 'follow' && !getToken()) {
@@ -4874,6 +4959,7 @@
         spinner.style.display = 'block';
         failText.style.display = 'none';
         img.style.display = 'none';
+        imgPrefetch.pause();
         img.src = withMediaAuth(all[cur]);
         if (counter) counter.textContent = (cur + 1) + ' / ' + all.length;
         prevBtn.style.display = multi ? 'flex' : 'none';
@@ -4883,11 +4969,13 @@
         spinner.style.display = 'none';
         failText.style.display = 'none';
         img.style.display = 'block';
+        imgPrefetch.resume();
       };
       img.onerror = function() {
         spinner.style.display = 'none';
         failText.textContent = '图片加载失败\n请检查网络后重试';
         failText.style.display = 'block';
+        imgPrefetch.resume();
       };
       let touchX = 0;
       overlay.addEventListener('touchstart', function(e) { touchX = e.touches[0].clientX; }, { passive: true });
@@ -4916,6 +5004,7 @@
     function closeFullImage() {
       const overlay = document.getElementById('fullscreen-overlay');
       if (overlay) overlay.remove();
+      imgPrefetch.resume();
     }
 
     function goPostDetailAndScroll(id) {
@@ -9846,11 +9935,56 @@ async function renderMySubOrders() {
           <span style="font-size:13px;color:#ff2442;">申诉失败，维持原有处罚</span>
         </div>`;
       }
-      return `<div style="margin-bottom:12px;">
-        <div style="font-size:14px;font-weight:500;color:#333;margin-bottom:8px;">申诉理由</div>
-        <textarea id="appealReasonByToken" placeholder="请输入申诉理由，说明您认为此处理有误的原因..." style="width:100%;height:80px;border:0.5px solid #ddd;border-radius:8px;padding:10px;font-size:13px;resize:none;box-sizing:border-box;"></textarea>
-        <button onclick="submitAppealByToken('${token}')" style="width:100%;background:var(--color-primary);color:#fff;border:none;border-radius:20px;padding:12px;font-size:15px;font-weight:600;margin-top:10px;">提交申诉</button>
-      </div>`;
+      if (status) {
+        return renderAppealLinkSection(token);
+      }
+      return `<div id="appealCachedStatusBox" style="text-align:center;padding:10px;color:#999;font-size:13px;">查询申诉状态中...</div>`;
+    }
+    function refreshCachedAppealStatus(info) {
+      const token = (info && info.appealToken) || '';
+      const box = document.getElementById('appealCachedStatusBox');
+      if (!token || !box) return;
+      fetch(API_BASE + '/appealStatus?token=' + encodeURIComponent(token), { headers: { 'Content-Type': 'application/json' } })
+        .then(res => res.json())
+        .then(data => {
+          if (!box) return;
+          if (data.code === 1 && data.data) {
+            const v = data.data;
+            let html = '';
+            if (v.appeal_status === 'processing') {
+              html = `<div style="margin-bottom:12px;">
+                <div style="text-align:center;padding:12px;background:#E8F0FE;border-radius:8px;margin-bottom:10px;">
+                  <span style="font-size:13px;color:#1677ff;">申诉处理中，我们会在1-3个工作日内审核</span>
+                </div>
+                ${renderAppealLinkSection(v.appeal_token || token)}
+              </div>`;
+            } else if (v.appeal_status === 'approved') {
+              html = `<div style="text-align:center;padding:12px;background:#E6F7EC;border-radius:8px;">
+                <span style="font-size:13px;color:#52c41a;">申诉通过，已解除相关限制</span>
+              </div>`;
+            } else if (v.appeal_status === 'revoked') {
+              html = `<div style="text-align:center;padding:12px;background:#FFF1F0;border-radius:8px;">
+                <span style="font-size:13px;color:#ff2442;">申诉失败，维持原有处罚</span>
+              </div>`;
+            } else {
+              html = `<div style="margin-bottom:12px;">
+                <div style="font-size:14px;font-weight:500;color:#333;margin-bottom:8px;">申诉理由</div>
+                <textarea id="appealReasonByToken" placeholder="请输入申诉理由，说明您认为此处理有误的原因..." style="width:100%;height:80px;border:0.5px solid #ddd;border-radius:8px;padding:10px;font-size:13px;resize:none;box-sizing:border-box;"></textarea>
+                <button onclick="submitAppealByToken('${token}')" style="width:100%;background:var(--color-primary);color:#fff;border:none;border-radius:20px;padding:12px;font-size:15px;font-weight:600;margin-top:10px;">提交申诉</button>
+              </div>`;
+            }
+            box.outerHTML = html;
+            return;
+          }
+          if (data.needCaptcha) {
+            showAppealCaptcha(token);
+            return;
+          }
+          box.innerHTML = data.msg || '查询失败';
+        })
+        .catch(() => {
+          if (box) box.innerHTML = '网络异常，请稍后重试';
+        });
     }
     async function submitAppealByToken(token) {
       const reasonEl = document.getElementById('appealReasonByToken');
@@ -9939,42 +10073,53 @@ async function renderMySubOrders() {
     }
     function showAppealCaptcha(token) {
       let mask = document.getElementById('appealCaptchaMask');
-      if (!mask) {
-        mask = document.createElement('div');
-        mask.id = 'appealCaptchaMask';
-        mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;z-index:99998;display:flex;align-items:center;justify-content:center;flex-direction:column;';
-        mask.innerHTML = `<div style="text-align:center;font-size:14px;color:#666;margin-bottom:16px;">请完成安全验证后查看申诉结果</div>
-          <div id="appealCaptchaBox"></div>
-          <div style="text-align:center;font-size:12px;color:#bbb;margin-top:16px;">第3次及以上查询需完成安全验证</div>`;
-        document.body.appendChild(mask);
-      }
+      if (mask) mask.remove();
+      mask = document.createElement('div');
+      mask.id = 'appealCaptchaMask';
+      mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;z-index:99998;display:flex;align-items:center;justify-content:center;flex-direction:column;';
+      mask.innerHTML = `<div style="text-align:center;font-size:14px;color:#666;margin-bottom:16px;">请完成安全验证后查看申诉结果</div>
+        <div id="appealCaptchaBox"></div>
+        <div style="text-align:center;font-size:12px;color:#bbb;margin-top:16px;">第3次及以上查询需完成安全验证</div>`;
+      document.body.appendChild(mask);
       appealCaptchaResult = null;
+      appealCaptchaIns = null;
       Promise.all([ensureCaptchaSdk(), getCaptchaSceneId()]).then(results => {
         const sceneId = results[1];
         if (!sceneId) return;
-        if (!appealCaptchaIns && typeof window.initAliyunCaptcha === 'function') {
-          window.initAliyunCaptcha({
-            SceneId: sceneId,
-            mode: "popup",
-            element: "#appealCaptchaBox",
-            language: "cn",
-            timeout: 10000,
-            getInstance: function(ins) { appealCaptchaIns = ins; },
-            captchaVerifyCallback: function(param) { return appealCaptchaCallback(token, param); },
-            onBizResultCallback: function(bizResult) {
-              if (bizResult) {
-                const container = document.getElementById('appealDetailContent');
-                if (container && appealCaptchaResult) {
-                  cacheAppealData(token, appealCaptchaResult);
-                  renderAppealDetail(container, appealCaptchaResult, token);
-                }
-                const m = document.getElementById('appealCaptchaMask');
-                if (m) m.remove();
+        if (typeof window.initAliyunCaptcha !== 'function') return;
+        const box = document.getElementById('appealCaptchaBox');
+        if (!box) return;
+        window.initAliyunCaptcha({
+          SceneId: sceneId,
+          mode: "popup",
+          element: "#appealCaptchaBox",
+          language: "cn",
+          timeout: 10000,
+          getInstance: function(ins) {
+            appealCaptchaIns = ins;
+            if (ins && ins.show) ins.show();
+          },
+          captchaVerifyCallback: function(param) { return appealCaptchaCallback(token, param); },
+          onBizResultCallback: function(bizResult) {
+            if (bizResult) {
+              const container = document.getElementById('appealDetailContent');
+              if (container && appealCaptchaResult) {
+                cacheAppealData(token, appealCaptchaResult);
+                renderAppealDetail(container, appealCaptchaResult, token);
+              } else if (appealCaptchaResult) {
+                let info = {};
+                try { info = JSON.parse(localStorage.getItem('zanhua_ban_info') || '{}'); } catch(_) {}
+                try { localStorage.setItem('zanhua_appeal_status_' + token, appealCaptchaResult.appeal_status || 'processing'); } catch(_) {}
+                cacheAppealData(token, appealCaptchaResult);
+                const vc = document.getElementById('violationDetailContent');
+                if (vc) renderCachedBanDetail(info);
               }
+              const m = document.getElementById('appealCaptchaMask');
+              if (m) m.remove();
+              appealCaptchaIns = null;
             }
-          });
-        }
-        if (appealCaptchaIns) appealCaptchaIns.show();
+          }
+        });
       });
     }
     function appealCaptchaCallback(token, param) {
@@ -10102,6 +10247,7 @@ async function renderMySubOrders() {
           </div>
         </div>
       </div>`;
+      refreshCachedAppealStatus(info);
     }
     async function loadViolationDetail() {
       const id = window._currentViolationId;
@@ -10245,7 +10391,7 @@ async function renderMySubOrders() {
 <h2 style="font-size:17px;font-weight:700;margin:0 0 12px;color:#333;text-align:center;">赞话未成年人（含儿童）隐私政策</h2>
 <p style="margin-bottom:14px;font-size:12px;color:#999;text-align:center;">版本更新日期：2026年8月28日</p>
 <p style="margin-bottom:14px;font-size:12px;color:#999;text-align:center;">生效日期：2026年8月28日</p>
-<h2 style="font-size:17px;font-weight:700;margin:0 0 12px;color:#333;text-align:center;">赞话（以下简称“我们”或“本平台”）深知未成年人，尤其是不满十四周岁儿童个人信息安全的重要性。未成年人的心智尚未完全成熟，个人信息一旦遭到不当收集、使用、披露或传播，可能对其人格尊严、人身财产安全及未来发展造成难以估量的损害。因此，我们依据《中华人民共和国民法典》《中华人民共和国网络安全法》《中华人民共和国数据安全法》《中华人民共和国个人信息保护法》《中华人民共和国未成年人保护法》《儿童个人信息网络保护规定》《未成年人网络保护条例》以及《信息安全技术 个人信息安全规范》（GB/T 35273—2020）等法律法规、部门规章及国家标准的有关规定，制定本《赞话未成年人（含儿童）隐私政策》（以下简称“本政策”）。</h2>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">赞话（以下简称“我们”或“本平台”）深知未成年人，尤其是不满十四周岁儿童个人信息安全的重要性。未成年人的心智尚未完全成熟，个人信息一旦遭到不当收集、使用、披露或传播，可能对其人格尊严、人身财产安全及未来发展造成难以估量的损害。因此，我们依据《中华人民共和国民法典》《中华人民共和国网络安全法》《中华人民共和国数据安全法》《中华人民共和国个人信息保护法》《中华人民共和国未成年人保护法》《儿童个人信息网络保护规定》《未成年人网络保护条例》以及《信息安全技术 个人信息安全规范》（GB/T 35273—2020）等法律法规、部门规章及国家标准的有关规定，制定本《赞话未成年人（含儿童）隐私政策》（以下简称“本政策”）。</p>
 <p style="margin-bottom:10px;text-indent:2em;color:#333;">本政策是《赞话用户隐私政策》不可分割的特别组成部分，专门就未成年人在使用赞话平台服务过程中涉及的个人信息处理规则作出更为严格、细化的规定。我们恳请阁下及阁下的监护人务必认真、完整地阅读并充分理解本政策全部内容，特别是以加粗、下划线或其他显著方式提示的条款。若阁下为未成年人，请在阁下的父母或其他监护人（以下统称“监护人”）陪同下阅读本政策，并在取得监护人明确同意后，方可使用本平台服务。</p>
 <h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第一条 定义与适用范围</h3>
 <p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 未成年人：指不满十八周岁的自然人。</p>
@@ -10364,7 +10510,7 @@ async function renderMySubOrders() {
 <h2 style="font-size:17px;font-weight:700;margin:0 0 12px;color:#333;text-align:center;">赞话用户隐私政策</h2>
 <p style="margin-bottom:14px;font-size:12px;color:#999;text-align:center;">版本更新日期：2026年8月28日</p>
 <p style="margin-bottom:14px;font-size:12px;color:#999;text-align:center;">生效日期：2026年8月28日</p>
-<h2 style="font-size:17px;font-weight:700;margin:0 0 12px;color:#333;text-align:center;">赞话（以下简称“我们”或“本平台”）深知个人信息对阁下人格尊严、人身财产安全及隐私权益的重要性。我们始终致力于依法保护阁下的个人信息，遵守《中华人民共和国民法典》《中华人民共和国网络安全法》《中华人民共和国数据安全法》《中华人民共和国个人信息保护法》《网络信息内容生态治理规定》《互联网用户账号信息管理规定》《移动互联网应用程序信息服务管理规定》以及《信息安全技术 个人信息安全规范》（GB/T 35273—2020）等法律法规、部门规章及国家标准，建立健全个人信息保护制度，采取相应的安全保护措施，尽力保障阁下的个人信息安全可控。</h2>
+<p style="margin-bottom:10px;text-indent:2em;color:#333;">赞话（以下简称“我们”或“本平台”）深知个人信息对阁下人格尊严、人身财产安全及隐私权益的重要性。我们始终致力于依法保护阁下的个人信息，遵守《中华人民共和国民法典》《中华人民共和国网络安全法》《中华人民共和国数据安全法》《中华人民共和国个人信息保护法》《网络信息内容生态治理规定》《互联网用户账号信息管理规定》《移动互联网应用程序信息服务管理规定》以及《信息安全技术 个人信息安全规范》（GB/T 35273—2020）等法律法规、部门规章及国家标准，建立健全个人信息保护制度，采取相应的安全保护措施，尽力保障阁下的个人信息安全可控。</p>
 <p style="margin-bottom:10px;text-indent:2em;color:#333;">本《赞话用户隐私政策》（以下简称“本政策”）旨在向阁下清晰说明：我们如何收集、使用、存储、共享、转移、公开披露阁下的个人信息，以及阁下享有的权利和行使方式。请阁下在使用本平台服务前，务必审慎阅读、充分理解本政策全部内容。阁下注册或使用本平台服务，即表示阁下已充分理解并同意本政策。</p>
 <p style="margin-bottom:10px;text-indent:2em;color:#333;">特别提示：若阁下为未满十八周岁的未成年人，请阁下的监护人仔细阅读本政策及《赞话未成年人（含儿童）隐私政策》，并在监护人同意后使用本平台服务。</p>
 <h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第一条 定义</h3>
