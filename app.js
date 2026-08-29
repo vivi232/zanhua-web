@@ -10056,13 +10056,7 @@ async function renderMySubOrders() {
             return;
           }
           if (data.code === 1 && data.rateLimited) {
-            const cached = getCachedAppealData(token);
-            if (cached) {
-              renderAppealDetail(container, cached, token);
-              container.insertAdjacentHTML('afterbegin', '<div style="padding:12px 12px 0;"><div style="background:#FFF7E6;border:0.5px solid #FFE7BA;border-radius:8px;padding:10px 12px;font-size:13px;color:#fa8c16;">您的查询次数过于频繁，请稍后再试！</div></div>');
-            } else {
-              container.innerHTML = `<div style="text-align:center;padding:40px;color:#999;">${data.msg || '查询次数过于频繁，请稍后再试'}</div>`;
-            }
+            container.innerHTML = `<div style="text-align:center;padding:40px;color:#999;">${data.msg || '您的查询次数过于频繁，请稍后再试！'}</div>`;
             return;
           }
           container.innerHTML = `<div style="text-align:center;padding:40px;color:#999;">${data.msg || '查询失败'}</div>`;
@@ -10076,10 +10070,8 @@ async function renderMySubOrders() {
       if (mask) mask.remove();
       mask = document.createElement('div');
       mask.id = 'appealCaptchaMask';
-      mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;z-index:99998;display:flex;align-items:center;justify-content:center;flex-direction:column;';
-      mask.innerHTML = `<div style="text-align:center;font-size:14px;color:#666;margin-bottom:16px;">请完成安全验证后查看申诉结果</div>
-        <div id="appealCaptchaBox"></div>
-        <div style="text-align:center;font-size:12px;color:#bbb;margin-top:16px;">第3次及以上查询需完成安全验证</div>`;
+      mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;z-index:99998;display:flex;align-items:center;justify-content:center;';
+      mask.innerHTML = `<div id="appealCaptchaBox"></div>`;
       document.body.appendChild(mask);
       appealCaptchaResult = null;
       appealCaptchaIns = null;
