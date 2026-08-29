@@ -498,6 +498,31 @@
       }
       return did;
     }
+    function getClientFp() {
+      try {
+        let fp = localStorage.getItem('zanhua_client_fp');
+        if (fp) return fp;
+        const parts = [
+          navigator.userAgent,
+          String(screen.width) + 'x' + String(screen.height) + 'x' + String(screen.colorDepth),
+          String(screen.availWidth) + 'x' + String(screen.availHeight),
+          navigator.language || '',
+          String(new Date().getTimezoneOffset()),
+          String(navigator.hardwareConcurrency || ''),
+          String(navigator.maxTouchPoints || 0),
+          navigator.platform || '',
+          navigator.deviceMemory || ''
+        ];
+        let seed = parts.join('|');
+        let h = 0;
+        for (let i = 0; i < seed.length; i++) {
+          h = ((h << 5) - h + seed.charCodeAt(i)) | 0;
+        }
+        fp = 'fp_' + Math.abs(h).toString(36) + '_' + Date.now().toString(36);
+        localStorage.setItem('zanhua_client_fp', fp);
+        return fp;
+      } catch (e) { return ''; }
+    }
     function showBanNotice(msg) {
       let popup = document.getElementById('ban-notice-popup');
       if (!popup) {
@@ -536,7 +561,7 @@
       const timeoutId = setTimeout(() => controller.abort(), 15000);
       const opts = {
         method,
-        headers: { 'Authorization': getToken(), 'X-Device-Id': getDeviceId() },
+        headers: { 'Authorization': getToken(), 'X-Device-Id': getDeviceId(), 'X-Client-Fp': getClientFp() },
         signal: controller.signal
       };
       if (data && method === 'POST') {
@@ -576,6 +601,7 @@
         xhr.open('POST', API_BASE + url, true);
         xhr.setRequestHeader('Authorization', getToken());
         xhr.setRequestHeader('X-Device-Id', getDeviceId());
+        xhr.setRequestHeader('X-Client-Fp', getClientFp());
         if (onProgress && typeof onProgress === 'function') {
           xhr.upload.onprogress = (e) => {
             if (e.lengthComputable) {
@@ -11115,6 +11141,7 @@ async function renderMySubOrders() {
         xhr.open('POST', API_BASE + '/uploadImage', true);
         xhr.setRequestHeader('Authorization', getToken());
         xhr.setRequestHeader('X-Device-Id', getDeviceId());
+        xhr.setRequestHeader('X-Client-Fp', getClientFp());
         xhr.onload = function() {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
