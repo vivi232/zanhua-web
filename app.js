@@ -1,9 +1,27 @@
     const _pathFirst = (function() {
       const _segs = window.location.pathname.split('/').filter(Boolean);
       if (_segs.length && _segs[0] === 'appeal') return '';
+      if (_segs.length && /^inv=\d{8}$/.test(_segs[0])) return '';
       return _segs[0] || '';
     })();
     const BASE_PATH = _pathFirst ? '/' + _pathFirst : '';
+    (function() {
+      try {
+        let inv = '';
+        const pm = window.location.pathname.match(/\/inv=(\d{8})/);
+        const qm = window.location.search.match(/[?&]inv=(\d{8})/);
+        if (pm) inv = pm[1];
+        else if (qm) inv = qm[1];
+        if (inv) {
+          localStorage.setItem('zanhua_invite_code', inv);
+          const cleanUrl = window.location.origin + window.location.pathname.replace(/\/inv=\d{8}$/, '') + window.location.search.replace(/[?&]inv=\d{8}/, '');
+          try { history.replaceState({}, '', cleanUrl); } catch(e) {}
+        }
+      } catch(e) {}
+    })();
+    function getInviteCode() {
+      try { return localStorage.getItem('zanhua_invite_code') || ''; } catch(e) { return ''; }
+    }
     const API_HOST = "https://154.201.81.86";
     const API_BASE = API_HOST + '/api';
     const MEDIA_BASE = API_HOST + '/zanhua';
@@ -5887,7 +5905,7 @@
         return;
       }
       try {
-        const res = await api('/auth', 'POST', { phone, code });
+        const res = await api('/auth', 'POST', { phone, code, inviteCode: getInviteCode() });
         if (res.code === 1) {
           setToken(res.data.token);
           showToast('登录成功');
@@ -6030,7 +6048,7 @@
         return;
       }
       try {
-        const res = await api('/auth', 'POST', { phone, code });
+        const res = await api('/auth', 'POST', { phone, code, inviteCode: getInviteCode() });
         if (res.code === 1) {
           setToken(res.data.token);
           currentUsername = res.data.phone || '';
