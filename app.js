@@ -1,20 +1,20 @@
     const _pathFirst = (function() {
       const _segs = window.location.pathname.split('/').filter(Boolean);
       if (_segs.length && _segs[0] === 'appeal') return '';
-      if (_segs.length && /^inv=\d{8}$/.test(_segs[0])) return '';
+      if (_segs.length && /^inv=[A-Za-z0-9]{8}$/.test(_segs[0])) return '';
       return _segs[0] || '';
     })();
     const BASE_PATH = _pathFirst ? '/' + _pathFirst : '';
     (function() {
       try {
         let inv = '';
-        const pm = window.location.pathname.match(/\/inv=(\d{8})/);
-        const qm = window.location.search.match(/[?&]inv=(\d{8})/);
+        const pm = window.location.pathname.match(/\/inv=([A-Za-z0-9]{8})/);
+        const qm = window.location.search.match(/[?&]inv=([A-Za-z0-9]{8})/);
         if (pm) inv = pm[1];
         else if (qm) inv = qm[1];
         if (inv) {
           localStorage.setItem('zanhua_invite_code', inv);
-          const cleanUrl = window.location.origin + window.location.pathname.replace(/\/inv=\d{8}$/, '') + window.location.search.replace(/[?&]inv=\d{8}/, '');
+          const cleanUrl = window.location.origin + window.location.pathname.replace(/\/inv=[A-Za-z0-9]{8}$/, '') + window.location.search.replace(/[?&]inv=[A-Za-z0-9]{8}/, '');
           try { history.replaceState({}, '', cleanUrl); } catch(e) {}
         }
       } catch(e) {}
@@ -1614,6 +1614,7 @@
         case 'agreement': app.innerHTML = renderAgreementPage(); break;
         case 'privacy': app.innerHTML = renderPrivacyPage(); break;
         case 'minorPrivacy': app.innerHTML = renderMinorPrivacyPage(); break;
+        case 'intlLegal': app.innerHTML = '<div style="min-height:80vh;display:flex;align-items:center;justify-content:center;"><div style="color:#999;font-size:14px;">资源正在下载中，请稍候</div></div>'; renderIntlLegalPage().then(html => { app.innerHTML = html; }); break;
         case 'verifSubAgreement': app.innerHTML = renderVerifSubAgreementPage(); break;
         case 'enterpriseAgreement': app.innerHTML = renderEnterpriseAgreementPage(); break;
         case 'redeemCode': app.innerHTML = renderRedeemCode(); bindRedeemCodeEvents(); break;
@@ -10673,9 +10674,18 @@ async function renderMySubOrders() {
 <p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 平台内“反馈”功能；</p>
 <p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 官方邮箱：zanhuadev@163.com。</p>
 <p style="margin-bottom:10px;text-indent:2em;color:#333;">我们将在收到阁下反馈后尽快处理，一般不超过15个工作日。</p>
-<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十四条 法律适用与争议解决</h3>
-<p style="margin-bottom:10px;text-indent:2em;color:#333;">本政策适用中华人民共和国法律。因本政策产生的争议，双方应协商解决；协商不成的，向本平台运营者住所地有管辖权的人民法院提起诉讼。</p>
-<p style="margin-bottom:10px;text-indent:2em;color:#333;">----------</p>
+ <h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十四条 法律适用与争议解决</h3>
+ <p style="margin-bottom:10px;text-indent:2em;color:#333;">本政策适用中华人民共和国法律。因本政策产生的争议，双方应协商解决；协商不成的，向本平台运营者住所地有管辖权的人民法院提起诉讼。</p>
+ <h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">其他国家或地区的文档版本</h3>
+ <p style="margin-bottom:10px;text-indent:2em;color:#333;">以下为赞话平台面向其他国家或地区用户提供的隐私政策及其他法律文档版本，点击即可查看：</p>
+ <p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal('tw')" style="color:#1D9BF0;text-decoration:underline;">隐私政策（台湾_Taiwan）</a></p>
+ <p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal('uk')" style="color:#1D9BF0;text-decoration:underline;">隐私政策（英国_United Kingdom）</a></p>
+ <p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal('fr')" style="color:#1D9BF0;text-decoration:underline;">隐私政策（法国_France）</a></p>
+ <p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal('jp')" style="color:#1D9BF0;text-decoration:underline;">隐私政策（日本_Japan）</a></p>
+ <p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal('kr')" style="color:#1D9BF0;text-decoration:underline;">隐私政策（韩国_Korea）</a></p>
+ <p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal('mo')" style="color:#1D9BF0;text-decoration:underline;">隐私政策（澳门_Macau）</a></p>
+ <p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal('hk')" style="color:#1D9BF0;text-decoration:underline;">隐私政策（香港_Hong Kong）</a></p>
+ <p style="margin-bottom:10px;text-indent:2em;color:#333;">----------</p>
     `;
     const _AGREE_TEXT_SERVICE = `
 <h2 style="font-size:17px;font-weight:700;margin:0 0 12px;color:#333;text-align:center;">赞话用户服务协议</h2>
@@ -11028,6 +11038,76 @@ async function renderMySubOrders() {
     }
         function renderPrivacyPage() { return renderAgreementDoc("赞话用户隐私政策", _AGREE_TEXT_PRIVACY); }
         function renderMinorPrivacyPage() { return renderAgreementDoc("赞话未成年人（含儿童）隐私政策", _AGREE_TEXT_MINOR); }
+    const INTL_LEGAL_REGIONS = [
+      { key: 'tw', label: '台湾_Taiwan' },
+      { key: 'uk', label: '英国_United Kingdom' },
+      { key: 'fr', label: '法国_France' },
+      { key: 'jp', label: '日本_Japan' },
+      { key: 'kr', label: '韩国_Korea' },
+      { key: 'mo', label: '澳门_Macau' },
+      { key: 'hk', label: '香港_Hong Kong' }
+    ];
+    const INTL_LEGAL_CACHE = {};
+    function openIntlLegal(key) {
+      const region = INTL_LEGAL_REGIONS.find(function(r) { return r.key === key; }) || INTL_LEGAL_REGIONS[0];
+      goPage('intlLegal', false, region.key);
+    }
+    function escHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function renderIntlLegalPage() {
+      const key = window._pageParam2 || 'tw';
+      const region = INTL_LEGAL_REGIONS.find(function(r) { return r.key === key; }) || INTL_LEGAL_REGIONS[0];
+      const url = MEDIA_BASE + '/static/legal/' + region.key + '.md';
+      if (INTL_LEGAL_CACHE[key] !== undefined) {
+        return Promise.resolve(renderAgreementDoc('隐私政策（' + region.label + '）', INTL_LEGAL_CACHE[key]));
+      }
+      return fetch(url, { cache: 'force-cache' }).then(function(res) {
+        if (!res.ok) throw new Error('http ' + res.status);
+        return res.text();
+      }).then(function(text) {
+        const html = parseLegalMarkdown(text);
+        INTL_LEGAL_CACHE[key] = html;
+        return renderAgreementDoc('隐私政策（' + region.label + '）', html);
+      });
+    }
+    function parseLegalMarkdown(text) {
+      const lines = String(text).split(/\r?\n/);
+      let html = '';
+      let inList = false;
+      function closeList() {
+        if (inList) { html += '</div>'; inList = false; }
+      }
+      for (let i = 0; i < lines.length; i++) {
+        const raw = lines[i];
+        const s = raw.replace(/\s+$/, '');
+        const trimmed = s.trim();
+        if (!trimmed) { closeList(); continue; }
+        if (trimmed === '---') { closeList(); html += '<hr style="border:none;border-top:1px solid #e5e5e5;margin:18px 0;">'; continue; }
+        const docTitle = trimmed.match(/^#\s+(.*)$/);
+        if (docTitle) {
+          closeList();
+          html += '<h2 style="font-size:17px;font-weight:700;margin:24px 0 12px;color:#333;text-align:center;">' + escHtml(docTitle[1]) + '</h2>';
+          continue;
+        }
+        const secTitle = trimmed.match(/^##\s+(.*)$/);
+        if (secTitle) {
+          closeList();
+          html += '<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">' + escHtml(secTitle[1]) + '</h3>';
+          continue;
+        }
+        const listItem = trimmed.match(/^(\d+[\.、]|\-|\·|\*)\s*(.*)$/);
+        if (listItem) {
+          if (!inList) { html += '<div style="margin-bottom:10px;">'; inList = true; }
+          html += '<p style="margin:0 0 6px;text-indent:0;color:#333;padding-left:1.5em;">' + escHtml(trimmed) + '</p>';
+          continue;
+        }
+        closeList();
+        html += '<p style="margin-bottom:10px;text-indent:2em;color:#333;">' + escHtml(trimmed) + '</p>';
+      }
+      closeList();
+      return html;
+    }
     function renderReportPage() {
       const reasonHtml = REPORT_REASONS.map(r => `
         <div class="report-reason-item ${reportReason === r.key ? 'active' : ''}" onclick="selectReportReason('${r.key}')">
