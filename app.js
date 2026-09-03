@@ -1,7 +1,7 @@
     const _pathFirst = (function() {
       const _segs = window.location.pathname.split('/').filter(Boolean);
       if (_segs.length && _segs[0] === 'appeal') return '';
-      if (_segs.length && /^inv=[A-Za-z0-9]{8}$/.test(_segs[0])) return '';
+      if (_segs.length && /^inv=/.test(_segs[0])) return '';
       return _segs[0] || '';
     })();
     const BASE_PATH = _pathFirst ? '/' + _pathFirst : '';
@@ -13,8 +13,11 @@
         if (pm) inv = pm[1];
         else if (qm) inv = qm[1];
         if (inv) {
-          localStorage.setItem('zanhua_invite_code', inv);
-          const cleanUrl = window.location.origin + window.location.pathname.replace(/\/inv=[A-Za-z0-9]{8}$/, '') + window.location.search.replace(/[?&]inv=[A-Za-z0-9]{8}/, '');
+          try { localStorage.setItem('zanhua_invite_code', inv); } catch(e) {}
+        }
+        if (/\/inv=/.test(window.location.pathname) || window.location.search.indexOf('inv=') !== -1) {
+          const qs = (function() { try { const u = new URLSearchParams(window.location.search); u.delete('inv'); return u.toString(); } catch(e) { return ''; } })();
+          const cleanUrl = window.location.origin + window.location.pathname.replace(/\/inv=[^/?#]+$/, '') + (qs ? '?' + qs : '');
           try { history.replaceState({}, '', cleanUrl); } catch(e) {}
         }
       } catch(e) {}
