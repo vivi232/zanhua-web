@@ -4965,6 +4965,24 @@
       return JSON.stringify(arr).replace(/"/g, '&quot;').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     }
 
+    const _fullImageCache = {};
+    const _IMG_STYLE = 'max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;';
+    (function() {
+      try {
+        if (!document.getElementById('full-ring-keyframes')) {
+          const st = document.createElement('style');
+          st.id = 'full-ring-keyframes';
+          st.textContent = '@keyframes fullRingSpin{to{transform:rotate(360deg)}}';
+          document.head.appendChild(st);
+        }
+      } catch(e) {}
+    })();
+    function _fullImageKey(item) {
+      try { return withMediaAuth(item); } catch(e) { return String(item); }
+    }
+    function _fullImageThumb(item) {
+      try { return resolveThumb(item) || ''; } catch(e) { return ''; }
+    }
     function showFullImage(src, imgsJson, idx) {
       if (!requireLogin()) return;
       let all = [];
@@ -4983,11 +5001,11 @@
       closeBtn.className = 'close-btn';
       closeBtn.innerHTML = '<i class="fa-solid fa-xmark" style="color:#fff;font-size:28px;"></i>';
       closeBtn.style.cssText = `position:absolute;top:20px;left:20px;z-index:10000;cursor:pointer;padding:10px;background:rgba(0,0,0,0.6);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;`;
-      const img = document.createElement('img');
-      img.style.cssText = `max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;display:none;`;
-      const spinner = document.createElement('div');
-      spinner.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:48px;color:#fff;"></i>';
-      spinner.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10001;`;
+      const holder = document.createElement('img');
+      holder.id = 'full-image-holder';
+      holder.style.cssText = 'position:absolute;max-width:96%;max-height:96%;object-fit:contain;opacity:0;filter:blur(30px) brightness(0.6);transform:scale(1.02);pointer-events:none;transition:opacity .3s ease;';
+      const ring = document.createElement('div');
+      ring.style.cssText = `position:absolute;top:50%;left:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:conic-gradient(rgba(255,255,255,0.95) 0% 75%, rgba(255,255,255,0.18) 75% 100%);mask:radial-gradient(transparent 17px,#000 18px);-webkit-mask:radial-gradient(transparent 17px,#000 18px);animation:fullRingSpin 0.9s linear infinite;z-index:10001;`;
       const failText = document.createElement('div');
       failText.style.cssText = `position:absolute;top:calc(50% + 70px);left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.75);font-size:15px;text-align:center;line-height:1.6;`;
       let counter = null;
@@ -5003,28 +5021,59 @@
       nextBtn.innerHTML = '<i class="fa-solid fa-chevron-right" style="color:#fff;font-size:26px;"></i>';
       nextBtn.style.cssText = `position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:10000;cursor:pointer;padding:12px;background:rgba(0,0,0,0.5);border-radius:50%;width:46px;height:46px;display:flex;align-items:center;justify-content:center;`;
       nextBtn.onclick = function(e) { e.stopPropagation(); cur = (cur + 1) % all.length; showCur(); };
+      let disp = null;
+      function hideDisp() {
+        if (disp) { disp.style.display = 'none'; disp = null; }
+      }
       function showCur() {
-        spinner.style.display = 'block';
-        failText.style.display = 'none';
-        img.style.display = 'none';
+        const item = all[cur];
+        const key = _fullImageKey(item);
         imgPrefetch.pause();
-        img.src = withMediaAuth(all[cur]);
         if (counter) counter.textContent = (cur + 1) + ' / ' + all.length;
         prevBtn.style.display = multi ? 'flex' : 'none';
         nextBtn.style.display = multi ? 'flex' : 'none';
-      }
-      img.onload = function() {
-        spinner.style.display = 'none';
+        hideDisp();
         failText.style.display = 'none';
-        img.style.display = 'block';
-        imgPrefetch.resume();
-      };
-      img.onerror = function() {
-        spinner.style.display = 'none';
-        failText.textContent = '图片加载失败\n请检查网络后重试';
-        failText.style.display = 'block';
-        imgPrefetch.resume();
-      };
+        const cached = _fullImageCache[key];
+        if (cached && cached.naturalWidth) {
+          disp = cached;
+          cached.style.display = 'block';
+          if (cached.parentNode !== overlay) overlay.appendChild(cached);
+          ring.style.display = 'none';
+          holder.style.opacity = '0';
+          imgPrefetch.resume();
+          return;
+        }
+        const fresh = new Image();
+        disp = fresh;
+        fresh.style.cssText = _IMG_STYLE + 'display:block;';
+        fresh.onload = function() {
+          if (disp !== fresh) return;
+          _fullImageCache[key] = fresh;
+          ring.style.display = 'none';
+          holder.style.opacity = '0';
+          failText.style.display = 'none';
+          imgPrefetch.resume();
+        };
+        fresh.onerror = function() {
+          if (disp !== fresh) return;
+          disp = null;
+          ring.style.display = 'none';
+          failText.textContent = '图片加载失败\n请检查网络后重试';
+          failText.style.display = 'block';
+          imgPrefetch.resume();
+        };
+        const th = _fullImageThumb(item);
+        if (th) {
+          holder.src = th;
+          holder.style.opacity = '1';
+        } else {
+          holder.style.opacity = '0';
+        }
+        ring.style.display = 'block';
+        fresh.src = key;
+        overlay.appendChild(fresh);
+      }
       let touchX = 0;
       overlay.addEventListener('touchstart', function(e) { touchX = e.touches[0].clientX; }, { passive: true });
       overlay.addEventListener('touchend', function(e) {
@@ -5041,10 +5090,10 @@
       if (counter) overlay.appendChild(counter);
       overlay.appendChild(prevBtn);
       overlay.appendChild(nextBtn);
-      overlay.appendChild(spinner);
+      overlay.appendChild(ring);
+      overlay.appendChild(holder);
       overlay.appendChild(failText);
       overlay.appendChild(closeBtn);
-      overlay.appendChild(img);
       document.body.appendChild(overlay);
       showCur();
     }
@@ -10679,15 +10728,6 @@ async function renderMySubOrders() {
 <p style="margin-bottom:10px;text-indent:2em;color:#333;">我们将在收到阁下反馈后尽快处理，一般不超过15个工作日。</p>
  <h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">第十四条 法律适用与争议解决</h3>
  <p style="margin-bottom:10px;text-indent:2em;color:#333;">本政策适用中华人民共和国法律。因本政策产生的争议，双方应协商解决；协商不成的，向本平台运营者住所地有管辖权的人民法院提起诉讼。</p>
- <h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">其他国家或地区的文档版本</h3>
- <p style="margin-bottom:10px;text-indent:2em;color:#333;">以下为赞话平台面向其他国家或地区用户提供的隐私政策及其他法律文档版本，点击即可查看：</p>
- <p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal('tw')" style="color:#1D9BF0;text-decoration:underline;">隐私政策（台湾_Taiwan）</a></p>
- <p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal('uk')" style="color:#1D9BF0;text-decoration:underline;">隐私政策（英国_United Kingdom）</a></p>
- <p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal('fr')" style="color:#1D9BF0;text-decoration:underline;">隐私政策（法国_France）</a></p>
- <p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal('jp')" style="color:#1D9BF0;text-decoration:underline;">隐私政策（日本_Japan）</a></p>
- <p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal('kr')" style="color:#1D9BF0;text-decoration:underline;">隐私政策（韩国_Korea）</a></p>
- <p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal('mo')" style="color:#1D9BF0;text-decoration:underline;">隐私政策（澳门_Macau）</a></p>
- <p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal('hk')" style="color:#1D9BF0;text-decoration:underline;">隐私政策（香港_Hong Kong）</a></p>
  <p style="margin-bottom:10px;text-indent:2em;color:#333;">----------</p>
     `;
     const _AGREE_TEXT_SERVICE = `
@@ -10789,7 +10829,7 @@ async function renderMySubOrders() {
 <p style="margin-bottom:10px;text-indent:2em;color:#333;">1. 平台内“反馈”功能；</p>
 <p style="margin-bottom:10px;text-indent:2em;color:#333;">2. 官方邮箱：zanhuadev@163.com。</p>
     `;
-        function renderAgreementPage() { return renderAgreementDoc("赞话用户服务协议", _AGREE_TEXT_SERVICE); }
+        function renderAgreementPage() { return renderAgreementDoc("赞话用户服务协议", _AGREE_TEXT_SERVICE + intlDocLinksSection(0)); }
     function renderVerifSubAgreementPage() {
       return `
         <div class="page">
@@ -11039,77 +11079,150 @@ async function renderMySubOrders() {
       }
       if (btn) btn.disabled = false;
     }
-        function renderPrivacyPage() { return renderAgreementDoc("赞话用户隐私政策", _AGREE_TEXT_PRIVACY); }
-        function renderMinorPrivacyPage() { return renderAgreementDoc("赞话未成年人（含儿童）隐私政策", _AGREE_TEXT_MINOR); }
+        function renderPrivacyPage() { return renderAgreementDoc("赞话用户隐私政策", _AGREE_TEXT_PRIVACY + intlDocLinksSection(1)); }
+        function renderMinorPrivacyPage() { return renderAgreementDoc("赞话未成年人（含儿童）隐私政策", _AGREE_TEXT_MINOR + intlDocLinksSection(2)); }
     const INTL_LEGAL_REGIONS = [
-      { key: 'tw', label: '台湾_Taiwan' },
-      { key: 'uk', label: '英国_United Kingdom' },
-      { key: 'fr', label: '法国_France' },
-      { key: 'jp', label: '日本_Japan' },
-      { key: 'kr', label: '韩国_Korea' },
-      { key: 'mo', label: '澳门_Macau' },
-      { key: 'hk', label: '香港_Hong Kong' }
+      { key: 'tw', name: '台湾' },
+      { key: 'uk', name: '英国' },
+      { key: 'fr', name: '法国' },
+      { key: 'jp', name: '日本' },
+      { key: 'kr', name: '韩国' },
+      { key: 'mo', name: '澳门' },
+      { key: 'hk', name: '香港' }
     ];
     const INTL_LEGAL_CACHE = {};
-    function openIntlLegal(key) {
+    function intlRegionName(key) {
+      const r = INTL_LEGAL_REGIONS.find(function(x) { return x.key === key; });
+      return r ? r.name : key;
+    }
+    function intlCleanTitle(t) {
+      return String(t).replace(/^(?:[一二三四五六七八九十百]+|[0-9０-９]+)\s*[\.、．]?\s*/, '');
+    }
+    function openIntlLegal(key, docIdx) {
       const region = INTL_LEGAL_REGIONS.find(function(r) { return r.key === key; }) || INTL_LEGAL_REGIONS[0];
-      goPage('intlLegal', false, region.key);
+      const idx = (typeof docIdx === 'number' && docIdx >= 0) ? docIdx : 1;
+      goPage('intlLegal', false, region.key + '_' + idx);
     }
     function escHtml(s) {
       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
-    function renderIntlLegalPage() {
-      const key = window._pageParam2 || 'tw';
-      const region = INTL_LEGAL_REGIONS.find(function(r) { return r.key === key; }) || INTL_LEGAL_REGIONS[0];
-      const url = MEDIA_BASE + '/static/legal/' + region.key + '.md';
-      if (INTL_LEGAL_CACHE[key] !== undefined) {
-        return Promise.resolve(renderAgreementDoc('隐私政策（' + region.label + '）', INTL_LEGAL_CACHE[key]));
+    function loadIntlLegalDocs(cc) {
+      if (INTL_LEGAL_CACHE[cc] !== undefined) {
+        return Promise.resolve(INTL_LEGAL_CACHE[cc]);
       }
+      const url = MEDIA_BASE + '/static/legal/' + cc + '.md';
       return fetch(url, { cache: 'force-cache' }).then(function(res) {
         if (!res.ok) throw new Error('http ' + res.status);
         return res.text();
       }).then(function(text) {
-        const html = parseLegalMarkdown(text);
-        INTL_LEGAL_CACHE[key] = html;
-        return renderAgreementDoc('隐私政策（' + region.label + '）', html);
+        const docs = parseLegalMarkdownDocs(text);
+        INTL_LEGAL_CACHE[cc] = docs;
+        return docs;
       });
     }
-    function parseLegalMarkdown(text) {
+    function renderIntlLegalPage() {
+      const raw = String(window._pageParam2 || 'tw_1');
+      const parts = raw.split('_');
+      const cc = INTL_LEGAL_REGIONS.find(function(r) { return r.key === parts[0]; }) ? parts[0] : 'tw';
+      const idx = (parseInt(parts[1], 10) >= 0) ? parseInt(parts[1], 10) : 1;
+      return loadIntlLegalDocs(cc).then(function(docs) {
+        if (!docs || !docs.length) throw new Error('empty');
+        const target = docs[Math.min(idx, docs.length - 1)] || docs[0];
+        return renderIntlDocPage(cc, docs, target.idx);
+      });
+    }
+    function renderIntlDocPage(cc, docs, curIdx) {
+      const cur = docs[curIdx] || docs[0];
+      const navDocs = docs.filter(function(d) { return !d.isAuth; });
+      const showNav = !cur.isAuth && navDocs.length > 1;
+      let navHtml = '';
+      if (showNav) {
+        navHtml = '<div style="padding:8px 12px 0;display:flex;flex-wrap:wrap;gap:8px;">' + navDocs.map(function(d) {
+          const active = d.idx === cur.idx;
+          return '<span onclick="openIntlLegal(\'' + cc + '\',' + d.idx + ')" style="display:inline-block;padding:6px 12px;border-radius:16px;font-size:12px;cursor:pointer;line-height:1.3;' + (active ? 'background:#eef4ff;color:#1D9BF0;font-weight:600;' : 'background:#f5f5f5;color:#555;') + '">' + escHtml(d.title) + '</span>';
+        }).join('') + '</div>';
+      }
+      let content = cur.body;
+      if (!cur.isAuth) {
+        const tokens = [];
+        const others = docs.filter(function(d) { return d.idx !== cur.idx && !d.isAuth; }).slice().sort(function(a, b) { return b.title.length - a.title.length; });
+        for (let k = 0; k < others.length; k++) {
+          const o = others[k];
+          const tk = '\u0001' + o.idx + '\u0001';
+          content = content.split(o.title).join(tk);
+          tokens.push({ tk: tk, o: o });
+        }
+        for (let k = 0; k < tokens.length; k++) {
+          const t = tokens[k];
+          const linkHtml = '<a href="javascript:void(0)" onclick="openIntlLegal(\'' + cc + '\',' + t.o.idx + ')" style="color:#1D9BF0;text-decoration:underline;">' + escHtml(t.o.title) + '</a>';
+          content = content.split(t.tk).join(linkHtml);
+        }
+      }
+      return `<div class="page">
+        <div class="navbar" style="position:fixed;top:0;left:0;right:0;z-index:100;background:#fff;">
+          <div onclick="goBack()" style="font-size:22px;cursor:pointer;color:#333;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div>
+          <h1 style="flex:1;text-align:center;font-size:16px;font-weight:600;line-height:1.3;padding:0 4px;">${escHtml(cur.title)}</h1>
+          <div style="width:28px;"></div>
+        </div>
+        <div style="padding-top:calc(50px + env(safe-area-inset-top));"></div>
+        ${navHtml}
+        <div style="padding:14px 16px 24px;line-height:1.8;font-size:14px;color:#333;">${content}</div>
+      </div>`;
+    }
+    function parseLegalMarkdownDocs(text) {
       const lines = String(text).split(/\r?\n/);
-      let html = '';
-      let inList = false;
-      function closeList() {
-        if (inList) { html += '</div>'; inList = false; }
+      const docs = [];
+      let cur = null;
+      function finalize() {
+        if (!cur) return;
+        if (cur._inList) { cur.body += '</div>'; cur._inList = false; }
+      }
+      function closeList(d) {
+        if (d._inList) { d.body += '</div>'; d._inList = false; }
       }
       for (let i = 0; i < lines.length; i++) {
         const raw = lines[i];
         const s = raw.replace(/\s+$/, '');
         const trimmed = s.trim();
-        if (!trimmed) { closeList(); continue; }
-        if (trimmed === '---') { closeList(); html += '<hr style="border:none;border-top:1px solid #e5e5e5;margin:18px 0;">'; continue; }
+        if (!trimmed) { if (cur) closeList(cur); continue; }
         const docTitle = trimmed.match(/^#\s+(.*)$/);
         if (docTitle) {
-          closeList();
-          html += '<h2 style="font-size:17px;font-weight:700;margin:24px 0 12px;color:#333;text-align:center;">' + escHtml(docTitle[1]) + '</h2>';
+          finalize();
+          cur = { idx: docs.length, title: intlCleanTitle(docTitle[1]), isAuth: false, body: '', _inList: false };
+          if (cur.idx === 3) cur.isAuth = true;
+          docs.push(cur);
           continue;
         }
+        if (!cur) continue;
+        const d = cur;
+        if (trimmed === '---') { closeList(d); d.body += '<hr style="border:none;border-top:1px solid #e5e5e5;margin:18px 0;">'; continue; }
         const secTitle = trimmed.match(/^##\s+(.*)$/);
         if (secTitle) {
-          closeList();
-          html += '<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">' + escHtml(secTitle[1]) + '</h3>';
+          closeList(d);
+          d.body += '<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">' + escHtml(secTitle[1]) + '</h3>';
           continue;
         }
         const listItem = trimmed.match(/^(\d+[\.、]|\-|\·|\*)\s*(.*)$/);
         if (listItem) {
-          if (!inList) { html += '<div style="margin-bottom:10px;">'; inList = true; }
-          html += '<p style="margin:0 0 6px;text-indent:0;color:#333;padding-left:1.5em;">' + escHtml(trimmed) + '</p>';
+          if (!d._inList) { d.body += '<div style="margin-bottom:10px;">'; d._inList = true; }
+          d.body += '<p style="margin:0 0 6px;text-indent:0;color:#333;padding-left:1.5em;">' + escHtml(trimmed) + '</p>';
           continue;
         }
-        closeList();
-        html += '<p style="margin-bottom:10px;text-indent:2em;color:#333;">' + escHtml(trimmed) + '</p>';
+        closeList(d);
+        d.body += '<p style="margin-bottom:10px;text-indent:2em;color:#333;">' + escHtml(trimmed) + '</p>';
       }
-      closeList();
-      return html;
+      finalize();
+      return docs;
+    }
+    function intlDocLinksSection(typeIdx) {
+      const typeNames = ['服务协议', '隐私政策', '未成年人（含儿童）隐私政策'];
+      const typeName = typeNames[typeIdx] || '法律文档';
+      const items = INTL_LEGAL_REGIONS.map(function(r) {
+        return '<p style="margin-bottom:10px;text-indent:2em;color:#333;">· <a href="javascript:void(0)" onclick="openIntlLegal(\'' + r.key + '\',' + typeIdx + ')" style="color:#1D9BF0;text-decoration:underline;">' + typeName + '（' + r.name + '）</a></p>';
+      }).join('');
+      return '<h3 style="font-size:15px;font-weight:600;margin:18px 0 8px;color:#333;">其他国家或地区的文档版本</h3>' +
+        '<p style="margin-bottom:10px;text-indent:2em;color:#333;">如阁下所在国家或地区并非中国大陆，以下为赞话平台面向提供服务的其他国家或地区用户提供的隐私政策及其他法律文档版本，点击即可查看：</p>' +
+        items;
     }
     function renderReportPage() {
       const reasonHtml = REPORT_REASONS.map(r => `
