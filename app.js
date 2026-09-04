@@ -11131,31 +11131,42 @@ async function renderMySubOrders() {
         return renderIntlDocPage(cc, docs, target.idx);
       });
     }
+    const INTL_COOKIE_NOTE = {
+      kr: '쿠키 사용에 관한 자세한 내용은 %T%에서 확인하세요.',
+      uk: 'For details on our use of cookies, please see %T%.',
+      fr: 'Pour plus de détails sur notre utilisation des cookies, veuillez consulter %T%.'
+    };
+    const INTL_REF_ALIASES = {
+      'uk_4': ['Cookie Policy'],
+      'fr_4': ['Politique de Cookies'],
+      'kr_4': ['《쿠키 정책》']
+    };
     function renderIntlDocPage(cc, docs, curIdx) {
       const cur = docs[curIdx] || docs[0];
-      const navDocs = docs.filter(function(d) { return !d.isAuth; });
-      const showNav = !cur.isAuth && navDocs.length > 1;
-      let navHtml = '';
-      if (showNav) {
-        navHtml = '<div style="padding:8px 12px 0;display:flex;flex-wrap:wrap;gap:8px;">' + navDocs.map(function(d) {
-          const active = d.idx === cur.idx;
-          return '<span onclick="openIntlLegal(\'' + cc + '\',' + d.idx + ')" style="display:inline-block;padding:6px 12px;border-radius:16px;font-size:12px;cursor:pointer;line-height:1.3;' + (active ? 'background:#eef4ff;color:#1D9BF0;font-weight:600;' : 'background:#f5f5f5;color:#555;') + '">' + escHtml(d.title) + '</span>';
-        }).join('') + '</div>';
-      }
       let content = cur.body;
+      let noteHtml = '';
       if (!cur.isAuth) {
         const tokens = [];
         const others = docs.filter(function(d) { return d.idx !== cur.idx && !d.isAuth; }).slice().sort(function(a, b) { return b.title.length - a.title.length; });
         for (let k = 0; k < others.length; k++) {
           const o = others[k];
-          const tk = '\u0001' + o.idx + '\u0001';
-          content = content.split(o.title).join(tk);
-          tokens.push({ tk: tk, o: o });
+          const names = [o.title].concat(INTL_REF_ALIASES[cc + '_' + o.idx] || []);
+          for (let n = 0; n < names.length; n++) {
+            const tk = '\u0001' + o.idx + '_' + n + '\u0001';
+            content = content.split(names[n]).join(tk);
+            tokens.push({ tk: tk, o: o });
+          }
         }
         for (let k = 0; k < tokens.length; k++) {
           const t = tokens[k];
           const linkHtml = '<a href="javascript:void(0)" onclick="openIntlLegal(\'' + cc + '\',' + t.o.idx + ')" style="color:#1D9BF0;text-decoration:underline;">' + escHtml(t.o.title) + '</a>';
           content = content.split(t.tk).join(linkHtml);
+        }
+        const cookieDoc = docs[4];
+        if (cookieDoc && cookieDoc.idx !== cur.idx && INTL_COOKIE_NOTE[cc]) {
+          const phrase = INTL_COOKIE_NOTE[cc];
+          const linkHtml = '<a href="javascript:void(0)" onclick="openIntlLegal(\'' + cc + '\',' + cookieDoc.idx + ')" style="color:#1D9BF0;text-decoration:underline;">' + escHtml(cookieDoc.title) + '</a>';
+          noteHtml = '<p style="margin:22px 0 10px;padding-top:14px;border-top:0.5px solid #e5e5e5;text-indent:2em;color:#333;">' + phrase.split('%T%').join(linkHtml) + '</p>';
         }
       }
       return `<div class="page">
@@ -11165,8 +11176,7 @@ async function renderMySubOrders() {
           <div style="width:28px;"></div>
         </div>
         <div style="padding-top:calc(50px + env(safe-area-inset-top));"></div>
-        ${navHtml}
-        <div style="padding:14px 16px 24px;line-height:1.8;font-size:14px;color:#333;">${content}</div>
+        <div style="padding:14px 16px 24px;line-height:1.8;font-size:14px;color:#333;">${content}${noteHtml}</div>
       </div>`;
     }
     function parseLegalMarkdownDocs(text) {
