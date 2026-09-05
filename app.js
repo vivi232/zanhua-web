@@ -4998,19 +4998,33 @@
       ring.style.cssText = 'position:absolute;top:50%;left:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:conic-gradient(#fff 0% 0%,rgba(255,255,255,0.2) 0%);mask:radial-gradient(transparent 21px,#000 22px);-webkit-mask:radial-gradient(transparent 21px,#000 22px);transition:background .08s linear;z-index:10001;';
       let loadPct = 0;
       let loadTimer = null;
+      let stallUntil = 0;
       function paintRing(pct) { ring.style.background = 'conic-gradient(#fff 0% ' + pct + '%,rgba(255,255,255,0.2) ' + pct + '%)'; }
       function startRing() {
         stopRing();
         loadPct = 0;
+        stallUntil = 0;
         paintRing(0);
         ring.style.display = 'block';
-        loadTimer = setInterval(function() {
-          loadPct = Math.min(86, loadPct + Math.max(0.6, (90 - loadPct) * 0.055));
-          paintRing(Math.round(loadPct));
-        }, 90);
+        const tick = function() {
+          if (!loadTimer) return;
+          const now = Date.now();
+          if (now >= stallUntil) {
+            const chance = loadPct < 30 ? 88 : (loadPct < 55 ? 70 : (loadPct < 75 ? 50 : 34));
+            if (Math.random() * 100 < chance) {
+              loadPct = Math.min(88, loadPct + (loadPct < 45 ? (0.4 + Math.random() * 1.4) : (0.15 + Math.random() * 0.7)));
+              paintRing(Math.round(loadPct));
+            }
+            if (Math.random() < (loadPct > 55 ? 0.30 : 0.13)) {
+              stallUntil = now + 160 + Math.random() * 820;
+            }
+          }
+          loadTimer = setTimeout(tick, 130 + Math.random() * 180);
+        };
+        loadTimer = setTimeout(tick, 110);
       }
       function stopRing() {
-        if (loadTimer) { clearInterval(loadTimer); loadTimer = null; }
+        if (loadTimer) { clearTimeout(loadTimer); loadTimer = null; }
         ring.style.display = 'none';
       }
       const failText = document.createElement('div');
