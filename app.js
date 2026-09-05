@@ -4967,16 +4967,6 @@
 
     const _fullImageCache = {};
     const _IMG_STYLE = 'max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;';
-    (function() {
-      try {
-        if (!document.getElementById('full-ring-keyframes')) {
-          const st = document.createElement('style');
-          st.id = 'full-ring-keyframes';
-          st.textContent = '@keyframes fullRingSpin{to{transform:rotate(360deg)}}';
-          document.head.appendChild(st);
-        }
-      } catch(e) {}
-    })();
     function _fullImageKey(item) {
       try { return withMediaAuth(item); } catch(e) { return String(item); }
     }
@@ -5003,9 +4993,26 @@
       closeBtn.style.cssText = `position:absolute;top:20px;left:20px;z-index:10000;cursor:pointer;padding:10px;background:rgba(0,0,0,0.6);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;`;
       const holder = document.createElement('img');
       holder.id = 'full-image-holder';
-      holder.style.cssText = 'position:absolute;max-width:96%;max-height:96%;object-fit:contain;opacity:0;filter:blur(30px) brightness(0.6);transform:scale(1.02);pointer-events:none;transition:opacity .3s ease;';
+      holder.style.cssText = 'position:absolute;max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;opacity:0;filter:blur(22px) saturate(1.2);transform:scale(1.03);pointer-events:none;transition:opacity .25s ease;';
       const ring = document.createElement('div');
-      ring.style.cssText = `position:absolute;top:50%;left:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:conic-gradient(rgba(255,255,255,0.95) 0% 75%, rgba(255,255,255,0.18) 75% 100%);mask:radial-gradient(transparent 17px,#000 18px);-webkit-mask:radial-gradient(transparent 17px,#000 18px);animation:fullRingSpin 0.9s linear infinite;z-index:10001;`;
+      ring.style.cssText = 'position:absolute;top:50%;left:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:conic-gradient(#fff 0% 0%,rgba(255,255,255,0.2) 0%);mask:radial-gradient(transparent 21px,#000 22px);-webkit-mask:radial-gradient(transparent 21px,#000 22px);transition:background .08s linear;z-index:10001;';
+      let loadPct = 0;
+      let loadTimer = null;
+      function paintRing(pct) { ring.style.background = 'conic-gradient(#fff 0% ' + pct + '%,rgba(255,255,255,0.2) ' + pct + '%)'; }
+      function startRing() {
+        stopRing();
+        loadPct = 0;
+        paintRing(0);
+        ring.style.display = 'block';
+        loadTimer = setInterval(function() {
+          loadPct = Math.min(86, loadPct + Math.max(0.6, (90 - loadPct) * 0.055));
+          paintRing(Math.round(loadPct));
+        }, 90);
+      }
+      function stopRing() {
+        if (loadTimer) { clearInterval(loadTimer); loadTimer = null; }
+        ring.style.display = 'none';
+      }
       const failText = document.createElement('div');
       failText.style.cssText = `position:absolute;top:calc(50% + 70px);left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.75);font-size:15px;text-align:center;line-height:1.6;`;
       let counter = null;
@@ -5039,7 +5046,7 @@
           disp = cached;
           cached.style.display = 'block';
           if (cached.parentNode !== overlay) overlay.appendChild(cached);
-          ring.style.display = 'none';
+          stopRing();
           holder.style.opacity = '0';
           imgPrefetch.resume();
           return;
@@ -5050,7 +5057,7 @@
         fresh.onload = function() {
           if (disp !== fresh) return;
           _fullImageCache[key] = fresh;
-          ring.style.display = 'none';
+          stopRing();
           holder.style.opacity = '0';
           failText.style.display = 'none';
           imgPrefetch.resume();
@@ -5058,19 +5065,26 @@
         fresh.onerror = function() {
           if (disp !== fresh) return;
           disp = null;
-          ring.style.display = 'none';
+          stopRing();
           failText.textContent = '图片加载失败\n请检查网络后重试';
           failText.style.display = 'block';
           imgPrefetch.resume();
         };
         const th = _fullImageThumb(item);
+        holder.onload = null;
+        holder.onerror = null;
         if (th) {
-          holder.src = th;
-          holder.style.opacity = '1';
+          holder.onload = function() { holder.style.opacity = '1'; };
+          if (holder.src === th && holder.complete) {
+            holder.style.opacity = '1';
+          } else {
+            holder.style.opacity = '0';
+            holder.src = th;
+          }
         } else {
           holder.style.opacity = '0';
         }
-        ring.style.display = 'block';
+        startRing();
         fresh.src = key;
         overlay.appendChild(fresh);
       }
