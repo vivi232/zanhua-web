@@ -574,7 +574,7 @@
       return false;
     }
     function setToken(t) { localStorage.setItem('zanhua_token', t); if (typeof dctWmClearTile === 'function') dctWmClearTile(); dctWmRemoveCanvas(); }
-    function getUid() { try { return atob(getToken().replace(/^admin_/, '')).split(':')[0]; } catch(e) { return ''; } }
+    function getUid() { try { return atob(getToken().replace(/^admin_/, '').split('.')[0]).split(':')[0]; } catch(e) { return ''; } }
     function isAdminAccount() { return getToken().indexOf('admin_') === 0 || currentNickname === '管理员'; }
 
     async function api(url, method = 'GET', data = null) {
@@ -8154,7 +8154,7 @@
       try {
         const t = getToken();
         if (t) {
-          const decoded = atob(t);
+          const decoded = atob(t.replace(/^admin_/, '').split('.')[0]);
           const parts = decoded.split(':');
           if (parts.length >= 2) tokenPhone = parts[1];
         }
