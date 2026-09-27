@@ -9722,11 +9722,17 @@ function renderBuyExposure() {
                 <span style="font-size:12px;color:rgba(255,255,255,0.5);white-space:nowrap;">分钟（≥10，10的倍数）</span>
               </div>
             </div>
+            <div id="freeQuotaRow" style="display:none;margin-bottom:16px;">
+              <label style="display:flex;align-items:center;gap:8px;background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.4);border-radius:10px;padding:12px;cursor:pointer;">
+                <input type="checkbox" id="useFreeQuota" onchange="toggleUseFreeQuota(this.checked)" style="width:16px;height:16px;accent-color:#8b5cf6;">
+                <span style="font-size:13px;color:#c4b5fd;" id="freeQuotaText"></span>
+              </label>
+            </div>
             <div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:12px;">应付金额：<span id="pinPrice" style="color:#fff;font-size:24px;">¥${initialPrice}</span></div>
-            <div style="width:180px;height:180px;background:#fff;border-radius:12px;margin:0 auto;display:flex;align-items:center;justify-content:center;">
+            <div id="pinQrWrap" style="width:180px;height:180px;background:#fff;border-radius:12px;margin:0 auto;display:flex;align-items:center;justify-content:center;">
               <div style="text-align:center;"><img src="${PAY_QR_URL}" style="width:160px;height:160px;border-radius:8px;" alt="微信支付二维码"><div style="font-size:11px;color:#999;margin-top:6px;">微信扫码支付</div></div>
             </div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:12px;text-align:center;">请在30分钟内完成支付</div>
+            <div id="pinPayNote" style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:12px;text-align:center;">请在30分钟内完成支付</div>
           </div>
           <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;margin-bottom:20px;">
             <div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.8;">
@@ -9748,6 +9754,59 @@ function renderBuyExposure() {
       let currentPinType = isFromSubscribe ? param : 'scroll';
       let currentPinPrice = currentPinType === 'scroll' ? 5 : 0.45;
       let currentPinDuration = currentPinType === 'fixed' ? 30 : 0;
+      let pinPerks = null;
+      let usingFree = false;
+
+      function freeAvailForCurrent() {
+        if (!pinPerks) return 0;
+        return currentPinType === 'scroll' ? (pinPerks.scroll_avail || 0) : (pinPerks.fixed_min_avail || 0);
+      }
+      function freeCoversCurrent() {
+        const avail = freeAvailForCurrent();
+        if (avail <= 0) return false;
+        return currentPinType === 'scroll' ? true : currentPinDuration <= avail;
+      }
+      function refreshFreeQuotaUI() {
+        const row = document.getElementById('freeQuotaRow');
+        const cb = document.getElementById('useFreeQuota');
+        const txt = document.getElementById('freeQuotaText');
+        const priceEl = document.getElementById('pinPrice');
+        const qrWrap = document.getElementById('pinQrWrap');
+        const note = document.getElementById('pinPayNote');
+        const btn = document.getElementById('pinPayBtn');
+        if (!row) return;
+        const avail = freeAvailForCurrent();
+        const canUseFree = avail > 0 && freeCoversCurrent();
+        if (avail <= 0) {
+          row.style.display = 'none';
+          usingFree = false;
+          if (cb) cb.checked = false;
+        } else {
+          row.style.display = 'block';
+          if (txt) txt.textContent = currentPinType === 'scroll'
+            ? `使用本月免费额度（剩余 ${avail} 次，立即生效）`
+            : `使用本月免费额度（剩余 ${avail} 分钟，本次需 ${currentPinDuration} 分钟${currentPinDuration > avail ? '，超出额度' : ''}）`;
+          if (!canUseFree && usingFree) { usingFree = false; if (cb) cb.checked = false; }
+        }
+        if (usingFree) {
+          if (priceEl) priceEl.textContent = '¥0.00';
+          if (qrWrap) qrWrap.style.display = 'none';
+          if (note) note.textContent = '免费额度即时生效，无需支付';
+          if (btn) btn.textContent = '立即使用免费置顶';
+        } else {
+          if (priceEl) priceEl.textContent = '¥' + currentPinPrice.toFixed(2);
+          if (qrWrap) qrWrap.style.display = 'flex';
+          if (note) note.textContent = '请在30分钟内完成支付';
+          if (btn) btn.textContent = '我已完成支付';
+        }
+      }
+      window.toggleUseFreeQuota = function(on) {
+        usingFree = !!on && freeCoversCurrent();
+        refreshFreeQuotaUI();
+      };
+      api('/myPinPerks').then(r => {
+        if (r.code === 1 && r.data) { pinPerks = r.data; refreshFreeQuotaUI(); }
+      }).catch(() => {});
 
       if (isFromSubscribe) {
         loadPinPostList();
@@ -9831,6 +9890,7 @@ function renderBuyExposure() {
           currentPinDuration = 0;
         }
         document.getElementById('pinPrice').textContent = '¥' + currentPinPrice.toFixed(2);
+        refreshFreeQuotaUI();
       };
       window.selectPinDuration = function(el) {
         document.querySelectorAll('.pin-duration').forEach(o => {
@@ -9841,6 +9901,7 @@ function renderBuyExposure() {
         currentPinPrice = parseFloat(priceText);
         currentPinDuration = parseInt(el.dataset.mins);
         document.getElementById('pinPrice').textContent = '¥' + currentPinPrice.toFixed(2);
+        refreshFreeQuotaUI();
       };
 
       window.applyCustomPinDuration = function() {
@@ -9860,21 +9921,35 @@ function renderBuyExposure() {
         currentPinDuration = mins;
         currentPinPrice = parseFloat((mins * 0.015).toFixed(2));
         document.getElementById('pinPrice').textContent = '¥' + currentPinPrice.toFixed(2);
+        refreshFreeQuotaUI();
       };
       window.confirmPinPay = async function() {
         if (!selectedPostId) { showToast('请先选择要置顶的帖子'); return; }
         const btn = document.getElementById('pinPayBtn');
+        const wasFree = usingFree && freeCoversCurrent();
         btn.textContent = '处理中...'; btn.disabled = true;
         try {
           const payload = { post_id: selectedPostId, pin_type: currentPinType };
           if (currentPinType === 'fixed') payload.duration_minutes = currentPinDuration;
+          if (wasFree) payload.use_free = 1;
           const r = await api('/buyPin', 'POST', payload);
           if (r.code === 1) {
-            showToast('订单已提交！订单号：' + (r.data?.order_no || ''));
-            setTimeout(() => goPage('myServiceOrders'), 1500);
+            if (wasFree) {
+              showToast(r.msg || '已使用本月免费额度，置顶即时生效');
+              usingFree = false;
+              if (pinPerks) {
+                if (currentPinType === 'scroll') pinPerks.scroll_avail = (r.data && typeof r.data.remain === 'number') ? r.data.remain : Math.max(0, pinPerks.scroll_avail - 1);
+                else pinPerks.fixed_min_avail = (r.data && typeof r.data.remain === 'number') ? r.data.remain : Math.max(0, pinPerks.fixed_min_avail - currentPinDuration);
+              }
+              refreshFreeQuotaUI();
+              setTimeout(() => goPage('home'), 1200);
+            } else {
+              showToast('订单已提交！订单号：' + (r.data?.order_no || ''));
+              setTimeout(() => goPage('myServiceOrders'), 1500);
+            }
           } else { showToast(r.msg || '提交失败'); }
         } catch(e) { showToast('网络异常'); }
-        btn.textContent = '我已完成支付'; btn.disabled = false;
+        btn.textContent = usingFree ? '立即使用免费置顶' : '我已完成支付'; btn.disabled = false;
       };
     }
 async function renderPaySubscribe() {
@@ -10562,6 +10637,40 @@ async function renderMySubOrders() {
         </div>
       </div>`;
     }
+    function renderAnnualUnbanArea(info) {
+      if (!info || info.permanent || !info.unbanTicket) return '';
+      return '<div id="annualUnbanArea" style="margin-bottom:12px;">' +
+        '<div style="background:linear-gradient(135deg,#2b2140,#1f1830);border:1px solid rgba(139,92,246,0.4);border-radius:10px;padding:12px;">' +
+        '<div style="font-size:14px;font-weight:600;color:#c4b5fd;margin-bottom:4px;"><i class="fa-solid fa-wand-magic-sparkles" style="margin-right:5px;"></i>高级认证年度解封机会</div>' +
+        '<div style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.6;margin-bottom:10px;">持有高级认证满一年可立即解除本次非永久封禁（每个订阅年度周期仅1次）</div>' +
+        '<button id="annualUnbanBtn" onclick="useAnnualUnban()" style="width:100%;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:none;border-radius:20px;padding:11px;font-size:15px;font-weight:600;cursor:pointer;">检查并使用解封机会</button>' +
+        '</div></div>';
+    }
+    window.useAnnualUnban = async function() {
+      let info = {};
+      try { info = JSON.parse(localStorage.getItem('zanhua_ban_info') || '{}'); } catch(_) {}
+      const btn = document.getElementById('annualUnbanBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '查询中...'; }
+      const headers = { 'x-unban-ticket': info.unbanTicket || '' };
+      try {
+        let r = await fetch(API_BASE + '/annualUnbanStatus', { headers }).then(x => x.json());
+        if (r.code !== 1) { showToast(r.msg || '查询失败'); if (btn) { btn.disabled = false; btn.textContent = '检查并使用解封机会'; } return; }
+        if (!r.data.available) {
+          const map = { not_premium: '该机会为高级认证专属', under_one_year: '持有高级认证满一年后解锁', used_this_cycle: '本订阅年度周期内已使用过' };
+          showToast(map[r.data.reason] || '当前无法使用该机会');
+          if (btn) { btn.disabled = false; btn.textContent = '检查并使用解封机会'; }
+          return;
+        }
+        if (btn) btn.textContent = '解封中...';
+        r = await fetch(API_BASE + '/useAnnualUnban', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, headers) }).then(x => x.json());
+        if (r.code === 1) {
+          showToast(r.msg || '封禁已解除');
+          try { localStorage.removeItem('zanhua_ban_info'); } catch(_) {}
+          setTimeout(() => { try { showLoginModal(); } catch(_) {} }, 1200);
+        } else { showToast(r.msg || '解封失败'); }
+      } catch (e) { showToast('网络异常'); }
+      if (btn) { btn.disabled = false; btn.textContent = '检查并使用解封机会'; }
+    };
     function renderCachedBanDetail(container) {
       if (!container) return;
       let info = {};
@@ -10600,6 +10709,7 @@ async function renderMySubOrders() {
               <span style="font-size:13px;color:#333;">${String(info.endTime).slice(0,16)}</span>
             </div>` : ''}
           </div>
+          ${renderAnnualUnbanArea(info)}
           ${renderCachedAppealSection(info)}
         </div>
         <div onclick="goPage('rulesCenter')" style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:12px;cursor:pointer;">
