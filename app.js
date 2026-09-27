@@ -2761,7 +2761,10 @@
           });
         }
         if (Array.isArray(newPosts) && newPosts.length) {
-          posts = [...newPosts, ...posts];
+          // 新帖插在置顶帖之后，与服务端排序一致
+          let insertAt = 0;
+          while (insertAt < posts.length && posts[insertAt].pinned) insertAt++;
+          posts = [...posts.slice(0, insertAt), ...newPosts.map(n => ({ ...n, liked: n.liked !== undefined ? n.liked : false, collected: n.collected !== undefined ? n.collected : false })), ...posts.slice(insertAt)];
           dirty = true;
         }
         if (dirty) {
@@ -2770,7 +2773,7 @@
             el.innerHTML = AdManager.injectFeed(posts.map(renderPostCard)).join('');
             AdManager.fill(el);
             setTimeout(refreshCardExpandButtons, 0);
-            feedCache = { posts, feed: homeFeedTab || 'recommend', html: el.innerHTML, maxTime: maxCreateTime(posts) };
+            feedCache = { posts, feed: homeFeedTab || 'recommend', html: el.innerHTML, ts: Date.now(), pages: postPage, maxTime: maxCreateTime(posts) };
           }
         }
       } catch (e) {}
@@ -2806,6 +2809,7 @@
         const _cacheFresh = feedCache && feedCache.feed === _feedKey && Array.isArray(feedCache.posts) && feedCache.posts.length && (Date.now() - feedCache.ts < 5 * 60 * 1000);
         if (_cacheFresh) {
           posts = feedCache.posts;
+          postPage = (feedCache.pages || 1) + 1;
           const _plEl0 = document.getElementById('postList');
           if (_plEl0 && !_plEl0.innerHTML.trim()) _plEl0.innerHTML = feedCache.html || '';
           hideAppSkeleton();
@@ -2836,7 +2840,7 @@
             const _cards = AdManager.injectFeed(posts.map(renderPostCard));
             _plEl.innerHTML = _cards.join('');
             AdManager.fill(_plEl);
-            feedCache = { posts, feed: homeFeedTab || 'recommend', html: _plEl.innerHTML, ts: Date.now(), maxTime: maxCreateTime(posts) };
+            feedCache = { posts, feed: homeFeedTab || 'recommend', html: _plEl.innerHTML, ts: Date.now(), pages: postPage, maxTime: maxCreateTime(posts) };
           } else {
             _plEl.innerHTML = '<div class="empty"><i class="fa-solid fa-pen-to-square"></i><p>暂无动态</p></div>';
           }
