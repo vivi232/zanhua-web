@@ -309,6 +309,7 @@
       updateTabbar();
     }
     let posts = [];
+    let feedCache = null; // 信息流会话缓存 { posts, ts, feed }
     let postPage = 1;
     let loading = false;
     let noMorePosts = false;
@@ -332,6 +333,87 @@
     let loginCaptchaRequestLock = false;
     let clientConfigPromise = null;
     let clientConfig = { captchaSceneId: '' };
+
+    // ===== 广告管理器（完全惰性；adConfig.enabled=false 时零脚本、零DOM、零请求）=====
+    // 会员免广告依据本地已加载的认证类型判断，不产生任何额外网络请求：
+    //   premium / enterprise -> 完全无广告；advanced -> 信息流广告减少30%；其他 -> 正常展示。
+    const AdManager = (function() {
+      let scriptPromise = null;
+      function cfg() {
+        return (clientConfig && clientConfig.adConfig && clientConfig.adConfig.enabled === true) ? clientConfig.adConfig : null;
+      }
+      function tier() {
+        const t = (typeof myVerificationTypes !== 'undefined' && Array.isArray(myVerificationTypes)) ? myVerificationTypes : [];
+        if (t.includes('premium') || t.includes('enterprise')) return 'adfree';
+        if (t.includes('advanced')) return 'reduced';
+        return 'normal';
+      }
+      // 是否应完全隐藏广告
+      function isAdFree() { return cfg() !== null && tier() === 'adfree'; }
+      // 进阶会员：按概率跳过 30% 的广告位（确定性基于位置，保证刷新一致）
+      function skipAt(index) {
+        const c = cfg();
+        if (!c) return true;               // 未启用广告 -> 跳过所有广告位
+        if (isAdFree()) return true;       // 高级/企业 -> 全免
+        if (tier() === 'reduced') {
+          return ((index * 7919) % 100) < 30; // 进阶 -> 稳定减少约30%
+        }
+        return false;
+      }
+      function ensureScript() {
+        const c = cfg();
+        if (!c) return Promise.resolve();          // 未启用：绝不加载任何脚本
+        if (scriptPromise) return scriptPromise;
+        if (window.adsbygoogle) return Promise.resolve();
+        scriptPromise = new Promise(function(resolve) {
+          try {
+            const s = document.createElement('script');
+            s.async = true;
+            s.crossOrigin = 'anonymous';
+            s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + encodeURIComponent(c.client || '');
+            s.onload = resolve; s.onerror = resolve;
+            document.head.appendChild(s);
+          } catch (e) { resolve(); }
+        });
+        return scriptPromise;
+      }
+      // 在帖子卡片 HTML 数组之间插入广告位；未启用时原样返回（输出与无广告系统时一致）
+      function injectFeed(cardHtmlArr) {
+        const c = cfg();
+        if (!c || isAdFree()) return cardHtmlArr;
+        const every = (c.slots && c.slots.feedEvery) || 8;
+        const slotId = (c.slots && c.slots.feedSlot) || '';
+        const out = [];
+        let adIndex = 0;
+        for (let i = 0; i < cardHtmlArr.length; i++) {
+          out.push(cardHtmlArr[i]);
+          if ((i + 1) % every === 0 && (i + 1) < cardHtmlArr.length) {
+            if (!skipAt(adIndex)) {
+              out.push('<div class="ad-slot ad-feed" data-ad-index="' + adIndex + '" style="margin:8px 0;">' +
+                '<ins class="adsbygoogle" style="display:block" data-ad-client="' + (c.client || '') + '"' +
+                (slotId ? ' data-ad-slot="' + slotId + '"' : '') + ' data-ad-format="fluid" data-ad-layout-key="-6t+ed+2i-1n-4w"></ins></div>');
+            }
+            adIndex++;
+          }
+        }
+        return out;
+      }
+      // 渲染后填充已插入的广告位（仅启用时）
+      function fill(container) {
+        const c = cfg();
+        if (!c || isAdFree()) return Promise.resolve();
+        return ensureScript().then(function() {
+          try {
+            if (!window.adsbygoogle) return;
+            (container || document).querySelectorAll('.ad-slot ins.adsbygoogle:not([data-pushed])').forEach(function(el) {
+              el.setAttribute('data-pushed', '1');
+              try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+            });
+          } catch (e) {}
+        });
+      }
+      return { injectFeed: injectFeed, fill: fill, isAdFree: isAdFree, cfg: cfg };
+    })();
     let isPublishing = false;
     let isFileUploading = false;
     let scrollToCommentFlag = false;
@@ -573,7 +655,7 @@
       showToast((res && res.msg) || fallbackMsg);
       return false;
     }
-    function setToken(t) { localStorage.setItem('zanhua_token', t); if (typeof dctWmClearTile === 'function') dctWmClearTile(); dctWmRemoveCanvas(); }
+    function setToken(t) { localStorage.setItem('zanhua_token', t); feedCache = null; if (typeof dctWmClearTile === 'function') dctWmClearTile(); dctWmRemoveCanvas(); }
     function getUid() { try { return atob(getToken().replace(/^admin_/, '').split('.')[0]).split(':')[0]; } catch(e) { return ''; } }
     function isAdminAccount() { return getToken().indexOf('admin_') === 0 || currentNickname === '管理员'; }
 
@@ -1836,7 +1918,7 @@
           <div id="${cardId}-btn" class="post-expand-btn"><span onclick="event.stopPropagation();togglePostExpand('${cardId}')"><i class="fa-solid fa-angles-down" style="margin-right:3px;"></i>展开全文</span></div>
         </div>`;
       }
-      return `<div class="${cardClass}" onclick="goPostDetail('${p.id}')">
+      return `<div class="${cardClass}" id="pc-${p.id}" onclick="goPostDetail('${p.id}')">
         <div class="post-header">
           <img class="avatar" src="${resolveMediaUrl(p.avatar)||DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${p.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
           <div class="post-user">
@@ -2632,7 +2714,7 @@
           </div>
           <div style="height:0.5px;background:#e5e5e5;"></div>
         </div>
-        <div id="postList"></div>
+        <div id="postList">${(feedCache && feedCache.feed === (homeFeedTab || 'recommend') && feedCache.html) ? feedCache.html : ''}</div>
         <div id="loadMore" style="display:none;padding:16px 16px 24px;"><div class="sk-item" style="height:14px;margin-bottom:8px;"></div><div class="sk-item" style="height:14px;margin-bottom:8px;"></div><div class="sk-item" style="height:14px;width:60%;"></div></div>
         <div id="noMoreTip" style="display:none;text-align:center;padding:20px;color:#ccc;font-size:13px;">— 没有更多了 —</div>
         <div id="fabCreateBtn" class="fab" onclick="goCreatePostGuard()" style="position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:16px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg, #099536, #0BB84D);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;z-index:101;box-shadow:0 4px 10px rgba(0,0,0,0.2);pointer-events:auto;"><i class="fa-solid fa-plus"></i></div>
@@ -2659,6 +2741,57 @@
       };
     }
 
+    // ===== 信息流静默增量更新：只拉新帖与计数变化，不整页重载 =====
+    async function refreshFeedDelta() {
+      if (!posts.length) return;
+      try {
+        const ids = posts.map(p => p.id);
+        const since = feedCache && feedCache.maxTime ? feedCache.maxTime : (posts[0] && posts[0].create_time) || '';
+        const res = await api(`/postFeedDelta?ids=${encodeURIComponent(JSON.stringify(ids))}&since=${encodeURIComponent(since)}`);
+        if (!res || res.code !== 1 || !res.data) return;
+        const { newPosts, changed } = res.data;
+        let dirty = false;
+        if (Array.isArray(changed)) {
+          changed.forEach(c => {
+            const local = posts.find(p => p.id === c.id);
+            if (!local) return;
+            if (local.likes !== c.likes) { local.likes = c.likes; dirty = updateCardCount(c.id, 0, c.likes, local.liked) || dirty; }
+            if (local.comments !== c.comments) { local.comments = c.comments; dirty = updateCardCount(c.id, 1, c.comments) || dirty; }
+            if (local.collects !== c.collects) { local.collects = c.collects; dirty = updateCardCount(c.id, 2, c.collects, local.collected) || dirty; }
+          });
+        }
+        if (Array.isArray(newPosts) && newPosts.length) {
+          posts = [...newPosts, ...posts];
+          dirty = true;
+        }
+        if (dirty) {
+          const el = document.getElementById('postList');
+          if (el && currentPage === 'home') {
+            el.innerHTML = AdManager.injectFeed(posts.map(renderPostCard)).join('');
+            AdManager.fill(el);
+            setTimeout(refreshCardExpandButtons, 0);
+            feedCache = { posts, feed: homeFeedTab || 'recommend', html: el.innerHTML, maxTime: maxCreateTime(posts) };
+          }
+        }
+      } catch (e) {}
+    }
+    function maxCreateTime(list) {
+      let m = '';
+      list.forEach(p => { if (p.create_time && p.create_time > m) m = p.create_time; });
+      return m;
+    }
+    // 局部更新单卡片某个计数 span（0赞 1评 2藏），失败返回 false 由上层整卡重渲染
+    function updateCardCount(postId, idx, val, active) {
+      const card = document.getElementById('pc-' + postId);
+      if (!card) return false;
+      const items = card.querySelectorAll('.post-actions .action-item');
+      if (items.length <= idx) return false;
+      const span = items[idx].querySelector('span');
+      if (!span) return false;
+      span.textContent = val || 0;
+      return true;
+    }
+
     async function loadPosts(refresh = false) {
       if (loading) return;
       const noMoreEl = document.getElementById('noMoreTip');
@@ -2667,6 +2800,19 @@
         posts = [];
         noMorePosts = false;
         if (noMoreEl) noMoreEl.style.display = 'none';
+      }
+      if (refresh) {
+        const _feedKey = homeFeedTab || 'recommend';
+        const _cacheFresh = feedCache && feedCache.feed === _feedKey && Array.isArray(feedCache.posts) && feedCache.posts.length && (Date.now() - feedCache.ts < 5 * 60 * 1000);
+        if (_cacheFresh) {
+          posts = feedCache.posts;
+          const _plEl0 = document.getElementById('postList');
+          if (_plEl0 && !_plEl0.innerHTML.trim()) _plEl0.innerHTML = feedCache.html || '';
+          hideAppSkeleton();
+          loading = false;
+          refreshFeedDelta();
+          return;
+        }
       }
       if (noMorePosts) return;
       loading = true;
@@ -2685,7 +2831,15 @@
         if (res.code === 1) {
           const list = res.data || [];
           posts = refresh ? list : [...posts, ...list];
-          document.getElementById('postList').innerHTML = posts.length ? posts.map(renderPostCard).join('') : '<div class="empty"><i class="fa-solid fa-pen-to-square"></i><p>暂无动态</p></div>';
+          const _plEl = document.getElementById('postList');
+          if (posts.length) {
+            const _cards = AdManager.injectFeed(posts.map(renderPostCard));
+            _plEl.innerHTML = _cards.join('');
+            AdManager.fill(_plEl);
+            feedCache = { posts, feed: homeFeedTab || 'recommend', html: _plEl.innerHTML, ts: Date.now(), maxTime: maxCreateTime(posts) };
+          } else {
+            _plEl.innerHTML = '<div class="empty"><i class="fa-solid fa-pen-to-square"></i><p>暂无动态</p></div>';
+          }
           setTimeout(refreshCardExpandButtons, 0);
           if (res.limited) {
             noMorePosts = true;
@@ -6808,6 +6962,7 @@
 
     function logout() {
       localStorage.removeItem('zanhua_token');
+      feedCache = null;
       myAvatar = '';
       currentUsername = '';
       currentNickname = '';
