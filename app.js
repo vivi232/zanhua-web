@@ -992,6 +992,26 @@
       if (!displayType) return '';
       return `<span class="verif-badge">${getVerifSvg(displayType, 15, true)}</span>`;
     }
+    const _NICK_BUBBLE_BG = {
+      gradient1: 'linear-gradient(135deg,#667eea,#764ba2)',
+      gradient2: 'linear-gradient(135deg,#f093fb,#f5576c)',
+      gradient3: 'linear-gradient(135deg,#4facfe,#00f2fe)',
+      solid_pink: '#ff6b9d', solid_blue: '#1d9bf0', solid_gold: '#f5a623'
+    };
+    function getNickSettings(data) {
+      let s = data && data.verif_settings;
+      if (typeof s === 'string') { try { s = JSON.parse(s); } catch (e) { s = {}; } }
+      return s && typeof s === 'object' ? s : {};
+    }
+    function wrapNick(innerHtml, data) {
+      const s = getNickSettings(data);
+      const bg = _NICK_BUBBLE_BG[s.nick_bubble];
+      const color = /^#[0-9a-fA-F]{6}$/.test(s.nick_color || '') ? s.nick_color : '';
+      if (!bg && !color) return innerHtml;
+      const pad = bg ? 'padding:1px 7px;border-radius:10px;' : '';
+      const style = `display:inline-block;${pad}${bg ? 'background:' + bg + ';' : ''}${color ? 'color:' + color + ' !important;' : ''}max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;`;
+      return `<span style="${style}">${innerHtml}</span>`;
+    }
     function renderProfileVerificationRows(data) {
       const types = getVerificationTypes(data);
       if (!types.length) return '';
@@ -1922,7 +1942,7 @@
         <div class="post-header">
           <img class="avatar" src="${resolveMediaUrl(p.avatar)||DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${p.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
           <div class="post-user">
-            <div class="post-nickname">${p.nickname || '用户'+p.user_id}${renderListVerification(p)}</div>
+            <div class="post-nickname">${wrapNick(p.nickname || '用户'+p.user_id, p)}${renderListVerification(p)}</div>
             <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || '未知'}</div>
           </div>
           ${isMine ? `<div onclick="event.stopPropagation();showPostActionSheet('${p.id}')" style="cursor:pointer;padding:4px 8px;margin-left:auto;"><i class="fa-solid fa-ellipsis" style="color:#999;font-size:16px;"></i></div>` : ''}
@@ -2092,7 +2112,7 @@
         <div class="post-header">
           <img class="avatar" src="${avatar}" onclick="event.stopPropagation();${showUser ? `goUserProfile('${c.user_id}')` : ''}" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
           <div class="post-user">
-            <div class="post-nickname">${nickname}${showUser ? renderListVerification(c) : ''}</div>
+            <div class="post-nickname">${wrapNick(nickname, c)}${showUser ? renderListVerification(c) : ''}</div>
             <div class="post-time">${timeAgo(c.create_time)}</div>
           </div>
         </div>
@@ -2376,7 +2396,7 @@
           <div class="post-header" style="padding:12px 16px;">
             <img class="avatar" src="${avatar}" onclick="${showUser ? `goUserProfile('${c.user_id}')` : ''}" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
             <div class="post-user">
-              <div class="post-nickname">${nickname}${c.is_anonymous ? '<span style="margin-left:6px;padding:2px 6px;background:#f0f0f0;color:#999;border-radius:10px;font-size:11px;">匿名</span>' : ''}${showUser ? renderListVerification(c) : ''}</div>
+              <div class="post-nickname">${wrapNick(nickname, c)}${c.is_anonymous ? '<span style="margin-left:6px;padding:2px 6px;background:#f0f0f0;color:#999;border-radius:10px;font-size:11px;">匿名</span>' : ''}${showUser ? renderListVerification(c) : ''}</div>
               <div class="post-time">${timeAgo(c.create_time)}</div>
             </div>
             ${canChat ? `<button onclick="goChat('${c.user_id}', ${c.is_anonymous ? 'true' : 'false'}, ${c.id})" style="padding:6px 16px;background:var(--color-primary);color:#fff;border:none;border-radius:20px;font-size:13px;font-weight:500;">${c.is_anonymous ? '匿名私信' : '发私信'}</button>` : ''}
@@ -3232,7 +3252,7 @@
                   <div class="post-header">
                     <img class="avatar" src="${resolveMediaUrl(item.avatar) || DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${item.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
                     <div class="post-user">
-                      <div class="post-nickname">${escapeHtml(item.nickname || '用户')}${renderListVerification(item)}</div>
+                      <div class="post-nickname">${wrapNick(escapeHtml(item.nickname || '用户'), item)}${renderListVerification(item)}</div>
                       <div class="post-time">${timeAgo(item.create_time)} · ${cleanProvince(item.province) || '未知'}</div>
                     </div>
                   </div>
@@ -3330,7 +3350,7 @@
           <div class="post-header">
             <img class="avatar" src="${resolveMediaUrl(homeworkDetail.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${homeworkDetail.user_id}')" style="cursor:pointer;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
             <div class="post-user">
-              <div class="post-nickname">${escapeHtml(homeworkDetail.nickname || '用户')}${renderListVerification(homeworkDetail)}</div>
+              <div class="post-nickname">${wrapNick(escapeHtml(homeworkDetail.nickname || '用户'), homeworkDetail)}${renderListVerification(homeworkDetail)}</div>
               <div class="post-time">${timeAgo(homeworkDetail.create_time)} · ${cleanProvince(homeworkDetail.province) || '未知'}</div>
             </div>
           </div>
@@ -5350,7 +5370,7 @@
           <div class="post-header">
             <img class="avatar" src="${resolveMediaUrl(p.avatar)||DEFAULT_AVATAR}" onclick="goUserProfile('${p.user_id}')" style="cursor:pointer;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
             <div class="post-user">
-            <div class="post-nickname">${p.nickname || '用户'+p.user_id}${renderListVerification(p)}</div>
+            <div class="post-nickname">${wrapNick(p.nickname || '用户'+p.user_id, p)}${renderListVerification(p)}</div>
             <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || '未知'}</div>
           </div>
         </div>
@@ -6840,7 +6860,7 @@
                 <div class="post-header" style="padding:10px 12px;">
                   <img class="avatar" src="${resolveMediaUrl(hw.avatar)||DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${hw.user_id}')" style="width:32px;height:32px;cursor:pointer;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
                   <div class="post-user">
-                    <div class="post-nickname" style="font-size:13px;">${escapeHtml(hw.nickname || '用户')}${renderListVerification(hw)}</div>
+                    <div class="post-nickname" style="font-size:13px;">${wrapNick(escapeHtml(hw.nickname || '用户'), hw)}${renderListVerification(hw)}</div>
                     <div class="post-time" style="font-size:11px;">${timeAgo(hw.create_time)} · ${cleanProvince(hw.province) || '未知'}</div>
                   </div>
                 </div>
@@ -6878,7 +6898,7 @@
                 <div class="post-header" style="padding:10px 12px;">
                   <img class="avatar" src="${c.is_anonymous ? DEFAULT_AVATAR : (resolveMediaUrl(c.avatar)||DEFAULT_AVATAR)}" style="width:32px;height:32px;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
                   <div class="post-user">
-                    <div class="post-nickname" style="font-size:13px;">${c.is_anonymous ? '匿名用户' : (c.nickname || '用户'+c.user_id)}${c.is_anonymous ? '<span style="margin-left:4px;padding:1px 5px;background:#f0f0f0;color:#999;border-radius:8px;font-size:10px;">匿名</span>' : ''}${!c.is_anonymous ? renderListVerification(c) : ''}</div>
+                    <div class="post-nickname" style="font-size:13px;">${c.is_anonymous ? '匿名用户' : wrapNick(c.nickname || '用户'+c.user_id, c)}${c.is_anonymous ? '<span style="margin-left:4px;padding:1px 5px;background:#f0f0f0;color:#999;border-radius:8px;font-size:10px;">匿名</span>' : ''}${!c.is_anonymous ? renderListVerification(c) : ''}</div>
                     <div class="post-time" style="font-size:11px;">${timeAgo(c.create_time)}</div>
                   </div>
                 </div>
@@ -7079,7 +7099,7 @@
         <div class="post-header">
           <img class="avatar" src="${resolveMediaUrl(item.avatar) || DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${item.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
           <div class="post-user">
-            <div class="post-nickname">${escapeHtml(item.nickname || '用户')}${renderListVerification(item)}</div>
+            <div class="post-nickname">${wrapNick(escapeHtml(item.nickname || '用户'), item)}${renderListVerification(item)}</div>
             <div class="post-time">${timeAgo(item.create_time)} · ${cleanProvince(item.province) || '未知'}</div>
           </div>
         </div>
@@ -7364,7 +7384,7 @@
                 <div class="post-header" style="padding:10px 12px;">
                   <img class="avatar" src="${resolveMediaUrl(hw.avatar)||DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${hw.user_id}')" style="width:32px;height:32px;cursor:pointer;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
                   <div class="post-user">
-                    <div class="post-nickname" style="font-size:13px;">${escapeHtml(hw.nickname || '用户')}${renderListVerification(hw)}</div>
+                    <div class="post-nickname" style="font-size:13px;">${wrapNick(escapeHtml(hw.nickname || '用户'), hw)}${renderListVerification(hw)}</div>
                     <div class="post-time" style="font-size:11px;">${timeAgo(hw.create_time)} · ${cleanProvince(hw.province) || '未知'}</div>
                   </div>
                 </div>
@@ -7402,7 +7422,7 @@
                 <div class="post-header" style="padding:10px 12px;">
                   <img class="avatar" src="${c.is_anonymous ? DEFAULT_AVATAR : (resolveMediaUrl(c.avatar)||DEFAULT_AVATAR)}" style="width:32px;height:32px;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
                   <div class="post-user">
-                    <div class="post-nickname" style="font-size:13px;">${c.is_anonymous ? '匿名用户' : (c.nickname || '用户'+c.user_id)}${c.is_anonymous ? '<span style="margin-left:4px;padding:1px 5px;background:#f0f0f0;color:#999;border-radius:8px;font-size:10px;">匿名</span>' : ''}${!c.is_anonymous ? renderListVerification(c) : ''}</div>
+                    <div class="post-nickname" style="font-size:13px;">${c.is_anonymous ? '匿名用户' : wrapNick(c.nickname || '用户'+c.user_id, c)}${c.is_anonymous ? '<span style="margin-left:4px;padding:1px 5px;background:#f0f0f0;color:#999;border-radius:8px;font-size:10px;">匿名</span>' : ''}${!c.is_anonymous ? renderListVerification(c) : ''}</div>
                     <div class="post-time" style="font-size:11px;">${timeAgo(c.create_time)}</div>
                   </div>
                 </div>
@@ -8422,8 +8442,41 @@
                 html += '<div class="verif-check-item' + (checked ? ' active' : '') + '" data-verif-type="' + c.type + '" onclick="toggleVerifProfile(this)">' + getVerifSvg(c.type, 16) + '<span style="flex:1;margin-left:8px;font-size:14px;">' + c.label + '</span>' + (checked ? '<i class="fa-solid fa-square-check" style="color:var(--color-primary);font-size:18px;"></i>' : '<i class="fa-regular fa-square" style="color:#ccc;font-size:18px;"></i>') + '</div>';
               });
               html += '</div></div>';
+              if (verifTypes.includes('premium')) {
+                const bubbles = [
+                  { v: 'none', label: '无气泡' },
+                  { v: 'gradient1', label: '紫' }, { v: 'gradient2', label: '粉' }, { v: 'gradient3', label: '蓝' },
+                  { v: 'solid_pink', label: '桃' }, { v: 'solid_blue', label: '海' }, { v: 'solid_gold', label: '金' }
+                ];
+                const curBubble = _NICK_BUBBLE_BG[settings.nick_bubble] ? settings.nick_bubble : 'none';
+                const curColor = /^#[0-9a-fA-F]{6}$/.test(settings.nick_color || '') ? settings.nick_color : '';
+                html += '<div class="ep-item" style="margin-top:4px;"><div class="ep-item-label">昵称外观</div><div class="ep-item-desc" style="margin-bottom:10px;">高级认证专属：自定义昵称气泡与文字颜色</div>';
+                html += '<div id="nickBubbleList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">';
+                bubbles.forEach(b => {
+                  const active = curBubble === b.v;
+                  const bg = _NICK_BUBBLE_BG[b.v] || 'transparent';
+                  const sw = b.v === 'none' ? 'background:transparent;border:1px solid #ccc;' : 'background:' + bg + ';';
+                  html += '<div class="verif-radio-item' + (active ? ' active' : '') + '" data-bubble="' + b.v + '" onclick="selectNickBubble(this)" style="flex:0 0 auto;padding:6px 12px;border:1px solid ' + (active ? 'var(--color-primary)' : '#3a3a3c') + ';border-radius:10px;font-size:13px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:50%;' + sw + '"></span>' + b.label + '</div>';
+                });
+                html += '</div>';
+                html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="font-size:14px;color:#fff;">文字颜色</span><input type="color" id="nickColorInput" value="' + (curColor || '#ffffff') + '" style="width:48px;height:32px;border:none;background:none;cursor:pointer;padding:0;"><span id="nickColorLabel" style="font-size:12px;color:rgba(255,255,255,0.5);">' + (curColor || '默认') + '</span></div>';
+                html += '<div style="display:flex;gap:10px;"><button onclick="resetNickAppearance()" style="flex:1;padding:10px;border:1px solid #3a3a3c;border-radius:10px;background:transparent;color:#fff;font-size:14px;cursor:pointer;">重置默认</button><button id="saveNickAppBtn" onclick="saveNickAppearance()" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--color-primary);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">保存外观</button></div>';
+                html += '<div id="nickPreviewWrap" style="margin-top:12px;padding:12px;background:rgba(255,255,255,0.04);border-radius:10px;"><span style="font-size:12px;color:rgba(255,255,255,0.5);">预览：</span><span id="nickPreview" class="post-nickname" style="display:inline-block;"></span></div>';
+                html += '</div>';
+              }
               html += '</div>';
               verifArea.innerHTML = html;
+
+              if (verifTypes.includes('premium')) {
+                const _nickName = escapeHtml((u.nickname || ('用户' + (u.uid || ''))));
+                const pv = document.getElementById('nickPreview');
+                if (pv) pv.setAttribute('data-nick', _nickName);
+                window._nickBubbleSel = settings.nick_bubble || 'none';
+                window._nickColorSel = /^#[0-9a-fA-F]{6}$/.test(settings.nick_color || '') ? settings.nick_color : '';
+                _renderNickPreviewSafe();
+                const ci = document.getElementById('nickColorInput');
+                if (ci) ci.addEventListener('input', () => { window._nickColorSel = ci.value; const lbl = document.getElementById('nickColorLabel'); if (lbl) lbl.textContent = ci.value; _renderNickPreviewSafe(); });
+              }
 
               window._verifMainSelected = nameDisplay === 'earliest' ? defaultMain : nameDisplay;
             }
@@ -8580,6 +8633,37 @@
         if (icon) { icon.className = 'fa-regular fa-square'; icon.style.color = '#ccc'; }
       }
     }
+    function selectNickBubble(el) {
+      document.querySelectorAll('#nickBubbleList .verif-radio-item').forEach(o => { o.classList.remove('active'); o.style.borderColor = '#3a3a3c'; });
+      el.classList.add('active');
+      el.style.borderColor = 'var(--color-primary)';
+      window._nickBubbleSel = el.dataset.bubble;
+      _renderNickPreviewSafe();
+    }
+    function _renderNickPreviewSafe() {
+      const el = document.getElementById('nickPreview');
+      if (!el) return;
+      el.innerHTML = wrapNick(el.getAttribute('data-nick') || '', { verif_settings: { nick_bubble: window._nickBubbleSel || 'none', nick_color: window._nickColorSel || '' } });
+    }
+    function resetNickAppearance() {
+      window._nickBubbleSel = 'none'; window._nickColorSel = '';
+      const ci = document.getElementById('nickColorInput'); if (ci) ci.value = '#ffffff';
+      const lbl = document.getElementById('nickColorLabel'); if (lbl) lbl.textContent = '默认';
+      document.querySelectorAll('#nickBubbleList .verif-radio-item').forEach(o => { const on = o.dataset.bubble === 'none'; o.classList.toggle('active', on); o.style.borderColor = on ? 'var(--color-primary)' : '#3a3a3c'; });
+      _renderNickPreviewSafe();
+      saveNickAppearance(true);
+    }
+    async function saveNickAppearance(isReset) {
+      const btn = document.getElementById('saveNickAppBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '保存中...'; }
+      try {
+        const r = await api('/updateNickAppearance', 'POST', { nick_bubble: window._nickBubbleSel || 'none', nick_color: window._nickColorSel || '' });
+        showToast(r.msg || (isReset ? '已重置' : '已保存'));
+        if (r.code === 1) { _reloadVerifSettingsIntoCache(); }
+      } catch (e) { showToast('网络异常'); }
+      if (btn) { btn.disabled = false; btn.textContent = '保存外观'; }
+    }
+    function _reloadVerifSettingsIntoCache() {}
     async function saveProfile() {
       const nickname = document.getElementById('editNickname').value.trim();
       const bio = document.getElementById('editBio').value.trim();
@@ -8595,7 +8679,10 @@
       if (mainType || profileItems.length) {
         const profileHidden = [];
         profileItems.forEach(el => { if (!el.classList.contains('active')) profileHidden.push(el.dataset.verifType); });
-        verif_settings = JSON.stringify({ name_display: mainType || 'earliest', profile_hidden: profileHidden });
+        const _vsObj = { name_display: mainType || 'earliest', profile_hidden: profileHidden };
+        if (window._nickBubbleSel && window._nickBubbleSel !== 'none') _vsObj.nick_bubble = window._nickBubbleSel;
+        if (/^#[0-9a-fA-F]{6}$/.test(window._nickColorSel || '')) _vsObj.nick_color = window._nickColorSel;
+        verif_settings = JSON.stringify(_vsObj);
       }
       try {
         const payload = { nickname, bio, gender, birthday, country_code: editCountryCode, country_name: editCountryName };
