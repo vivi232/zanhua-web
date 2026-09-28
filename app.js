@@ -2932,9 +2932,14 @@
         if (loadMoreEl) loadMoreEl.style.display = 'none';
       }
       loading = false;
-      waitSkeletonReady(document.getElementById('app'), 8000).then(function() {
+      // 首页卡片已渲染即隐藏骨架屏；配图多为懒加载，若等全部图片会拖到超时才消失
+      if (posts.length || (refresh && document.getElementById('postList'))) {
         hideAppSkeleton();
-      });
+      } else {
+        waitSkeletonReady(document.getElementById('app'), 1500).then(function() {
+          hideAppSkeleton();
+        });
+      }
     }
 
     async function likePost(id, el) {
