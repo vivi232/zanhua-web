@@ -1794,10 +1794,19 @@
     function hideAppSkeleton() {
       const sk = document.getElementById('app-skeleton');
       if (sk) sk.style.display = 'none';
+      if (window._skMaxTimer) { clearTimeout(window._skMaxTimer); window._skMaxTimer = null; }
     }
     function showAppSkeleton() {
       const sk = document.getElementById('app-skeleton');
-      if (sk) sk.style.display = '';
+      if (!sk) return;
+      sk.style.display = '';
+      // 硬保险：骨架屏最长展示 3.5s，超时后自动隐藏，避免 incognito/慢网/API 失败时长时间卡住
+      if (window._skMaxTimer) clearTimeout(window._skMaxTimer);
+      window._skMaxTimer = setTimeout(function() {
+        window._skMaxTimer = null;
+        var s2 = document.getElementById('app-skeleton');
+        if (s2 && s2.style.display !== 'none') s2.style.display = 'none';
+      }, 3500);
     }
     function waitImagesLoaded(container, timeout) {
       return new Promise(function(resolve) {
@@ -2930,6 +2939,7 @@
         }
       } catch (e) {
         if (loadMoreEl) loadMoreEl.style.display = 'none';
+        hideAppSkeleton();
       }
       loading = false;
       // 首页卡片已渲染即隐藏骨架屏；配图多为懒加载，若等全部图片会拖到超时才消失
@@ -5293,11 +5303,13 @@
         }
         const fresh = new Image();
         disp = fresh;
-        fresh.style.cssText = _IMG_STYLE + 'display:block;';
+        // 大图未加载好前完全隐藏，仅显示模糊缩略图 + 进度环；加载完成后再淡入
+        fresh.style.cssText = _IMG_STYLE + 'display:block;opacity:0;transition:opacity .22s ease;';
         fresh.onload = function() {
           if (disp !== fresh) return;
           _fullImageCache[key] = fresh;
           stopRing();
+          fresh.style.opacity = '1';
           holder.style.opacity = '0';
           failText.style.display = 'none';
           imgPrefetch.resume();
