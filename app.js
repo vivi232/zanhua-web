@@ -1797,19 +1797,10 @@
     function hideAppSkeleton() {
       const sk = document.getElementById('app-skeleton');
       if (sk) sk.style.display = 'none';
-      if (window._skMaxTimer) { clearTimeout(window._skMaxTimer); window._skMaxTimer = null; }
     }
     function showAppSkeleton() {
       const sk = document.getElementById('app-skeleton');
-      if (!sk) return;
-      sk.style.display = '';
-      // 硬保险：骨架屏最长展示 3.5s，超时后自动隐藏，避免 incognito/慢网/API 失败时长时间卡住
-      if (window._skMaxTimer) clearTimeout(window._skMaxTimer);
-      window._skMaxTimer = setTimeout(function() {
-        window._skMaxTimer = null;
-        var s2 = document.getElementById('app-skeleton');
-        if (s2 && s2.style.display !== 'none') s2.style.display = 'none';
-      }, 3500);
+      if (sk) sk.style.display = '';
     }
     function waitImagesLoaded(container, timeout) {
       return new Promise(function(resolve) {
