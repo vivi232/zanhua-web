@@ -670,6 +670,8 @@
           }).catch(() => {});
       });
     })();
+    // 用户端对外统一封禁话术（不暴露内部风控/拉黑原因）
+    const BAN_PUBLIC_REASON = '本平台目前仅向符合特定条件的用户提供服务。经核查，该账号不符合本平台服务范围要求，平台已依据服务条款停止对该账号提供服务。';
     function showBanNotice(msg) {
       let popup = document.getElementById('ban-notice-popup');
       if (!popup) {
@@ -726,10 +728,8 @@
           localStorage.removeItem('zanhua_token');
           const info = (json.banInfo && typeof json.banInfo === 'object') ? json.banInfo : {};
           localStorage.setItem('zanhua_ban_info', JSON.stringify(info));
-          const tip = info.permanent
-            ? '账号已被永久封禁，无法继续使用。'
-            : (info.endTime ? `账号已被封禁，至 ${String(info.endTime).slice(0,16)} 解除。` : '账号已被限制登录。');
-          const msg = json.msg || tip;
+          // 用户端对外统一话术，不暴露内部风控原因
+          const msg = BAN_PUBLIC_REASON;
           showBanNotice(msg);
           throw new Error('账号已封禁');
         }
@@ -6216,7 +6216,7 @@
         } else {
           if (res.banInfo && res.banInfo.blocked) {
             try { localStorage.setItem('zanhua_ban_info', JSON.stringify(res.banInfo)); } catch(_) {}
-            showBanNotice(res.msg || '您的账号已被限制登录');
+            showBanNotice(BAN_PUBLIC_REASON);
           } else {
             showToast(res.msg || '登录失败');
           }
@@ -6367,7 +6367,7 @@
         } else {
           if (res.banInfo && res.banInfo.blocked) {
             try { localStorage.setItem('zanhua_ban_info', JSON.stringify(res.banInfo)); } catch(_) {}
-            showBanNotice(res.msg || '您的账号已被限制登录');
+            showBanNotice(BAN_PUBLIC_REASON);
           } else {
             showToast(res.msg || '登录失败');
           }
@@ -10618,8 +10618,9 @@ async function renderMySubOrders() {
     }
     function renderAppealDetail(container, v, token) {
       const isPermanent = v.permanent || v.penalty_type === '永久封禁';
-      const tip = isPermanent ? '账号已被永久封禁，无法继续使用。' : (v.penalty_end_time ? `账号已被封禁，至 ${String(v.penalty_end_time).slice(0,16)} 解除。` : '账号已被限制登录，无法继续使用。');
-      const reason = v.violation_reason || '违反《赞话社区准则》';
+      // 用户端对外统一话术，不暴露内部原因；永久封禁不显示解除时间
+      const tip = BAN_PUBLIC_REASON;
+      const reason = BAN_PUBLIC_REASON;
       const blockedLabel = (v.loginBlocked ? '禁止登录' : '') + (v.receiveBlocked ? (v.loginBlocked ? '、' : '') + '禁止接收新内容' : '');
       let appealArea = '';
       if (v.appeal_status === 'processing' || v.appeal_status === 'approved' || v.appeal_status === 'revoked') {
@@ -10666,7 +10667,7 @@ async function renderMySubOrders() {
               <span style="font-size:13px;color:#999;">违规内容</span>
               <span style="font-size:13px;color:#333;text-align:right;max-width:70%;">${v.content}</span>
             </div>` : ''}
-            ${v.penalty_end_time ? `
+            ${!isPermanent && v.penalty_end_time ? `
             <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #f0f0f0;">
               <span style="font-size:13px;color:#999;">解除时间</span>
               <span style="font-size:13px;color:#333;">${String(v.penalty_end_time).slice(0,16)}</span>
@@ -10723,9 +10724,11 @@ async function renderMySubOrders() {
         container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">没有可查看的封禁记录</div>';
         return;
       }
-      const tip = info.permanent ? '账号已被永久封禁，无法继续使用。' : (info.endTime ? `账号已被封禁，至 ${String(info.endTime).slice(0,16)} 解除。` : '账号已被限制登录，无法继续使用。');
-      const reason = info.reason || '违反《赞话社区准则》';
+      // 用户端对外统一话术：不暴露内部原因；永久封禁不显示解除时间
+      const tip = BAN_PUBLIC_REASON;
+      const reason = BAN_PUBLIC_REASON;
       const remark = info.remark || '';
+      const showEndTime = !info.permanent && !!info.endTime;
       container.innerHTML = `<div style="padding:12px;">
         <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;">
           <div style="text-align:center;margin-bottom:16px;">
@@ -10747,7 +10750,7 @@ async function renderMySubOrders() {
               <span style="font-size:13px;color:#999;">备注</span>
               <span style="font-size:13px;color:#333;text-align:right;max-width:70%;">${remark}</span>
             </div>` : ''}
-            ${info.endTime ? `
+            ${showEndTime ? `
             <div style="display:flex;justify-content:space-between;padding:8px 0;">
               <span style="font-size:13px;color:#999;">解除时间</span>
               <span style="font-size:13px;color:#333;">${String(info.endTime).slice(0,16)}</span>
