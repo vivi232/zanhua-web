@@ -665,13 +665,13 @@
             const warn = document.createElement('div');
             warn.id = 'phoneRiskWarning';
             warn.style.cssText = 'color:#ff6b6b;font-size:12px;margin-top:4px;';
-            warn.textContent = '该手机号存在风险，可能无法正常使用';
+            warn.textContent = r.data.msg || '该手机号存在风险，可能无法正常使用';
             if (el.parentNode) el.parentNode.insertBefore(warn, el.nextSibling);
           }).catch(() => {});
       });
     })();
-    // 用户端对外统一封禁话术（不暴露内部风控/拉黑原因）
-    const BAN_PUBLIC_REASON = '本平台目前仅向符合特定条件的用户提供服务。经核查，该账号不符合本平台服务范围要求，平台已依据服务条款停止对该账号提供服务。';
+    // 封禁/黑名单对外文案与判定统一由后端下发（banInfo.userMsg / reason / endTime / blockedLabel）
+    // 前端不再硬编码风控话术，仅渲染后端字段
     function showBanNotice(msg) {
       let popup = document.getElementById('ban-notice-popup');
       if (!popup) {
@@ -728,9 +728,8 @@
           localStorage.removeItem('zanhua_token');
           const info = (json.banInfo && typeof json.banInfo === 'object') ? json.banInfo : {};
           localStorage.setItem('zanhua_ban_info', JSON.stringify(info));
-          // 用户端对外统一话术，不暴露内部风控原因
-          const msg = BAN_PUBLIC_REASON;
-          showBanNotice(msg);
+          // 对外话术由后端下发（banInfo.userMsg），前端不再硬编码
+          showBanNotice(info.userMsg || '账号已被限制');
           throw new Error('账号已封禁');
         }
         return json;
@@ -6216,7 +6215,7 @@
         } else {
           if (res.banInfo && res.banInfo.blocked) {
             try { localStorage.setItem('zanhua_ban_info', JSON.stringify(res.banInfo)); } catch(_) {}
-            showBanNotice(BAN_PUBLIC_REASON);
+            showBanNotice(res.banInfo.userMsg || res.msg || '账号已被限制');
           } else {
             showToast(res.msg || '登录失败');
           }
@@ -6367,7 +6366,7 @@
         } else {
           if (res.banInfo && res.banInfo.blocked) {
             try { localStorage.setItem('zanhua_ban_info', JSON.stringify(res.banInfo)); } catch(_) {}
-            showBanNotice(BAN_PUBLIC_REASON);
+            showBanNotice(res.banInfo.userMsg || res.msg || '账号已被限制');
           } else {
             showToast(res.msg || '登录失败');
           }
@@ -10617,11 +10616,10 @@ async function renderMySubOrders() {
         .catch(() => ({ captchaResult: false, bizResult: false }));
     }
     function renderAppealDetail(container, v, token) {
-      const isPermanent = v.permanent || v.penalty_type === '永久封禁';
-      // 用户端对外统一话术，不暴露内部原因；永久封禁不显示解除时间
-      const tip = BAN_PUBLIC_REASON;
-      const reason = BAN_PUBLIC_REASON;
-      const blockedLabel = (v.loginBlocked ? '禁止登录' : '') + (v.receiveBlocked ? (v.loginBlocked ? '、' : '') + '禁止接收新内容' : '');
+      // 文案/判定来自后端字段：violation_reason 已脱敏，permanent 时后端已清空到期时间
+      const tip = v.violation_reason || '账号已被限制使用';
+      const reason = v.violation_reason || '账号已被限制使用';
+      const blockedLabel = v.blockedLabel || ((v.loginBlocked ? '禁止登录' : '') + (v.receiveBlocked ? (v.loginBlocked ? '、' : '') + '禁止接收新内容' : ''));
       let appealArea = '';
       if (v.appeal_status === 'processing' || v.appeal_status === 'approved' || v.appeal_status === 'revoked') {
         let statusHtml = '';
@@ -10667,7 +10665,7 @@ async function renderMySubOrders() {
               <span style="font-size:13px;color:#999;">违规内容</span>
               <span style="font-size:13px;color:#333;text-align:right;max-width:70%;">${v.content}</span>
             </div>` : ''}
-            ${!isPermanent && v.penalty_end_time ? `
+            ${v.penalty_end_time ? `
             <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #f0f0f0;">
               <span style="font-size:13px;color:#999;">解除时间</span>
               <span style="font-size:13px;color:#333;">${String(v.penalty_end_time).slice(0,16)}</span>
@@ -10724,11 +10722,11 @@ async function renderMySubOrders() {
         container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">没有可查看的封禁记录</div>';
         return;
       }
-      // 用户端对外统一话术：不暴露内部原因；永久封禁不显示解除时间
-      const tip = BAN_PUBLIC_REASON;
-      const reason = BAN_PUBLIC_REASON;
+      // 文案/判定来自后端下发的 banInfo 字段（reason 已脱敏，permanent 时 endTime 已清空，含 blockedLabel）
+      const tip = info.userMsg || info.reason || '账号已被限制使用';
+      const reason = info.reason || '账号已被限制使用';
       const remark = info.remark || '';
-      const showEndTime = !info.permanent && !!info.endTime;
+      const showEndTime = !!info.endTime;
       container.innerHTML = `<div style="padding:12px;">
         <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;">
           <div style="text-align:center;margin-bottom:16px;">
@@ -10736,7 +10734,7 @@ async function renderMySubOrders() {
             <div style="font-size:16px;font-weight:600;color:#333;margin-top:10px;">账号限制通知</div>
           </div>
           <div style="background:#FFF1F0;border-radius:8px;padding:12px;margin-bottom:12px;">
-            <div style="font-size:14px;color:#ff2442;margin-bottom:6px;">${info.loginBlocked ? '禁止登录' : ''}${info.receiveBlocked ? (info.loginBlocked ? '、' : '') + '禁止接收新内容' : ''}</div>
+            <div style="font-size:14px;color:#ff2442;margin-bottom:6px;">${info.blockedLabel || ((info.loginBlocked ? '禁止登录' : '') + (info.receiveBlocked ? (info.loginBlocked ? '、' : '') + '禁止接收新内容' : ''))}</div>
             <div style="font-size:13px;color:#666;line-height:1.6;">${tip}</div>
           </div>
           <div style="margin-bottom:12px;">
