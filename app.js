@@ -614,7 +614,22 @@
           String(navigator.hardwareConcurrency || ''),
           String(navigator.maxTouchPoints || 0),
           navigator.platform || '',
-          navigator.deviceMemory || ''
+          navigator.deviceMemory || '',
+          String(window.devicePixelRatio || 1),
+          String((screen.orientation && screen.orientation.type) || ''),
+          navigator.cookieEnabled ? '1' : '0',
+          (function() { try { localStorage.setItem('_fp_t', '1'); localStorage.removeItem('_fp_t'); return '1'; } catch (e) { return '0'; } })(),
+          (function() { try { sessionStorage.setItem('_fp_t', '1'); sessionStorage.removeItem('_fp_t'); return '1'; } catch (e) { return '0'; } })(),
+          (function() {
+            try {
+              var c = document.createElement('canvas'); c.width = 200; c.height = 50;
+              var x = c.getContext('2d');
+              x.fillStyle = '#f60'; x.fillRect(0, 0, 200, 50);
+              x.fillStyle = '#069'; x.font = '14px Arial'; x.fillText('zanhua_fp', 10, 30);
+              x.strokeStyle = '#9ac'; x.beginPath(); x.arc(50, 25, 15, 0, Math.PI * 2); x.stroke();
+              return c.toDataURL().slice(-60);
+            } catch (e) { return 'no_canvas'; }
+          })()
         ];
         let seed = parts.join('|');
         let h = 0;
@@ -626,6 +641,35 @@
         return fp;
       } catch (e) { return ''; }
     }
+    // 手机号失焦预检：归一化后询问服务端是否存在风险，仅提示不阻断
+    (function() {
+      let _lastRiskPhone = '', _lastRiskAt = 0;
+      document.addEventListener('focusout', function(ev) {
+        const el = ev.target;
+        if (!el || el.id !== 'loginAuthPhone') return;
+        const raw = String(el.value || '').trim();
+        if (!raw) return;
+        let v = raw.replace(/[\s\-\(\)\u3000]/g, '');
+        if (/^\+86\d{11}$/.test(v)) v = v.slice(3);
+        else if (/^86\d{11}$/.test(v)) v = v.slice(2);
+        if (!/^1\d{10}$/.test(v)) return;
+        const now = Date.now();
+        if (v === _lastRiskPhone && now - _lastRiskAt < 2000) return;
+        _lastRiskPhone = v; _lastRiskAt = now;
+        const old = document.getElementById('phoneRiskWarning');
+        if (old) old.remove();
+        fetch(API_BASE + '/checkPhoneRisk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: v }) })
+          .then(x => x.json()).then(r => {
+            if (!r || r.code !== 1 || !r.data || !r.data.risk) return;
+            if (!document.getElementById('loginAuthPhone') || document.getElementById('loginAuthPhone') !== el) return;
+            const warn = document.createElement('div');
+            warn.id = 'phoneRiskWarning';
+            warn.style.cssText = 'color:#ff6b6b;font-size:12px;margin-top:4px;';
+            warn.textContent = '该手机号存在风险，可能无法正常使用';
+            if (el.parentNode) el.parentNode.insertBefore(warn, el.nextSibling);
+          }).catch(() => {});
+      });
+    })();
     function showBanNotice(msg) {
       let popup = document.getElementById('ban-notice-popup');
       if (!popup) {
