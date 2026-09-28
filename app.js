@@ -310,6 +310,44 @@
     }
     let posts = [];
     let feedCache = null; // 信息流会话缓存 { posts, ts, feed }
+    // 其它页面的会话内容缓存：首次进入可以等，再次返回时必须立即呈现（不重新出骨架屏）
+    let discoverCache = {};        // tab -> { html, ts }
+    let discoverActiveTab = 'hot'; // 上次停留的标签页，返回时直接还原
+    let chatListCache = null;      // { html, ts }
+    let profileHeaderCache = null; // { html, ts }
+    let profileGridCache = {};     // tab -> { html, cls, pad, ts }
+    let homeworkListCache = {};    // subject -> { html, ts }
+    let homeworkActiveSubject = '全部'; // 作业标签上次选中的科目，返回时还原
+    let asyncHtmlCache = {};       // page|key -> { html, ts }
+    let commentListCache = {};     // postId -> { html, ts }
+    let postDetailCache = {};      // postId -> { data, raw, ts }
+    let userProfileObjCache = {};  // uid -> { data, raw, ts, tab }
+    let topicDetailCache = {};     // topic -> { html, ts }
+    let userProfileCache = {};     // uid -> { html, ts }
+    // 读取内容缓存：只要存在就立即用于呈现（首次进入可以等，返回必须秒出），随后后台静默刷新
+    function cacheGet(store, key) {
+      const it = store[key];
+      return (it && it.html) ? it : null;
+    }
+    function cacheSet(store, key, html, extra) {
+      if (!html) return;
+      store[key] = Object.assign({ html: html, ts: Date.now() }, extra || {});
+    }
+    function clearContentCaches() {
+      discoverCache = {};
+      discoverActiveTab = 'hot';
+      chatListCache = null;
+      profileHeaderCache = null;
+      profileGridCache = {};
+      homeworkListCache = {};
+      homeworkActiveSubject = '全部';
+      asyncHtmlCache = {};
+      commentListCache = {};
+      topicDetailCache = {};
+      userProfileCache = {};
+      userProfileObjCache = {};
+      postDetailCache = {};
+    }
     let postPage = 1;
     let loading = false;
     let noMorePosts = false;
@@ -701,7 +739,7 @@
       showToast((res && res.msg) || fallbackMsg);
       return false;
     }
-    function setToken(t) { localStorage.setItem('zanhua_token', t); feedCache = null; if (typeof dctWmClearTile === 'function') dctWmClearTile(); dctWmRemoveCanvas(); }
+    function setToken(t) { localStorage.setItem('zanhua_token', t); feedCache = null; clearContentCaches(); if (typeof dctWmClearTile === 'function') dctWmClearTile(); dctWmRemoveCanvas(); }
     function getUid() { try { return atob(getToken().replace(/^admin_/, '').split('.')[0]).split(':')[0]; } catch(e) { return ''; } }
     function isAdminAccount() { return getToken().indexOf('admin_') === 0 || currentNickname === '管理员'; }
 
@@ -1747,11 +1785,11 @@
         case 'enterpriseApply': app.innerHTML = renderEnterpriseApply(); bindEnterpriseApplyEvents(); break;
         case 'buyExposure': app.innerHTML = renderBuyExposure(); bindBuyExposureEvents(); break;
         case 'buyPin': app.innerHTML = renderBuyPin(); bindBuyPinEvents(); break;
-        case 'paySubscribe': app.innerHTML = '<div style="min-height:100vh;background:#0d0d0f;display:flex;align-items:center;justify-content:center;"><div style="color:rgba(255,255,255,0.4);font-size:14px;">加载中...</div></div>'; renderPaySubscribe().then(html => { app.innerHTML = html; bindPaySubscribeEvents(); }); break;
-        case 'mySubOrders': app.innerHTML = '<div style="min-height:100vh;background:#0d0d0f;display:flex;align-items:center;justify-content:center;"><div style="color:rgba(255,255,255,0.4);font-size:14px;">加载中...</div></div>'; renderMySubOrders().then(html => { app.innerHTML = html; bindMySubOrdersEvents(); }); break;
-        case 'myServiceOrders': app.innerHTML = '<div style="min-height:100vh;background:#0d0d0f;display:flex;align-items:center;justify-content:center;"><div style="color:rgba(255,255,255,0.4);font-size:14px;">加载中...</div></div>'; renderMyServiceOrders().then(html => { app.innerHTML = html; bindMyServiceOrdersEvents(); }); break;
+        case 'paySubscribe': _renderAsyncCached('paySubscribe', renderPaySubscribe, bindPaySubscribeEvents); break;
+        case 'mySubOrders': _renderAsyncCached('mySubOrders', renderMySubOrders, bindMySubOrdersEvents); break;
+        case 'myServiceOrders': _renderAsyncCached('myServiceOrders', renderMyServiceOrders, bindMyServiceOrdersEvents); break;
         case 'youthMode': app.innerHTML = renderYouthModePage(); bindYouthModeEvents(); break;
-        case 'verifSubscribe': app.innerHTML = '<div style="min-height:100vh;background:#0d0d0f;display:flex;align-items:center;justify-content:center;"><div style="color:rgba(255,255,255,0.4);font-size:14px;">加载中...</div></div>'; renderVerifSubscribe().then(html => { app.innerHTML = html; bindVerifSubscribeEvents(); }); break;
+        case 'verifSubscribe': _renderAsyncCached('verifSubscribe', renderVerifSubscribe, bindVerifSubscribeEvents); break;
         case 'safetyCenter': app.innerHTML = renderSafetyCenter(); bindSafetyCenterEvents(); break;
         case 'followListPage': app.innerHTML = renderFollowListPage(); bindFollowListPageEvents(); break;
         case 'fansListPage': app.innerHTML = renderFansListPage(); bindFansListPageEvents(); break;
@@ -1801,6 +1839,34 @@
     function showAppSkeleton() {
       const sk = document.getElementById('app-skeleton');
       if (sk) sk.style.display = '';
+    }
+    // 异步渲染页（支付/订单/认证订阅）通用策略：首次显示"加载中"，之后返回立即用缓存快照，
+    // 后台拉最新数据；数据未变化则完全不重刷 DOM（避免闪烁/图片重载），正在输入或弹窗打开时也不打断
+    function _renderAsyncCached(name, renderFn, bindFn) {
+      const _app = document.getElementById('app');
+      const _key = name + ':' + (name === 'paySubscribe' ? ((window._pageParam2 || 'advanced') + ':' + (window._verifSubTab || 'month'))
+                    : name === 'verifSubscribe' ? (window._verifSubTab || 'month') : 'def');
+      const _set = (html) => {
+        asyncHtmlCache[_key] = { html: html, ts: Date.now() };
+        _app.innerHTML = html;
+        if (bindFn) bindFn();
+      };
+      const _c = asyncHtmlCache[_key];
+      if (_c) {
+        _set(_c.html);
+        renderFn().then((html) => {
+          asyncHtmlCache[_key] = { html: html, ts: Date.now() };
+          if (html === _c.html) return; // 数据未变，保持现状
+          const _ae = document.activeElement;
+          if (_ae && (_ae.tagName === 'INPUT' || _ae.tagName === 'TEXTAREA') && _ae !== document.body && _app.contains(_ae)) return;
+          if (_app.querySelector('.modal-overlay.active')) return;
+          _app.innerHTML = html;
+          if (bindFn) bindFn();
+        }).catch(() => {});
+        return;
+      }
+      _app.innerHTML = '<div style="min-height:100vh;background:#0d0d0f;display:flex;align-items:center;justify-content:center;"><div style="color:rgba(255,255,255,0.4);font-size:14px;">加载中...</div></div>';
+      renderFn().then(_set).catch(() => {});
     }
     function waitImagesLoaded(container, timeout) {
       return new Promise(function(resolve) {
@@ -3258,23 +3324,33 @@
       }
     }
 
-    async function loadHomeworkList(subject) {
+    async function loadHomeworkList(subject, _silent) {
       const listEl = document.getElementById('homeworkList');
       if (!listEl) return;
-      listEl.innerHTML = '<div class="loading" style="text-align:center;padding:20px;">加载中...</div>';
+      homeworkActiveSubject = subject || '全部';
+      const _stale = listEl.dataset.subject && listEl.dataset.subject !== subject;
+      // 同一科目已有内容时不再切"加载中"占位（返回该页必须秒出）；切换科目或尚无内容则正常提示
+      if (!listEl.innerHTML.trim() || _stale) listEl.innerHTML = '<div class="loading" style="text-align:center;padding:20px;">加载中...</div>';
+      // 列表刷新后重建作业 tab 的 shell 快照（shell + 当前科目列表），供下次返回时直接还原
+      const _snapHw = () => {
+        const _subj = homeworkActiveSubject || '全部';
+        const _hl = cacheGet(homeworkListCache, _subj);
+        cacheSet(discoverCache, 'homework', _homeworkShellHtml(_hl ? _hl.html : '', _hl ? _subj : ''));
+      };
       try {
         const apiSubject = subject === '全部' ? 'all' : subject;
         const res = await api(`/homeworkList?subject=${encodeURIComponent(apiSubject)}&page=1&size=20`);
         if (res.code === 0 && res.msg === '未登录') {
-          listEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#999;"><i class="fa-solid fa-lock" style="font-size:32px;margin-bottom:12px;display:block;"></i>登录后查看作业</div>';
+          if (!_silent) listEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#999;"><i class="fa-solid fa-lock" style="font-size:32px;margin-bottom:12px;display:block;"></i>登录后查看作业</div>';
           return;
         }
         if (res.code === 1) {
           const list = res.data || [];
+          let _newHtml;
           if (list.length === 0) {
-            listEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#999;">暂无作业，来上传第一个吧</div>';
+            _newHtml = '<div style="text-align:center;padding:60px 20px;color:#999;">暂无作业，来上传第一个吧</div>';
           } else {
-            listEl.innerHTML = list.map(item => {
+            _newHtml = list.map(item => {
               const imgs = item.images ? item.images.split(',').filter(x => x).map(img => img.includes('/') ? img : '/uploads/homework/' + img) : [];
               const imgsJson = imgsJsonStr(imgs);
               const imgClass = imgs.length === 1 ? 'single' : '';
@@ -3322,9 +3398,14 @@
               `;
             }).join('');
           }
+          const _oldHw = cacheGet(homeworkListCache, subject);
+          if (!(_oldHw && _oldHw.html === _newHtml)) listEl.innerHTML = _newHtml;
+          listEl.dataset.subject = subject;
+          cacheSet(homeworkListCache, subject, _newHtml);
+          _snapHw();
         }
       } catch (e) {
-        listEl.innerHTML = '<div class="network-error">网络异常</div>';
+        if (!_silent) listEl.innerHTML = '<div class="network-error">网络异常</div>';
       }
     }
 
@@ -5457,7 +5538,7 @@
           <div class="pd-comments">
           <div class="pd-comments-title">评论</div>
           <div id="commentList" style="padding:16px;">
-            ${new Array(3).fill(0).map(() => `
+            ${(() => { const _cc = cacheGet(commentListCache, p.id); return _cc ? _cc.html : new Array(3).fill(0).map(() => `
               <div style="display:flex;gap:10px;margin-bottom:16px;">
                 <div class="sk-item" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;"></div>
                 <div style="flex:1;">
@@ -5469,7 +5550,7 @@
                   <div class="sk-item" style="width:75%;height:12px;"></div>
                 </div>
               </div>
-            `).join('')}
+            `).join(''); })()}
           </div>
           </div>
           <div style="height:60px;"></div>
@@ -5648,9 +5729,11 @@
       const list = document.getElementById('commentList');
       if (!list) return;
       let res;
+      const _hadCache = !!cacheGet(commentListCache, postId);
       try {
         res = await api('/commentList?postId=' + postId);
       } catch (e) {
+        if (_hadCache) return; // 已有缓存内容：刷新失败保留旧内容
         list.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#999;">评论加载失败，点击重试</div>';
         list.onclick = () => loadComments(postId);
         return;
@@ -5716,8 +5799,12 @@
       let html = buildTree(0).join('');
       if (!html.trim()) {
         list.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#999;">还没有评论，快来抢沙发吧</div>';
+        cacheSet(commentListCache, postId, list.innerHTML);
       } else {
-        list.innerHTML = html;
+        const _cc0 = cacheGet(commentListCache, postId);
+        // 与上次抓取的原始列表数据一致：DOM 已是缓存还原出的成品，完全不重刷
+        if (_cc0 && _cc0.raw === html) { _rebindCommentExpandButtons(list); bindCommentLongPress(); return; }
+        list.innerHTML = html; // 内容已变化，重刷后重新处理展开态
         list.querySelectorAll('.c-content.collapsed').forEach(el => {
           const overflow = checkCommentOverflow(el);
           if (overflow) {
@@ -5735,7 +5822,18 @@
           }
         });
         bindCommentLongPress();
+        // 快照：html=屏上成品（含展开按钮），raw=原始列表数据（下次比对是否变化）
+        cacheSet(commentListCache, postId, list.innerHTML, { raw: html });
       }
+    }
+
+    function _rebindCommentExpandButtons(list) {
+      // 从缓存还原的 DOM 里展开按钮的 onclick 是 JS 赋值的，插入后丢失，这里重新绑定
+      // （data-full-html 等 dataset 属性会随 innerHTML 快照一起保存，展开/截断状态可直接复用）
+      list.querySelectorAll('.c-expand[data-expand-id]').forEach(btn => {
+        const id = btn.getAttribute('data-expand-id');
+        btn.onclick = () => toggleCommentExpand(id);
+      });
     }
 
     function bindCommentLongPress() {
@@ -5874,8 +5972,8 @@
       }
     }
 
-    function renderDiscover() {
-      const skeletonCards = new Array(3).fill(0).map(() => `
+    function _discoverSkeletonHtml() {
+      return new Array(3).fill(0).map(() => `
         <div class="sk-post" style="margin:12px 16px 0;">
           <div class="sk-post-header" style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
             <div class="sk-item sk-avatar"></div>
@@ -5894,12 +5992,18 @@
           </div>
         </div>
       `).join('');
+    }
+
+    function renderDiscover() {
+      const skeletonCards = _discoverSkeletonHtml();
+      const _tab = discoverActiveTab || 'hot';
+      const _tabColor = (t) => t === _tab ? '#333' : '#999';
       return `<div class="page">${renderNavbar('发现', false)}
         <div class="tabs" id="discoverTabs" style="display:flex;background:#fff;padding:10px 0;border-bottom:0.5px solid #eee;">
-          <div class="tab active" data-tab="hot" style="flex:1;text-align:center;font-weight:600;color:#333;">热门</div>
-          <div class="tab" data-tab="confession" style="flex:1;text-align:center;font-weight:600;color:#999;">表白墙</div>
-          <div class="tab" data-tab="homework" style="flex:1;text-align:center;font-weight:600;color:#999;">作业</div>
-          <div class="tab" data-tab="topic" style="flex:1;text-align:center;font-weight:600;color:#999;">话题</div>
+          <div class="tab${_tab==='hot'?' active':''}" data-tab="hot" style="flex:1;text-align:center;font-weight:600;color:${_tabColor('hot')};">热门</div>
+          <div class="tab${_tab==='confession'?' active':''}" data-tab="confession" style="flex:1;text-align:center;font-weight:600;color:${_tabColor('confession')};">表白墙</div>
+          <div class="tab${_tab==='homework'?' active':''}" data-tab="homework" style="flex:1;text-align:center;font-weight:600;color:${_tabColor('homework')};">作业</div>
+          <div class="tab${_tab==='topic'?' active':''}" data-tab="topic" style="flex:1;text-align:center;font-weight:600;color:${_tabColor('topic')};">话题</div>
         </div>
         <div style="margin:12px 16px 0;background:linear-gradient(135deg,#1C1C1E,#2C2C2E);border-radius:14px;padding:16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="goPage('verifSubscribe')">
           <div style="display:flex;align-items:center;gap:10px;">
@@ -5911,35 +6015,72 @@
           </div>
           <i class="fa-solid fa-chevron-right" style="color:rgba(255,255,255,0.3);font-size:14px;"></i>
         </div>
-        <div id="discoverContent">${skeletonCards}</div>
+        <div id="discoverContent">${_dcContentHtml(skeletonCards)}</div>
       </div>`;
     }
 
+    // 作业标签内容 = 缓存的 shell + 缓存的科目列表，返回本页时可完整瞬间还原
+    function _dcContentHtml(skeletonCards) {
+      const _tab = discoverActiveTab || 'hot';
+      if (_tab === 'homework' && cacheGet(discoverCache, 'homework')) {
+        const _subj = homeworkActiveSubject || '全部';
+        const _hl = cacheGet(homeworkListCache, _subj);
+        return _homeworkShellHtml(_hl ? _hl.html : '', _hl ? _subj : '');
+      }
+      const _dc = cacheGet(discoverCache, _tab);
+      return (_dc && _dc.html) ? _dc.html : skeletonCards;
+    }
+
     function bindDiscoverEvents() {
-      document.querySelectorAll('#discoverTabs .tab').forEach(tab => {
+      const _tabs = document.querySelectorAll('#discoverTabs .tab');
+      const _curActive = (() => {
+        const el = document.querySelector('#discoverTabs .tab.active');
+        return el ? el.dataset.tab : 'hot';
+      })();
+      _tabs.forEach(tab => {
         tab.onclick = () => {
           if ((tab.dataset.tab === 'hot' || tab.dataset.tab === 'topic' || tab.dataset.tab === 'homework') && !getToken()) {
             showLoginModal();
             return;
           }
-          document.querySelectorAll('#discoverTabs .tab').forEach(t => t.style.color='#999');
+          document.querySelectorAll('#discoverTabs .tab').forEach(t => { t.style.color='#999'; t.classList.remove('active'); });
           tab.style.color='#333';
+          tab.classList.add('active');
           loadDiscoverContent(tab.dataset.tab);
         };
       });
-      loadDiscoverContent('hot');
+      // 返回本页时 renderDiscover 已用缓存直接出内容；loadDiscoverContent 见有缓存就不再切骨架屏，只做后台刷新
+      loadDiscoverContent(_curActive);
     }
 
     async function loadDiscoverContent(tab) {
+      discoverActiveTab = tab;
       const content = document.getElementById('discoverContent');
-      content.innerHTML = '<div style="padding:16px;"><div class="sk-item" style="height:120px;margin-bottom:10px;"></div><div class="sk-item" style="height:14px;margin-bottom:8px;"></div><div class="sk-item" style="height:14px;margin-bottom:8px;"></div><div class="sk-item" style="height:14px;width:60%;"></div></div>';
+      if (!content) return;
+      const _cached = cacheGet(discoverCache, tab);
+      // 有缓存内容时不再切骨架屏，直接后台刷新（返回该页必须秒出）
+      if (!_cached) {
+        content.innerHTML = '<div style="padding:16px;"><div class="sk-item" style="height:120px;margin-bottom:10px;"></div><div class="sk-item" style="height:14px;margin-bottom:8px;"></div><div class="sk-item" style="height:14px;margin-bottom:8px;"></div><div class="sk-item" style="height:14px;width:60%;"></div></div>';
+      }
+      const _setError = (html) => {
+        if (_cached) return; // 后台刷新失败：保留旧内容
+        content.innerHTML = html;
+      };
+      const _apply = (html) => {
+        // 用户正在输入或弹窗已打开时不覆盖现有 DOM，避免打断操作
+        if (_cached && content.querySelector('.modal-overlay.active, textarea:not(:placeholder-shown), input:not(:placeholder-shown)')) return;
+        // 与缓存的原始 HTML 一致时不重刷 DOM（避免图片重载/滚动丢失造成的闪烁）
+        if (!(_cached && _cached.html === html)) content.innerHTML = html;
+        cacheSet(discoverCache, tab, html);
+      };
+      const _store = (html) => { cacheSet(discoverCache, tab, html); };
       try {
         if (tab === 'hot') {
           const res = await api('/hotPosts');
           if (res.code === 0 && res.msg === '未登录') {
-            content.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#999;"><i class="fa-solid fa-lock" style="font-size:32px;margin-bottom:12px;display:block;"></i>登录后查看热门</div>';
-          } else {
-            content.innerHTML = (res.data && res.data.length) ? res.data.map(renderPostCard).join('') : '<div class="empty">暂无热门</div>';
+            _setError('<div style="text-align:center;padding:60px 20px;color:#999;"><i class="fa-solid fa-lock" style="font-size:32px;margin-bottom:12px;display:block;"></i>登录后查看热门</div>');
+          } else if (res.code === 1 || res.data) {
+            _apply((res.data && res.data.length) ? res.data.map(renderPostCard).join('') : '<div class="empty">暂无热门</div>');
             setTimeout(refreshCardExpandButtons, 0);
           }
         } else if (tab === 'confession') {
@@ -5955,7 +6096,7 @@
           } else if (res.limited) {
             listHtml += '<div style="text-align:center;padding:20px;color:#ccc;font-size:13px;">— 没有更多了 —</div>';
           }
-          content.innerHTML = `
+          _apply(`
             <div style="padding:12px 16px;">
               <button onclick="openConfessionModal()" style="width:100%;height:44px;background:var(--color-primary);color:#fff;border:none;border-radius:22px;font-size:15px;font-weight:600;cursor:pointer;">
                 <i class="fa-solid fa-pen-to-square"></i> 发布表白
@@ -5981,17 +6122,17 @@
                 <button onclick="submitConfession()" style="width:100%;height:48px;background:var(--color-primary);color:#fff;border-radius:12px;font-weight:600;margin-top:16px;">发布</button>
               </div>
             </div>
-          `;
+          `);
         } else if (tab === 'topic') {
           const res = await api('/topics');
           if (res.code === 0 && res.msg === '未登录') {
-            content.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#999;"><i class="fa-solid fa-lock" style="font-size:32px;margin-bottom:12px;display:block;"></i>登录后查看话题</div>';
+            _setError('<div style="text-align:center;padding:60px 20px;color:#999;"><i class="fa-solid fa-lock" style="font-size:32px;margin-bottom:12px;display:block;"></i>登录后查看话题</div>');
           } else {
             const topicList = res.data || [];
             if (topicList.length === 0) {
-              content.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#999;">暂无话题</div>';
+              _setError('<div style="text-align:center;padding:60px 20px;color:#999;">暂无话题</div>');
             } else {
-              content.innerHTML = '<div style="background:#fff;">' + topicList.map(t => `
+              _apply('<div style="background:#fff;">' + topicList.map(t => `
                 <div class="topic-list-item" onclick="goTopicDetail('${escapeHtml(t.topic)}')" style="display:flex;align-items:center;padding:14px 16px;border-bottom:0.5px solid #f0f0f0;cursor:pointer;">
                   <span style="flex:1;font-size:15px;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">#${escapeHtml(t.topic)}</span>
                   <div style="display:flex;align-items:center;color:#999;font-size:13px;margin-left:12px;">
@@ -5999,72 +6140,87 @@
                     <span>${formatNumber(t.views || 0)}</span>
                   </div>
                 </div>
-              `).join('') + '</div>';
+              `).join('') + '</div>');
             }
           }
         } else if (tab === 'homework') {
-          const subjects = ['全部', '语文', '数学', '英语', '物理', '化学', '其它'];
-          content.innerHTML = `
-            <div class="homework-subject-bar" style="display:flex;gap:8px;padding:10px 16px;background:#fff;overflow-x:auto;border-bottom:0.5px solid #eee;">
-              ${subjects.map((s, i) => `<div class="hw-subject-item ${i===0?'active':''}" data-subject="${s}" style="padding:6px 16px;background:${i===0?'var(--color-primary)':'#f5f5f5'};color:${i===0?'#fff':'#666'};border-radius:16px;font-size:13px;white-space:nowrap;cursor:pointer;">${s}</div>`).join('')}
-            </div>
-            <div style="padding:12px 16px;">
-              <button onclick="openHomeworkModal()" style="width:100%;height:44px;background:var(--color-primary);color:#fff;border:none;border-radius:22px;font-size:15px;font-weight:600;cursor:pointer;">
-                <i class="fa-solid fa-cloud-arrow-up"></i> 上传作业
-              </button>
-            </div>
-            <div id="homeworkList"></div>
-            <div class="modal-overlay" id="homeworkModal" onclick="if(event.target===this)closeHomeworkModal()">
-              <div class="modal-content" style="max-height:90vh;overflow-y:auto;box-sizing:border-box;">
-                <div class="modal-handler"></div>
-                <div style="font-weight:600;font-size:16px;margin-bottom:12px;">上传作业</div>
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:0.5px solid #f0f0f0;">
-                  <img id="hwModalAvatar" src="${resolveMediaUrl(myAvatar) || DEFAULT_AVATAR}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
-                  <div style="font-size:15px;font-weight:600;color:#333;">${currentNickname || '用户'}</div>
-                </div>
-                <div style="margin-bottom:12px;font-size:14px;color:#666;">选择科目</div>
-                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
-                  ${subjects.filter(s=>s!=='全部').map((s, i) => `<div class="hw-subject-select ${i===0?'active':''}" data-subject="${s}" style="padding:6px 14px;background:${i===0?'var(--color-primary)':'#f5f5f5'};color:${i===0?'#fff':'#666'};border-radius:14px;font-size:13px;cursor:pointer;">${s}</div>`).join('')}
-                </div>
-                <div style="margin-bottom:12px;font-size:14px;color:#666;">作业描述</div>
-                <textarea id="homeworkContent" style="width:100%;min-height:80px;border:1px solid #eee;border-radius:8px;padding:12px;font-size:15px;resize:none;" placeholder="简单描述一下作业内容..."></textarea>
-                <div style="margin-top:12px;margin-bottom:8px;font-size:14px;color:#666;">上传图片（最多15张）</div>
-                <div id="homeworkImgPreview" class="create-media-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"></div>
-                <input type="file" id="homeworkImgInput" accept="image/*" multiple style="display:none;" onchange="handleHomeworkImgUpload(this.files); this.value=''">
-                <button id="hwPublishBtn" onclick="submitHomework()" style="width:100%;height:48px;background:var(--color-primary);color:#fff;border:none;border-radius:12px;font-weight:600;margin-top:20px;">发布</button>
-              </div>
-            </div>
-          `;
-          document.querySelectorAll('.hw-subject-item').forEach(item => {
-            item.onclick = () => {
-              document.querySelectorAll('.hw-subject-item').forEach(i => {
-                i.style.background = '#f5f5f5';
-                i.style.color = '#666';
-                i.classList.remove('active');
-              });
-              item.style.background = 'var(--color-primary)';
-              item.style.color = '#fff';
-              item.classList.add('active');
-              loadHomeworkList(item.dataset.subject);
-            };
-          });
-          document.querySelectorAll('.hw-subject-select').forEach(item => {
-            item.onclick = () => {
-              document.querySelectorAll('.hw-subject-select').forEach(i => {
-                i.style.background = '#f5f5f5';
-                i.style.color = '#666';
-                i.classList.remove('active');
-              });
-              item.style.background = 'var(--color-primary)';
-              item.style.color = '#fff';
-              item.classList.add('active');
-            };
-          });
-          loadHomeworkList('全部');
+          if (!_cached) {
+            _apply(_homeworkShellHtml());
+            loadHomeworkList('全部');
+          } else {
+            // 缓存 shell 已含上次的列表内容与科目选中态：只重建元素级监听，然后后台刷新当前科目列表
+            // loadHomeworkList 内部：内容未变化则不重刷 DOM，变化（如刚提交新作业）则更新
+            _bindHomeworkControls();
+            loadHomeworkList(homeworkActiveSubject || '全部');
+          }
         }
       } catch (e) {
-        content.innerHTML = '<div class="network-error">网络异常</div>';
+        _setError('<div class="network-error">网络异常</div>');
       }
+    }
+
+    function _homeworkShellHtml(listHtml, listSubject) {
+      const subjects = ['全部', '语文', '数学', '英语', '物理', '化学', '其它'];
+      const _active = homeworkActiveSubject || '全部';
+      return `
+        <div class="homework-subject-bar" style="display:flex;gap:8px;padding:10px 16px;background:#fff;overflow-x:auto;border-bottom:0.5px solid #eee;">
+          ${subjects.map((s) => { const a = s === _active; return `<div class="hw-subject-item ${a?'active':''}" data-subject="${s}" style="padding:6px 16px;background:${a?'var(--color-primary)':'#f5f5f5'};color:${a?'#fff':'#666'};border-radius:16px;font-size:13px;white-space:nowrap;cursor:pointer;">${s}</div>`; }).join('')}
+        </div>
+        <div style="padding:12px 16px;">
+          <button onclick="openHomeworkModal()" style="width:100%;height:44px;background:var(--color-primary);color:#fff;border:none;border-radius:22px;font-size:15px;font-weight:600;cursor:pointer;">
+            <i class="fa-solid fa-cloud-arrow-up"></i> 上传作业
+          </button>
+        </div>
+        <div id="homeworkList"${listSubject ? ` data-subject="${listSubject}"` : ''}>${listHtml || ''}</div>
+        <div class="modal-overlay" id="homeworkModal" onclick="if(event.target===this)closeHomeworkModal()">
+          <div class="modal-content" style="max-height:90vh;overflow-y:auto;box-sizing:border-box;">
+            <div class="modal-handler"></div>
+            <div style="font-weight:600;font-size:16px;margin-bottom:12px;">上传作业</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:0.5px solid #f0f0f0;">
+              <img id="hwModalAvatar" src="${resolveMediaUrl(myAvatar) || DEFAULT_AVATAR}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">
+              <div style="font-size:15px;font-weight:600;color:#333;">${currentNickname || '用户'}</div>
+            </div>
+            <div style="margin-bottom:12px;font-size:14px;color:#666;">选择科目</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+              ${subjects.filter(s=>s!=='全部').map((s, i) => `<div class="hw-subject-select ${i===0?'active':''}" data-subject="${s}" style="padding:6px 14px;background:${i===0?'var(--color-primary)':'#f5f5f5'};color:${i===0?'#fff':'#666'};border-radius:14px;font-size:13px;cursor:pointer;">${s}</div>`).join('')}
+            </div>
+            <div style="margin-bottom:12px;font-size:14px;color:#666;">作业描述</div>
+            <textarea id="homeworkContent" style="width:100%;min-height:80px;border:1px solid #eee;border-radius:8px;padding:12px;font-size:15px;resize:none;" placeholder="简单描述一下作业内容..."></textarea>
+            <div style="margin-top:12px;margin-bottom:8px;font-size:14px;color:#666;">上传图片（最多15张）</div>
+            <div id="homeworkImgPreview" class="create-media-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"></div>
+            <input type="file" id="homeworkImgInput" accept="image/*" multiple style="display:none;" onchange="handleHomeworkImgUpload(this.files); this.value=''">
+            <button id="hwPublishBtn" onclick="submitHomework()" style="width:100%;height:48px;background:var(--color-primary);color:#fff;border:none;border-radius:12px;font-weight:600;margin-top:20px;">发布</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function _bindHomeworkControls() {
+      document.querySelectorAll('.hw-subject-item').forEach(item => {
+        item.onclick = () => {
+          document.querySelectorAll('.hw-subject-item').forEach(i => {
+            i.style.background = '#f5f5f5';
+            i.style.color = '#666';
+            i.classList.remove('active');
+          });
+          item.style.background = 'var(--color-primary)';
+          item.style.color = '#fff';
+          item.classList.add('active');
+          loadHomeworkList(item.dataset.subject);
+        };
+      });
+      document.querySelectorAll('.hw-subject-select').forEach(item => {
+        item.onclick = () => {
+          document.querySelectorAll('.hw-subject-select').forEach(i => {
+            i.style.background = '#f5f5f5';
+            i.style.color = '#666';
+            i.classList.remove('active');
+          });
+          item.style.background = 'var(--color-primary)';
+          item.style.color = '#fff';
+          item.classList.add('active');
+        };
+      });
     }
 
     function renderAuth() {
@@ -6436,9 +6592,31 @@
       currentPage = 'postDetail';
       setTabbarVisible(false);
       try { history.pushState({ page: 'postDetail' }, '', '#postDetail'); } catch(e) {}
+      // 之前打开过同一帖子：立即用缓存渲染，后台再拉最新（返回本页必须秒出）
+      const _pd = postDetailCache[id];
+      if (_pd && _pd.data) {
+        currentPostDetail = _pd.data;
+        try { window.scrollTo(0, 0); render(); updateTabbar(); } catch (e) {}
+        api('/postDetail?id=' + encodeURIComponent(id)).then(r => {
+          if (r.code === 1 && r.data) {
+            let _same = false;
+            try { _same = JSON.stringify(r.data) === _pd.raw; } catch(e) {}
+            postDetailCache[id] = { data: r.data, ts: Date.now(), raw: _pd.raw };
+            if (!_same && currentPage === 'postDetail' && document.getElementById('commentList')) {
+              currentPostDetail = r.data;
+              try {
+                postDetailCache[id].raw = JSON.stringify(r.data);
+                render(); updateTabbar();
+              } catch(e){}
+            }
+          }
+        }).catch(() => {});
+        return;
+      }
       api('/postDetail?id=' + encodeURIComponent(id)).then(r => {
         if (r.code === 1) {
           currentPostDetail = r.data;
+          if (r.data && r.data.id) { try { postDetailCache[String(r.data.id)] = { data: r.data, ts: Date.now(), raw: JSON.stringify(r.data) }; } catch(e){} }
           try {
             window.scrollTo(0, 0);
             render();
@@ -6532,12 +6710,23 @@
       currentPage = 'topicDetail';
       setTabbarVisible(false);
       try { history.pushState({ page: 'topicDetail' }, '', '#topicDetail'); } catch(e) {}
+      // 看过该话题：立即用缓存渲染，后台拉最新首页内容（返回本页必须秒出）
+      const _tc = topicDetailCache[name];
+      if (_tc && _tc.topic) {
+        currentTopicDetail = _tc.topic;
+        topicPosts = _tc.posts || [];
+        topicPage = _tc.page || 2;
+        topicNoMore = !!_tc.noMore;
+        try { window.scrollTo(0, 0); render(); updateTabbar(); } catch (e) {}
+        return;
+      }
       api('/topicDetail?name=' + encodeURIComponent(name) + '&page=1&size=10').then(r => {
         if (r.code === 1) {
           currentTopicDetail = r.data.topic;
           topicPosts = r.data.posts || [];
           topicPage = 2;
           topicNoMore = topicPosts.length < 10;
+          topicDetailCache[name] = { topic: r.data.topic, posts: topicPosts, page: topicPage, noMore: topicNoMore, ts: Date.now() };
           try {
             window.scrollTo(0, 0);
             render();
@@ -6687,7 +6876,7 @@
             <div class="msg-func-label">评论和@</div>
           </div>
         </div>
-        <div id="chatList" style="margin-top:8px;">${chatSkel}</div>
+        <div id="chatList" style="margin-top:8px;">${(chatListCache && chatListCache.html) ? chatListCache.html : chatSkel}</div>
       </div>`;
     }
 
@@ -6696,10 +6885,11 @@
         const [chatRes, countRes] = await Promise.all([api('/chatList'), api('/unreadCount')]);
         const list = document.getElementById('chatList');
         if (!list) return;
+        let _listHtml;
         if (!chatRes.data || chatRes.data.length === 0) {
-          list.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">暂无消息</div>';
+          _listHtml = '<div style="text-align:center;padding:40px;color:#999;">暂无消息</div>';
         } else {
-          list.innerHTML = chatRes.data.map(c => {
+          _listHtml = chatRes.data.map(c => {
             if (c.is_system) {
               return `
             <div class="chat-list-item" onclick="goChat('system')" style="display:flex;align-items:center;padding:12px 16px;border-bottom:0.5px solid #f0f0f0;cursor:pointer;background:#ffffff !important;background-color:#ffffff !important;box-sizing:border-box;width:100%;">
@@ -6741,13 +6931,19 @@
             </div>`;
           }).join('');
         }
+        // 与缓存内容一致时不重刷 DOM（避免头像图片重载闪烁）；不同才更新
+        if (!(chatListCache && chatListCache.html === _listHtml)) {
+          list.innerHTML = _listHtml;
+          chatListCache = { html: _listHtml, ts: Date.now() };
+        }
         if (countRes.code === 1 && countRes.data) {
           const { likeCount, followCount, commentCount } = countRes.data;
           updateAllBadges(likeCount, followCount, commentCount);
         }
       } catch(e) {
         const _cl = document.getElementById('chatList');
-        if (_cl) _cl.innerHTML = '<div style="text-align:center;padding:20px;color:#999;">加载失败</div>';
+        // 已有缓存内容时不清空，避免返回页面变成"加载失败"
+        if (_cl && !(chatListCache && chatListCache.html)) _cl.innerHTML = '<div style="text-align:center;padding:20px;color:#999;">加载失败</div>';
       }
     }
 
@@ -6819,8 +7015,12 @@
           </div>
         </div>
       `).join('');
+      const _hc = profileHeaderCache;
+      const _gc = cacheGet(profileGridCache, profileCurrentTab);
+      const _gridCls = _gc ? (_gc.cls !== undefined ? _gc.cls : 'profile-grid') : 'profile-grid';
+      const _gridPad = _gc ? (_gc.pad || '') : '';
       return `<div class="page">
-        <div class="profile-header">
+        ${_hc ? _hc.html : `<div class="profile-header">
           <div class="profile-top">
             <img id="myAvatar" class="sk-item profile-avatar" src="" style="width:60px;height:60px;border-radius:50%;cursor:pointer;" onclick="goUserProfile(getUid())">
             <div class="profile-info">
@@ -6834,7 +7034,7 @@
             <div class="profile-stat" onclick="goPage('notificationFollows')" style="cursor:pointer;"><span id="fansCount" class="sk-item num" style="width:30px;height:18px;display:inline-block;margin-bottom:4px;"></span><span class="label">粉丝</span></div>
             <div class="profile-stat" onclick="goPage('notificationLikes')" style="cursor:pointer;"><span id="likesCount" class="sk-item num" style="width:40px;height:18px;display:inline-block;margin-bottom:4px;"></span><span class="label">获赞与收藏</span></div>
           </div>
-        </div>
+        </div>`}
         <div style="display:flex;gap:8px;padding:0 16px 12px;background:#fff;">
           <button onclick="goPage('editProfile')" style="flex:1;padding:8px;background:#f5f5f5;border:none;border-radius:8px;font-size:14px;cursor:pointer;"><i class="fa-regular fa-pen-to-square"></i> 编辑资料</button>
           <button onclick="goPage('safetyCenter')" style="flex:1;padding:8px;background:#f5f5f5;border:none;border-radius:8px;font-size:14px;cursor:pointer;"><i class="fa-solid fa-shield-halved"></i> 账号安全</button>
@@ -6845,7 +7045,7 @@
           <div class="profile-tab ${profileCurrentTab==='confession'?'active':''}" onclick="switchProfileTab('confession')">表白墙</div>
           <div class="profile-tab ${profileCurrentTab==='homework'?'active':''}" onclick="switchProfileTab('homework')">作业</div>
         </div>
-        <div id="myProfileContent" class="profile-grid">${gridSkel}</div>
+        <div id="myProfileContent" class="${_gridCls}"${_gc && _gc.pad ? ` style="padding:${_gc.pad};"` : ''}>${_gc ? _gc.html : gridSkel}</div>
         ${renderLogoutConfirmModal()}
       </div>`;
     }
@@ -6862,15 +7062,34 @@
     }
 
     async function loadMyProfileContent() {
+      await _loadMyProfileContentInner();
+    }
+
+    async function _loadMyProfileContentInner() {
       const container = document.getElementById('myProfileContent');
       if (!container) return;
       const myUid = getUid();
+      // 该标签页已有缓存内容（返回本页瞬间呈现）：刷新失败时保留旧内容，不写"加载失败"
+      const _tabAtStart = profileCurrentTab;
+      const _hadCache = !!cacheGet(profileGridCache, _tabAtStart);
+      // 内容未变化时跳过写入，避免相同内容重刷造成闪烁/图片重载
+      const _write = (cls, pad, html) => {
+        if (profileCurrentTab !== _tabAtStart) return; // 拉取期间用户已切走标签，丢弃本次结果
+        const _cur = profileGridCache[_tabAtStart];
+        if (_cur && _cur.raw === html) return; // 生成结果与上次一致，DOM 无需变化
+        const _curPad = pad === undefined ? container.style.padding : pad;
+        if (container.innerHTML === html && container.className === cls && container.style.padding === _curPad) return;
+        container.className = cls;
+        if (pad !== undefined) container.style.padding = pad;
+        container.innerHTML = html;
+        // 快照：html=序列化成品（返回时直接还原），raw=生成源串（下次比对是否变化）
+        cacheSet(profileGridCache, _tabAtStart, container.innerHTML, { raw: html, cls: cls, pad: pad === undefined ? '' : pad });
+      };
       if (profileCurrentTab === 'posts') {
         try {
           const postRes = await api('/myPosts?page=1&size=20');
           if (postRes.code === 1 && postRes.data.length > 0) {
-            container.className = 'profile-grid';
-            container.innerHTML = postRes.data.map(p => {
+            _write('profile-grid', undefined, postRes.data.map(p => {
               const imgs = p.images ? p.images.split(',').filter(x => x) : [];
               const hasVideo = p.video && p.video.length > 0;
               const cover = hasVideo ? resolveThumb(p.video_cover || '') : resolveThumb(imgs[0] || '');
@@ -6891,12 +7110,12 @@
                 ${mediaHtml}
                 <div class="info"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.title || (p.content||'').replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, '@$1').slice(0,20)}</div><div style="color:#999;font-size:11px;margin-top:2px;"><i class="fa-regular fa-heart"></i> ${p.likes||0}</div></div>
               </div>`;
-            }).join('');
+            }).join(''));
           } else {
-            container.className = '';
-            container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">还没有发过帖子</div>';
+            _write('', '', '<div style="text-align:center;padding:40px;color:#999;">还没有发过帖子</div>');
           }
         } catch(e) {
+          if (_hadCache) return; // 返回本页时已有缓存内容，刷新失败保留旧内容
           container.className = '';
           container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">加载失败</div>';
         }
@@ -6904,9 +7123,7 @@
         try {
           const res = await api('/homeworkList?uid=' + myUid + '&page=1&size=20');
           if (res.code === 1 && res.data.length > 0) {
-            container.className = '';
-            container.style.padding = '8px 0';
-            container.innerHTML = res.data.map(hw => {
+            _write('', '8px 0', res.data.map(hw => {
               const imgs = hw.images ? hw.images.split(',').filter(x => x) : [];
               const hasImages = imgs.length > 0;
               const hwImgs = hasImages ? imgs.map(i => `<div style="padding:0 12px 8px;"><img loading="lazy" src="${resolveThumb(i)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>`).join('') : '';
@@ -6929,12 +7146,12 @@
                   <div class="action-item"><i class="fa-regular fa-heart"></i><span>${hw.likes||0}</span></div>
                 </div>
               </div>`;
-            }).join('');
+            }).join(''));
           } else {
-            container.className = '';
-            container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#999;">还没有发布过作业</div>';
+            _write('', '', '<div style="text-align:center;padding:40px 20px;color:#999;">还没有发布过作业</div>');
           }
         } catch(e) {
+          if (_hadCache) return; // 返回本页时已有缓存内容，刷新失败保留旧内容
           container.className = '';
           container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">加载失败</div>';
         }
@@ -6942,9 +7159,7 @@
         try {
           const res = await api('/userConfessions?uid=' + myUid + '&page=1&size=20');
           if (res.code === 1 && res.data.length > 0) {
-            container.className = '';
-            container.style.padding = '8px 0';
-            container.innerHTML = res.data.map(c => {
+            _write('', '8px 0', res.data.map(c => {
               const imgs = c.images ? c.images.split(',').filter(x => x) : [];
               const cover = imgs[0] || '';
               const hasImages = imgs.length > 0;
@@ -6963,12 +7178,12 @@
                   <div class="action-item"><i class="fa-regular fa-comment"></i><span>${c.comment_count||0}</span></div>
                 </div>
               </div>`;
-            }).join('');
+            }).join(''));
           } else {
-            container.className = '';
-            container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#999;">还没有发布过表白</div>';
+            _write('', '', '<div style="text-align:center;padding:40px 20px;color:#999;">还没有发布过表白</div>');
           }
         } catch(e) {
+          if (_hadCache) return; // 返回本页时已有缓存内容，刷新失败保留旧内容
           container.className = '';
           container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">加载失败</div>';
         }
@@ -7036,11 +7251,17 @@
         }
       } catch(e) {}
       loadMyProfileContent();
+      // 头部已填充完毕，做一次快照供返回时立即呈现；仅当仍在「我的」页时抓取
+      if (currentPage === 'profile' && document.getElementById('myAvatar')) {
+        const _ph = document.querySelector('.profile-header');
+        if (_ph) profileHeaderCache = { html: _ph.outerHTML, ts: Date.now() };
+      }
     }
 
     function logout() {
       localStorage.removeItem('zanhua_token');
       feedCache = null;
+      clearContentCaches();
       myAvatar = '';
       currentUsername = '';
       currentNickname = '';
@@ -7285,15 +7506,39 @@
 
     function goUserProfile(uid) {
       if (!requireLogin()) return;
-      userProfileCurrentTab = 'posts';
       pageHistory.push(currentPage);
       prevPage = currentPage;
       currentPage = 'userProfile';
       try { history.pushState({ page: 'userProfile' }, '', '#userProfile'); } catch(e) {}
       setTabbarVisible(false);
+      // 看过该用户：立即用缓存对象渲染，后台拉最新（返回本页必须秒出）
+      const _uc = userProfileObjCache[uid];
+      if (_uc && _uc.data) {
+        userProfileCurrentTab = _uc.tab || 'posts';
+        currentViewUser = _uc.data;
+        try { window.scrollTo(0, 0); render(); updateTabbar(); } catch (e) {}
+        api('/userProfile?uid=' + uid).then(r => {
+          if (r.code === 1 && r.data) {
+            let _same = false;
+            try { _same = JSON.stringify(r.data) === _uc.raw; } catch(e) {}
+            if (!_same && currentPage === 'userProfile' && document.getElementById('userProfileContent')) {
+              currentViewUser = r.data;
+              try {
+                userProfileObjCache[uid] = { data: r.data, raw: JSON.stringify(r.data), ts: Date.now(), tab: userProfileCurrentTab };
+                render(); updateTabbar();
+              } catch(e){}
+            } else {
+              userProfileObjCache[uid] = { data: r.data, raw: _uc.raw, ts: Date.now(), tab: userProfileCurrentTab };
+            }
+          }
+        }).catch(() => {});
+        return;
+      }
+      userProfileCurrentTab = 'posts';
       api('/userProfile?uid=' + uid).then(r => {
         if (r.code === 1) {
           currentViewUser = r.data;
+          if (r.data) { try { userProfileObjCache[uid] = { data: r.data, raw: JSON.stringify(r.data), ts: Date.now(), tab: 'posts' }; } catch(e){} }
           try {
             window.scrollTo(0, 0);
             render();
@@ -7317,6 +7562,10 @@
       const isApproved = followStatus === 'approved';
       const isPending = followStatus === 'pending';
       const blockedByPrivate = !isMine && isPrivate && !isApproved;
+      // 返回该用户主页时：已有缓存网格内容直接还原，不再出骨架屏
+      const _uc = blockedByPrivate ? null : cacheGet(userProfileCache, u.uid + ':' + userProfileCurrentTab);
+      const _ucCls = _uc ? (_uc.cls !== undefined ? _uc.cls : 'profile-grid') : 'profile-grid';
+      const _ucPad = _uc && _uc.pad ? ` style="padding:${_uc.pad};"` : '';
       let followBtnHtml = '';
       if (isMine) {
         followBtnHtml = `<button id="followBtn" onclick="goPage('editProfile')" style="flex:1;padding:10px;border:none;border-radius:20px;font-size:15px;font-weight:600;cursor:pointer;background:#f5f5f5;color:#333;">编辑资料</button>`;
@@ -7362,7 +7611,7 @@
           <div class="profile-tab ${userProfileCurrentTab==='confession'?'active':''}" onclick="switchUserProfileTab('confession')">表白墙</div>
           <div class="profile-tab ${userProfileCurrentTab==='homework'?'active':''}" onclick="switchUserProfileTab('homework')">作业</div>
         </div>
-        <div id="userProfileContent" class="profile-grid">${new Array(6).fill(0).map(() => `
+        <div id="userProfileContent" class="${_ucCls}"${_ucPad}>${_uc ? _uc.html : new Array(6).fill(0).map(() => `
           <div class="profile-grid-item" style="background:#fff;">
             <div class="sk-item" style="width:100%;aspect-ratio:3/4;"></div>
             <div class="info" style="padding:6px 8px;">
@@ -7376,6 +7625,7 @@
 
     function switchUserProfileTab(tab) {
       userProfileCurrentTab = tab;
+      if (currentViewUser && userProfileObjCache[currentViewUser.uid]) userProfileObjCache[currentViewUser.uid].tab = tab;
       document.querySelectorAll('.profile-tabs .profile-tab').forEach(el => {
         el.classList.remove('active');
       });
@@ -7389,12 +7639,25 @@
       const container = document.getElementById('userProfileContent');
       if (!container || !currentViewUser) return;
       const uid = currentViewUser.uid;
+      // 返回本页时已有缓存内容：刷新失败保留旧内容，不写"加载失败"
+      const _hadCache = !!cacheGet(userProfileCache, uid + ':' + userProfileCurrentTab);
+      // 内容未变化时跳过写入，避免相同内容重刷造成闪烁/图片重载
+      const _write = (cls, pad, html) => {
+        const _key = uid + ':' + userProfileCurrentTab;
+        const _cur = userProfileCache[_key];
+        if (_cur && _cur.raw === html) return;
+        const _curPad = pad === undefined ? container.style.padding : pad;
+        if (container.innerHTML === html && container.className === cls && container.style.padding === _curPad) return;
+        container.className = cls;
+        if (pad !== undefined) container.style.padding = pad;
+        container.innerHTML = html;
+        cacheSet(userProfileCache, _key, container.innerHTML, { raw: html, cls: cls, pad: pad === undefined ? '' : pad });
+      };
       if (userProfileCurrentTab === 'posts') {
         try {
           const res = await api('/myPosts?page=1&size=20&uid=' + uid);
           if (res.code === 1 && res.data.length > 0) {
-            container.className = 'profile-grid';
-            container.innerHTML = res.data.map(p => {
+            _write('profile-grid', undefined, res.data.map(p => {
               const imgs = p.images ? p.images.split(',').filter(x => x) : [];
               const hasVideo = p.video && p.video.length > 0;
               const cover = hasVideo ? resolveThumb(p.video_cover || '') : resolveThumb(imgs[0] || '');
@@ -7415,12 +7678,12 @@
                 ${mediaHtml}
                 <div class="info"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.title || (p.content||'').replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, '@$1').slice(0,20)}</div><div style="color:#999;font-size:11px;margin-top:2px;"><i class="fa-regular fa-heart"></i> ${p.likes||0}</div></div>
               </div>`;
-            }).join('');
+            }).join(''));
           } else {
-            container.className = '';
-            container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">TA还没有发过帖子</div>';
+            _write('', '', '<div style="text-align:center;padding:40px;color:#999;">TA还没有发过帖子</div>');
           }
         } catch(e) {
+          if (_hadCache) return; // 返回本页时已有缓存内容，刷新失败保留旧内容
           container.className = '';
           container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">加载失败</div>';
         }
@@ -7428,9 +7691,7 @@
         try {
           const res = await api('/homeworkList?uid=' + uid + '&page=1&size=20');
           if (res.code === 1 && res.data.length > 0) {
-            container.className = '';
-            container.style.padding = '8px 0';
-            container.innerHTML = res.data.map(hw => {
+            _write('', '8px 0', res.data.map(hw => {
               const imgs = hw.images ? hw.images.split(',').filter(x => x) : [];
               const hasImages = imgs.length > 0;
               const hwImgs = hasImages ? imgs.map(i => `<div style="padding:0 12px 8px;"><img loading="lazy" src="${resolveThumb(i)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>`).join('') : '';
@@ -7453,12 +7714,12 @@
                   <div class="action-item"><i class="fa-regular fa-heart"></i><span>${hw.likes||0}</span></div>
                 </div>
               </div>`;
-            }).join('');
+            }).join(''));
           } else {
-            container.className = '';
-            container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#999;">TA还没有发布过作业</div>';
+            _write('', '', '<div style="text-align:center;padding:40px 20px;color:#999;">TA还没有发布过作业</div>');
           }
         } catch(e) {
+          if (_hadCache) return; // 返回本页时已有缓存内容，刷新失败保留旧内容
           container.className = '';
           container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">加载失败</div>';
         }
@@ -7466,9 +7727,7 @@
         try {
           const res = await api('/userConfessions?uid=' + uid + '&page=1&size=20');
           if (res.code === 1 && res.data.length > 0) {
-            container.className = '';
-            container.style.padding = '8px 0';
-            container.innerHTML = res.data.map(c => {
+            _write('', '8px 0', res.data.map(c => {
               const imgs = c.images ? c.images.split(',').filter(x => x) : [];
               const cover = imgs[0] || '';
               const hasImages = imgs.length > 0;
@@ -7487,12 +7746,12 @@
                   <div class="action-item"><i class="fa-regular fa-comment"></i><span>${c.comment_count||0}</span></div>
                 </div>
               </div>`;
-            }).join('');
+            }).join(''));
           } else {
-            container.className = '';
-            container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#999;">TA还没有发布过表白</div>';
+            _write('', '', '<div style="text-align:center;padding:40px 20px;color:#999;">TA还没有发布过表白</div>');
           }
         } catch(e) {
+          if (_hadCache) return; // 返回本页时已有缓存内容，刷新失败保留旧内容
           container.className = '';
           container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">加载失败</div>';
         }
