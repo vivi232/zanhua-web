@@ -1785,7 +1785,10 @@
         _lastRenderedPage = currentPage;
       }
       if (currentPage === 'home') {
-        showAppSkeleton();
+        // 已有内容（缓存命中/之前已加载）则直接显示，不再盖骨架屏；只有内容尚未就绪时才展示
+        const _plHome = document.getElementById('postList');
+        if (_plHome && _plHome.innerHTML.trim()) hideAppSkeleton();
+        else showAppSkeleton();
       } else {
         hideAppSkeleton();
       }
