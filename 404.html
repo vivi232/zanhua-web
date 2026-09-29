@@ -17,21 +17,21 @@
   <meta property="og:type" content="website">
   <link rel="canonical" href="https://154.201.81.86/zanhua/">
   <title>赞话</title>
-  <script>
-    (function() {
-      var _segs = window.location.pathname.split('/').filter(Boolean);
-      var _pf = '';
-      if (_segs.length && (_segs[0] === 'appeal' || _segs[0].indexOf('inv=') === 0)) {
-        _pf = '';
-      } else {
-        _pf = _segs[0] || '';
-      }
-      window.__BASE = _pf ? '/' + _pf : '';
-    })();
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register(window.__BASE + '/sw.js?v=10').catch(function(){});
-    }
-  </script>
+  <script>(function() {
+  var _segs = window.location.pathname.split("/").filter(Boolean);
+  var _pf = "";
+  if (_segs.length && (_segs[0] === "appeal" || _segs[0].indexOf("inv=") === 0)) {
+    _pf = "";
+  } else {
+    _pf = _segs[0] || "";
+  }
+  window.__BASE = _pf ? "/" + _pf : "";
+})();
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register(window.__BASE + "/sw.js?v=10").catch(function() {});
+}
+</script>
   <style>
     @-webkit-keyframes sk-shimmer {
       0% { -webkit-transform: translateX(-100%); transform: translateX(-100%); }
@@ -125,136 +125,99 @@
   </style>
   <link id="faCss" rel="stylesheet" data-src="https://154.201.81.86/zanhua/static/fontawesome/css/all.min.css?v=2">
   <link id="appCss" rel="stylesheet" data-src="/app.css?v=6">
-  <script>
-    (function(){
-      ['faCss','appCss'].forEach(function(id){
-        var l = document.getElementById(id);
-        if (!l) return;
-        var src = l.getAttribute('data-src');
-        l.href = (src.indexOf('http://') === 0 || src.indexOf('https://') === 0) ? src : (window.__BASE + src);
-      });
-    })();
-  </script>
-  <script>
-    window.AliyunCaptchaConfig = { region: "cn", prefix: "17oq74" };
-  </script>
-  <script>
-    (function() {
-      var ua = navigator.userAgent;
-      var vendor = (navigator.vendor || '').toString();
-      
-      var isApple = (vendor.indexOf('Apple') !== -1)
-        || /Macintosh|Mac OS X|iPhone|iPad|iPod/i.test(ua);
-
-      var scFontUrl = 'https://emoji-fonts-1342939114.cos.ap-nanjing.myqcloud.com/ZanhuaSans-SC-Regular-Decrease.woff2';
-      var latinFontUrl = 'https://154.201.81.86/zanhua/res/fonts/ZanhuaSans-Latin-Regular.woff2';
-      var emojiUrl = 'https://emoji-fonts-1342939114.cos.ap-nanjing.myqcloud.com/emoji.ttf';
-
-      
-      var fontUrl = isApple ? latinFontUrl : scFontUrl;
-
-      var pre = document.createElement('link');
-      pre.rel = 'preload';
-      pre.as = 'font';
-      pre.href = fontUrl;
-      pre.crossOrigin = 'anonymous';
-      document.head.appendChild(pre);
-
-      var emojiRanges = [
-        'U+1F600-1F64F',
-        'U+1F300-1F5FF',
-        'U+1F680-1F6FF',
-        'U+1F900-1F9FF',
-        'U+1FA00-1FA6F, U+1FA70-1FAFF',
-        'U+2600-26FF, U+2700-27BF',
-        'U+FE00-FE0F, U+1F000-1F0FF',
-        'U+2300-23FF, U+2B00-2BFF, U+25A0-25FF, U+2764, U+2728, U+2B50, U+2190-21FF'
-      ];
-
-      var fontStyleEl = document.createElement('style');
-      document.head.appendChild(fontStyleEl);
-
-      function setFontFace(family, url, format, extraCss) {
-        var css = "@font-face {" +
-          "font-family:'" + family + "';" +
-          "src:url('" + url + "') format('" + format + "');" +
-          "font-display:swap;" +
-          "font-weight:400;" +
-          "font-style:normal;" +
-          (extraCss || '') +
-          "}";
-        fontStyleEl.textContent = fontStyleEl.textContent.replace(
-          new RegExp("@font-face \\{font-family:'" + family + "'[^}]*\\}", 'g'), ''
-        );
-        fontStyleEl.textContent = fontStyleEl.textContent + '\n' + css;
-      }
-
-      function setEmojiFontFace(url, format) {
-        format = format || 'truetype';
-        var css = emojiRanges.map(function(range) {
-          return "@font-face {" +
-            "font-family:'EmojiFont';" +
-            "src:url('" + url + "') format('" + format + "');" +
-            "font-display:block;" +
-            "unicode-range:" + range + ";" +
-            "}";
-        }).join('\n');
-        fontStyleEl.textContent = fontStyleEl.textContent.replace(
-          /@font-face \{font-family:'EmojiFont'[^}]*\}\n?/g, ''
-        );
-        fontStyleEl.textContent = fontStyleEl.textContent + '\n' + css;
-      }
-
-      setFontFace('ZanhuaSans', fontUrl, 'woff2');
-      if (!isApple) setEmojiFontFace(emojiUrl, 'truetype');
-
-      function loadFont(href, family, format, timeout) {
-        return new Promise(function(resolve) {
-          var settled = false;
-          var timer = setTimeout(function() {
-            if (!settled) { settled = true; resolve(false); }
-          }, timeout || 15000);
-
-          function done(ok) {
-            if (!settled) {
-              settled = true;
-              clearTimeout(timer);
-              resolve(ok);
-            }
-          }
-
-          try {
-            var ff = new FontFace(family, 'url(' + href + ')', { crossOrigin: 'anonymous' });
-            ff.load().then(function(loaded) {
-              if (document.fonts) document.fonts.add(loaded);
-              done(true);
-            }).catch(function() {
-              done(false);
-            });
-          } catch(e) {
-            done(false);
-          }
-        });
-      }
-
-      loadFont(fontUrl, 'ZanhuaSans', 'woff2', 15000).then(function(ok) {
-        if (!ok && !isApple) {
-          setFontFace('ZanhuaSans', latinFontUrl, 'woff2');
-          return loadFont(latinFontUrl, 'ZanhuaSans', 'woff2', 15000);
+  <script>(function() {
+  [ "faCss", "appCss" ].forEach(function(id) {
+    var l = document.getElementById(id);
+    if (!l) return;
+    var src = l.getAttribute("data-src");
+    l.href = src.indexOf("http://") === 0 || src.indexOf("https://") === 0 ? src : window.__BASE + src;
+  });
+})();
+</script>
+  <script>window.AliyunCaptchaConfig = {
+  region: "cn",
+  prefix: "17oq74"
+};
+</script>
+  <script>(function() {
+  var ua = navigator.userAgent;
+  var vendor = (navigator.vendor || "").toString();
+  var isApple = vendor.indexOf("Apple") !== -1 || /Macintosh|Mac OS X|iPhone|iPad|iPod/i.test(ua);
+  var scFontUrl = "https://emoji-fonts-1342939114.cos.ap-nanjing.myqcloud.com/ZanhuaSans-SC-Regular-Decrease.woff2";
+  var latinFontUrl = "https://154.201.81.86/zanhua/res/fonts/ZanhuaSans-Latin-Regular.woff2";
+  var emojiUrl = "https://emoji-fonts-1342939114.cos.ap-nanjing.myqcloud.com/emoji.ttf";
+  var fontUrl = isApple ? latinFontUrl : scFontUrl;
+  var pre = document.createElement("link");
+  pre.rel = "preload";
+  pre.as = "font";
+  pre.href = fontUrl;
+  pre.crossOrigin = "anonymous";
+  document.head.appendChild(pre);
+  var emojiRanges = [ "U+1F600-1F64F", "U+1F300-1F5FF", "U+1F680-1F6FF", "U+1F900-1F9FF", "U+1FA00-1FA6F, U+1FA70-1FAFF", "U+2600-26FF, U+2700-27BF", "U+FE00-FE0F, U+1F000-1F0FF", "U+2300-23FF, U+2B00-2BFF, U+25A0-25FF, U+2764, U+2728, U+2B50, U+2190-21FF" ];
+  var fontStyleEl = document.createElement("style");
+  document.head.appendChild(fontStyleEl);
+  function setFontFace(family, url, format, extraCss) {
+    var css = "@font-face {" + "font-family:'" + family + "';" + "src:url('" + url + "') format('" + format + "');" + "font-display:swap;" + "font-weight:400;" + "font-style:normal;" + (extraCss || "") + "}";
+    fontStyleEl.textContent = fontStyleEl.textContent.replace(new RegExp("@font-face \\{font-family:'" + family + "'[^}]*\\}", "g"), "");
+    fontStyleEl.textContent = fontStyleEl.textContent + "\n" + css;
+  }
+  function setEmojiFontFace(url, format) {
+    format = format || "truetype";
+    var css = emojiRanges.map(function(range) {
+      return "@font-face {" + "font-family:'EmojiFont';" + "src:url('" + url + "') format('" + format + "');" + "font-display:block;" + "unicode-range:" + range + ";" + "}";
+    }).join("\n");
+    fontStyleEl.textContent = fontStyleEl.textContent.replace(/@font-face \{font-family:'EmojiFont'[^}]*\}\n?/g, "");
+    fontStyleEl.textContent = fontStyleEl.textContent + "\n" + css;
+  }
+  setFontFace("ZanhuaSans", fontUrl, "woff2");
+  if (!isApple) setEmojiFontFace(emojiUrl, "truetype");
+  function loadFont(href, family, format, timeout) {
+    return new Promise(function(resolve) {
+      var settled = false;
+      var timer = setTimeout(function() {
+        if (!settled) {
+          settled = true;
+          resolve(false);
         }
-      });
-
-      if (!isApple) {
-        loadFont(emojiUrl, 'EmojiFont', 'truetype', 30000).then(function(ok) {
-          if (!ok) {
-            
-            setEmojiFontFace(latinFontUrl, 'woff2');
-            loadFont(latinFontUrl, 'EmojiFont', 'woff2', 15000).catch(function(){});
-          }
-        });
+      }, timeout || 15e3);
+      function done(ok) {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(ok);
+        }
       }
-    })();
-  </script>
+      try {
+        var ff = new FontFace(family, "url(" + href + ")", {
+          crossOrigin: "anonymous"
+        });
+        ff.load().then(function(loaded) {
+          if (document.fonts) document.fonts.add(loaded);
+          done(true);
+        }).catch(function() {
+          done(false);
+        });
+      } catch (e) {
+        done(false);
+      }
+    });
+  }
+  loadFont(fontUrl, "ZanhuaSans", "woff2", 15e3).then(function(ok) {
+    if (!ok && !isApple) {
+      setFontFace("ZanhuaSans", latinFontUrl, "woff2");
+      return loadFont(latinFontUrl, "ZanhuaSans", "woff2", 15e3);
+    }
+  });
+  if (!isApple) {
+    loadFont(emojiUrl, "EmojiFont", "truetype", 3e4).then(function(ok) {
+      if (!ok) {
+        setEmojiFontFace(latinFontUrl, "woff2");
+        loadFont(latinFontUrl, "EmojiFont", "woff2", 15e3).catch(function() {});
+      }
+    });
+  }
+})();
+</script>
 </head>
 <body>
   <div id="app"></div>
@@ -357,20 +320,18 @@
     </div>
     <div id="atUserList"></div>
   </div>
-  <script>
-    (function(){
-      var s = document.createElement('script');
-      s.src = window.__BASE + '/app.js?v=16';
-      document.body.appendChild(s);
-    })();
-  </script>
-  <script>
-    (function() {
-      if (window.location.pathname.split('/').filter(Boolean)[0] === 'appeal') {
-        var sk = document.getElementById('app-skeleton');
-        if (sk) sk.style.display = 'none';
-      }
-    })();
-  </script>
+  <script>(function() {
+  var s = document.createElement("script");
+  s.src = window.__BASE + "/app.js?v=16";
+  document.body.appendChild(s);
+})();
+</script>
+  <script>(function() {
+  if (window.location.pathname.split("/").filter(Boolean)[0] === "appeal") {
+    var sk = document.getElementById("app-skeleton");
+    if (sk) sk.style.display = "none";
+  }
+})();
+</script>
 </body>
 </html>
