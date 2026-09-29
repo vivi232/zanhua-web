@@ -739,9 +739,19 @@
       showToast((res && res.msg) || fallbackMsg);
       return false;
     }
-    function setToken(t) { localStorage.setItem('zanhua_token', t); feedCache = null; clearContentCaches(); if (typeof dctWmClearTile === 'function') dctWmClearTile(); dctWmRemoveCanvas(); }
+    function setToken(t) { const _prevUid = getUid(); localStorage.setItem('zanhua_token', t); if (_prevUid && _prevUid !== getUid()) clearUserMediaCache(); feedCache = null; clearContentCaches(); if (typeof dctWmClearTile === 'function') dctWmClearTile(); dctWmRemoveCanvas(); }
     function getUid() { try { return atob(getToken().replace(/^admin_/, '').split('.')[0]).split(':')[0]; } catch(e) { return ''; } }
     function isAdminAccount() { return getToken().indexOf('admin_') === 0 || currentNickname === '管理员'; }
+    // 退出登录/登录过期/被踢出：清除 SW 中的用户内容媒体缓存（帖子/作业/表白墙图片、视频、缩略图）
+    function clearUserMediaCache() {
+      try {
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({ type: 'clearUserMedia' });
+        } else if ('caches' in window) {
+          caches.delete('zanhua-usermedia-v1');
+        }
+      } catch (e) {}
+    }
 
     async function api(url, method = 'GET', data = null) {
       const controller = new AbortController();
@@ -764,11 +774,17 @@
         
         if (json && json.code === 403 && json.forceLogout) {
           localStorage.removeItem('zanhua_token');
+          clearUserMediaCache();
           const info = (json.banInfo && typeof json.banInfo === 'object') ? json.banInfo : {};
           localStorage.setItem('zanhua_ban_info', JSON.stringify(info));
           // 对外话术由后端下发（banInfo.userMsg），前端不再硬编码
           showBanNotice(info.userMsg || '账号已被限制');
           throw new Error('账号已封禁');
+        }
+        // token 失效（登录过期/被踢）：同样清除用户媒体缓存
+        if (json && (json.needLogin || (json.code === 0 && json.msg === '未登录')) && getToken()) {
+          localStorage.removeItem('zanhua_token');
+          clearUserMediaCache();
         }
         return json;
       } catch (e) {
@@ -7270,6 +7286,7 @@
 
     function logout() {
       localStorage.removeItem('zanhua_token');
+      clearUserMediaCache();
       feedCache = null;
       clearContentCaches();
       myAvatar = '';
@@ -9245,6 +9262,7 @@
           document.getElementById('deleteAccountModal').classList.remove('active');
           setTimeout(() => {
             localStorage.removeItem('zanhua_token');
+            clearUserMediaCache();
             location.reload();
           }, 1500);
         } else {

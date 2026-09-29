@@ -33,6 +33,30 @@
     } catch (e) { return false; }
   }
 
+  // 用户内容媒体（帖子/作业/表白墙图片、视频、缩略图、用户上传头像）：跨页面复用，退登/登录过期时由前端发消息清除
+  var USER_MEDIA_CACHE = 'zanhua-usermedia-v1';
+  var USER_MEDIA_PATTERNS = [
+    '/zanhua/uploads/posts/',
+    '/zanhua/uploads/thumbs/',
+    '/zanhua/uploads/homework',
+    '/zanhua/uploads/confession',
+    '/zanhua/uploads/avatars/',
+    '/zanhua/uploads/videos/',
+    '/zanhua/uploads/chat/'
+  ];
+  function isUserMedia(url) {
+    try {
+      var u = new URL(url);
+      if (u.origin !== self.location.origin && u.hostname !== '154.201.81.86') return false;
+      if (u.pathname === '/zanhua/uploads/default_avatar.webp') return false;
+      return USER_MEDIA_PATTERNS.some(function (p) { return u.pathname.indexOf(p) !== -1; });
+    } catch (e) { return false; }
+  }
+  self.addEventListener('message', function (event) {
+    if (event.data && event.data.type === 'clearUserMedia') {
+      event.waitUntil(caches.delete(USER_MEDIA_CACHE));
+    }
+  });
   function fetchWithCacheMode(url) {
     try {
       var isRemote = (url.indexOf('http://') === 0 || url.indexOf('https://') === 0) && url.indexOf(self.location.origin) !== 0;
@@ -77,7 +101,7 @@
     event.waitUntil(
       caches.keys().then(function(keys) {
         return Promise.all(
-          keys.filter(function(k) { return k !== CACHE_NAME && k !== ASSET_CACHE; }).map(function(k) { return caches.delete(k); })
+          keys.filter(function(k) { return k !== CACHE_NAME && k !== ASSET_CACHE && k !== USER_MEDIA_CACHE; }).map(function(k) { return caches.delete(k); })
         );
       })
     );
@@ -87,20 +111,42 @@
   self.addEventListener('fetch', function(event) {
     var url = event.request.url;
     var isAsset = isSharedAsset(url);
+    var isMedia = !isAsset && isUserMedia(url);
     var isFont = FONT_URLS.some(function(fu) { return url === fu || url.indexOf(fu) !== -1; });
-    if (!isFont && !isAsset) return;
-    var cn = isAsset ? ASSET_CACHE : CACHE_NAME;
+    if (!isFont && !isAsset && !isMedia) return;
+    var cn = isMedia ? USER_MEDIA_CACHE : (isAsset ? ASSET_CACHE : CACHE_NAME);
+    // 用户媒体缓存键归一化：图片/缩略图去掉鉴权 token（登录态变化不影响同一张图复用）；视频保留 sign/exp
+    var keyReq = event.request;
+    if (isMedia) {
+      try {
+        var uu = new URL(url);
+        if (/\.(webp|png|jpe?g|gif|ico)$/i.test(uu.pathname)) uu.search = '';
+        keyReq = new Request(uu.href, { method: 'GET', headers: new Headers({ 'referer': uu.origin + '/' }) });
+      } catch (e) { keyReq = event.request; }
+    }
     event.respondWith(
       caches.open(cn).then(function(cache) {
-        return cache.match(event.request).then(function(cached) {
+        return cache.match(keyReq).then(function(cached) {
           if (cached) return cached;
           return fetch(event.request).then(function(response) {
-            if (response && (response.ok || (response.status === 0 && response.type === 'opaque'))) {
-              try { cache.put(event.request, response.clone()); } catch(e) {}
+            if (response && response.ok) {
+              var path = new URL(url).pathname;
+              var canStore = true;
+              if (isMedia) {
+                var isImg = /\.(webp|png|jpe?g|gif|ico)$/i.test(path);
+                var isVid = /\.(mp4|webm|m4v|mov|avi|mkv)$/i.test(path);
+                var hasRange = false;
+                try { hasRange = !!event.request.headers.get('range'); } catch (e) {}
+                canStore = isImg || (isVid && !hasRange);
+              }
+              if (canStore) {
+                var pr = cache.put(keyReq, response.clone());
+                if (pr && pr.catch) pr.catch(function() {});
+              }
             }
             return response;
           }).catch(function(err) {
-            return cache.match(event.request).then(function(c) {
+            return cache.match(keyReq).then(function(c) {
               return c || new Response('', { status: 404 });
             });
           });
