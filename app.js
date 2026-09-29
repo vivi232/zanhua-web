@@ -2881,8 +2881,15 @@
         const since = feedCache && feedCache.maxTime ? feedCache.maxTime : (posts[0] && posts[0].create_time) || '';
         const res = await api(`/postFeedDelta?ids=${encodeURIComponent(JSON.stringify(ids))}&since=${encodeURIComponent(since)}`);
         if (!res || res.code !== 1 || !res.data) return;
-        const { newPosts, changed } = res.data;
+        const { newPosts, changed, removed } = res.data;
         let dirty = false;
+        if (Array.isArray(removed) && removed.length) {
+          // 帖子被删除/隐藏/转私密：直接从信息流移除
+          const rmSet = new Set(removed.map(Number));
+          const before = posts.length;
+          posts = posts.filter(p => !rmSet.has(p.id));
+          if (posts.length !== before) dirty = true;
+        }
         if (Array.isArray(changed)) {
           changed.forEach(c => {
             const local = posts.find(p => p.id === c.id);
@@ -2890,6 +2897,9 @@
             if (local.likes !== c.likes) { local.likes = c.likes; dirty = updateCardCount(c.id, 0, c.likes, local.liked) || dirty; }
             if (local.comments !== c.comments) { local.comments = c.comments; dirty = updateCardCount(c.id, 1, c.comments) || dirty; }
             if (local.collects !== c.collects) { local.collects = c.collects; dirty = updateCardCount(c.id, 2, c.collects, local.collected) || dirty; }
+            // 本人点赞/收藏状态变化（在其它页面或设备上的操作）
+            if (c.liked !== undefined && c.liked !== local.liked) { local.liked = c.liked; dirty = true; }
+            if (c.collected !== undefined && c.collected !== local.collected) { local.collected = c.collected; dirty = true; }
           });
         }
         if (Array.isArray(newPosts) && newPosts.length) {

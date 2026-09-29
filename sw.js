@@ -11,6 +11,27 @@
     FA_BASE + 'fa-v4compatibility.woff2'
   ];
   var CACHE_NAME = 'zanhua-fonts-v10';
+  // 共享静态素材（默认头像、认证图标等）：任一页面加载过一次，其它页面直接命中缓存，不再重复下载
+  var ASSET_CACHE = 'zanhua-assets-v1';
+  var ASSET_PATTERNS = [
+    '/zanhua/uploads/default_avatar.webp',
+    '/zanhua/res/icons/icon-i5xq4thdo.svg',
+    '/zanhua/res/icons/icon-jztvozsrv.svg',
+    '/zanhua/static/fontawesome/'
+  ];
+  // 关键共享素材：SW 安装时即预取，任何页面首次使用前已在缓存中
+  var KEY_ASSETS = [
+    'https://154.201.81.86/zanhua/uploads/default_avatar.webp',
+    'https://154.201.81.86/zanhua/res/icons/icon-i5xq4thdo.svg',
+    'https://154.201.81.86/zanhua/res/icons/icon-jztvozsrv.svg'
+  ];
+  function isSharedAsset(url) {
+    try {
+      var u = new URL(url);
+      if (u.origin !== self.location.origin && u.hostname !== '154.201.81.86') return false;
+      return ASSET_PATTERNS.some(function (p) { return u.pathname.indexOf(p) !== -1; });
+    } catch (e) { return false; }
+  }
 
   function fetchWithCacheMode(url) {
     try {
@@ -26,16 +47,28 @@
 
   self.addEventListener('install', function(event) {
     event.waitUntil(
-      caches.open(CACHE_NAME).then(function(cache) {
-        return Promise.all(FONT_URLS.map(function(url) {
-          return fetchWithCacheMode(url).then(function(r) {
-            if (r && (r.ok || (r.status === 0 && r.type === 'opaque'))) {
-              try { cache.put(url, r.clone()); } catch(e) {}
-            }
-            return r;
-          }).catch(function() {});
-        }));
-      }).catch(function() {})
+      Promise.all([
+        caches.open(CACHE_NAME).then(function(cache) {
+          return Promise.all(FONT_URLS.map(function(url) {
+            return fetchWithCacheMode(url).then(function(r) {
+              if (r && (r.ok || (r.status === 0 && r.type === 'opaque'))) {
+                try { cache.put(url, r.clone()); } catch(e) {}
+              }
+              return r;
+            }).catch(function() {});
+          }));
+        }),
+        caches.open(ASSET_CACHE).then(function(cache) {
+          return Promise.all(KEY_ASSETS.map(function(url) {
+            return fetchWithCacheMode(url).then(function(r) {
+              if (r && (r.ok || (r.status === 0 && r.type === 'opaque'))) {
+                try { cache.put(url, r.clone()); } catch(e) {}
+              }
+              return r;
+            }).catch(function() {});
+          }));
+        })
+      ]).catch(function() {})
     );
     self.skipWaiting();
   });
@@ -44,7 +77,7 @@
     event.waitUntil(
       caches.keys().then(function(keys) {
         return Promise.all(
-          keys.filter(function(k) { return k !== CACHE_NAME; }).map(function(k) { return caches.delete(k); })
+          keys.filter(function(k) { return k !== CACHE_NAME && k !== ASSET_CACHE; }).map(function(k) { return caches.delete(k); })
         );
       })
     );
@@ -53,10 +86,12 @@
 
   self.addEventListener('fetch', function(event) {
     var url = event.request.url;
+    var isAsset = isSharedAsset(url);
     var isFont = FONT_URLS.some(function(fu) { return url === fu || url.indexOf(fu) !== -1; });
-    if (!isFont) return;
+    if (!isFont && !isAsset) return;
+    var cn = isAsset ? ASSET_CACHE : CACHE_NAME;
     event.respondWith(
-      caches.open(CACHE_NAME).then(function(cache) {
+      caches.open(cn).then(function(cache) {
         return cache.match(event.request).then(function(cached) {
           if (cached) return cached;
           return fetch(event.request).then(function(response) {
