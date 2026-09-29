@@ -38,11 +38,11 @@
   var USER_MEDIA_PATTERNS = [
     '/zanhua/uploads/posts/',
     '/zanhua/uploads/thumbs/',
-    '/zanhua/uploads/homework',
-    '/zanhua/uploads/confession',
+    '/zanhua/uploads/homework/',
     '/zanhua/uploads/avatars/',
-    '/zanhua/uploads/videos/',
-    '/zanhua/uploads/chat/'
+    '/zanhua/uploads/messages/',
+    '/zanhua/uploads/enterprise/',
+    '/zanhua/uploads/feedbacks/'
   ];
   function isUserMedia(url) {
     try {
