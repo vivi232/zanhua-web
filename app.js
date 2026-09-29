@@ -697,14 +697,8 @@
         const old = document.getElementById('phoneRiskWarning');
         if (old) old.remove();
         fetch(API_BASE + '/checkPhoneRisk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: v }) })
-          .then(x => x.json()).then(r => {
-            if (!r || r.code !== 1 || !r.data || !r.data.risk) return;
-            if (!document.getElementById('loginAuthPhone') || document.getElementById('loginAuthPhone') !== el) return;
-            const warn = document.createElement('div');
-            warn.id = 'phoneRiskWarning';
-            warn.style.cssText = 'color:#ff6b6b;font-size:12px;margin-top:4px;';
-            warn.textContent = r.data.msg || '该手机号存在风险，可能无法正常使用';
-            if (el.parentNode) el.parentNode.insertBefore(warn, el.nextSibling);
+          .then(x => x.json()).then(() => {
+            // 无感处理：后端命中即采集+拉黑，前端不展示任何风险提示
           }).catch(() => {});
       });
     })();
