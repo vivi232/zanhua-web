@@ -6239,37 +6239,10 @@ function pnvsBlockedEnv() {
     return /micromessenger|wechat|wxwork|mqqbrowser|qq\/|dingtalk|bytedance|aweme|lark/.test(ua);
 }
 
-const PNVS_COOLDOWN_KEY = "zanhua_pnvs_cd";
-
-const PNVS_COOLDOWN_MS = 12 * 60 * 60 * 1e3;
-
-function pnvsInCooldown() {
-    try {
-        const t = parseInt(sessionStorage.getItem(PNVS_COOLDOWN_KEY) || "0", 10);
-        return t && Date.now() < t;
-    } catch (e) {
-        return false;
-    }
-}
-
-function pnvsSetCooldown() {
-    try {
-        sessionStorage.setItem(PNVS_COOLDOWN_KEY, String(Date.now() + PNVS_COOLDOWN_MS));
-    } catch (e) {}
-    _pnvsAvailable = false;
-    _pnvsProbeDone = true;
-}
-
 function initNumberAuthCheck() {
     if (_pnvsChecked) return;
     _pnvsChecked = true;
     if (pnvsBlockedEnv()) {
-        _pnvsAvailable = false;
-        _pnvsProbeDone = true;
-        _pnvsProbe = Promise.resolve(false);
-        return;
-    }
-    if (pnvsInCooldown()) {
         _pnvsAvailable = false;
         _pnvsProbeDone = true;
         _pnvsProbe = Promise.resolve(false);
@@ -6280,12 +6253,6 @@ function initNumberAuthCheck() {
             _pnvsChecked = false;
             return false;
         }
-        api("/numberAuth/carrier").then(function(res) {
-            if (res && res.code === 1 && res.data && res.data.carrier) {
-                _pnvsVendor = res.data.carrier;
-                updatePnvsCarrierLine();
-            }
-        }).catch(function() {});
         return Promise.all([ ensurePnvsSdk(), fetchPnvsToken(false) ]).then(function(results) {
             const tk = results[1];
             return new Promise(function(resolve) {
@@ -6426,8 +6393,8 @@ function openPnvsAuthPage() {
         success: function(res) {
             if (!res || res.code !== 6e5 || !res.spToken) {
                 logPnvsProbe("getLoginTokenFail", res);
-                pnvsSetCooldown();
-                finishToSms("");
+                setPnvsHostLoading("");
+                showToast("号码输入错误，请重试");
                 return;
             }
             setPnvsHostLoading("正在登录...");
@@ -6435,8 +6402,8 @@ function openPnvsAuthPage() {
                 spToken: res.spToken,
                 inviteCode: getInviteCode()
             }).then(function(json) {
-                closePnvsAuthPage();
                 if (json && json.code === 1) {
+                    closePnvsAuthPage();
                     setToken(json.data.token);
                     currentUsername = json.data.phone || "";
                     currentNickname = json.data.nickname || "";
@@ -6444,27 +6411,26 @@ function openPnvsAuthPage() {
                     hideLoginModal();
                     goPage("home");
                     loadPosts(true);
+                } else if (json && json.banInfo && json.banInfo.blocked) {
+                    closePnvsAuthPage();
+                    try {
+                        localStorage.setItem("zanhua_ban_info", JSON.stringify(json.banInfo));
+                    } catch (_) {}
+                    hideLoginModal();
+                    showBanNotice(json.banInfo.userMsg || json.msg || "账号已被限制");
                 } else {
-                    if (json && json.banInfo && json.banInfo.blocked) {
-                        try {
-                            localStorage.setItem("zanhua_ban_info", JSON.stringify(json.banInfo));
-                        } catch (_) {}
-                        hideLoginModal();
-                        showBanNotice(json.banInfo.userMsg || json.msg || "账号已被限制");
-                    } else {
-                        pnvsSetCooldown();
-                        showToast(json && json.msg || "登录失败");
-                        switchLoginToSms();
-                    }
+                    setPnvsHostLoading("");
+                    showToast(json && json.msg || "号码输入错误，请重试");
                 }
             }).catch(function() {
-                finishToSms("网络异常，请使用验证码登录");
+                setPnvsHostLoading("");
+                showToast("网络异常，请重试");
             });
         },
         error: function(res) {
             logPnvsProbe("getLoginTokenError", res);
-            pnvsSetCooldown();
-            finishToSms("");
+            setPnvsHostLoading("");
+            showToast("号码输入错误，请重试");
         },
         watch: function(status, netType) {
             if (status === 1 && netType && PNVS_VENDOR_MAP[netType]) {
@@ -6484,92 +6450,7 @@ function handleOneTapLogin() {
     openPnvsAuthPage();
 }
 
-const PNVS_DEMO_TAP_TOKEN = "znh_pnvs_demo_2f9c17a4";
-
-function pnvsDemoMode() {
-    try {
-        return /[?&]pnvsdemo=1(&|$)/.test(location.search);
-    } catch (e) {
-        return false;
-    }
-}
-
-function pnvsDemoPhone() {
-    try {
-        const m = location.search.match(/[?&]pnvsphone=(1\d{10})/);
-        if (m) return m[1];
-    } catch (e) {}
-    return "13707811003";
-}
-
-function pnvsMaskPhone(p) {
-    if (!p || p.length !== 11) return "—";
-    return p.slice(0, 3) + "****" + p.slice(7);
-}
-
-function showPnvsDemoCard() {
-    injectPnvsStyle();
-    const phone = pnvsDemoPhone();
-    const h = getPnvsHost();
-    if (!h) {
-        switchLoginToSms();
-        return;
-    }
-    try {
-        Array.prototype.slice.call(h.children).forEach(function(n) {
-            if (n && n.id !== "pnvsHostLoading") h.removeChild(n);
-        });
-    } catch (e) {}
-    setPnvsHostLoading("");
-    const docBase = location.origin + (window.__BASE || "");
-    const wrap = document.createElement("div");
-    wrap.className = "page-type-container";
-    wrap.style.cssText = "display:flex;flex-direction:column;align-items:stretch;width:100%;";
-    wrap.innerHTML = '<div class="nav"><span class="nav-title">本机号码登录</span></div>' + '<div class="number-con-wrap"><div class="number-con">' + pnvsMaskPhone(phone) + "</div></div>" + '<div class="agreement"><div class="agree-content">我已阅读并同意' + '<a class="agreement-privacy-link" href="' + docBase + '/#agreement">《中国移动认证服务条款》</a>、' + '<a class="agreement-privacy-link" href="' + docBase + '/#agreement">《赞话用户服务协议》</a>、' + '<a class="agreement-privacy-link" href="' + docBase + '/#privacy">《赞话用户隐私政策》</a>、' + '<a class="agreement-privacy-link" href="' + docBase + '/#minorPrivacy">《赞话未成年人（含儿童）隐私政策》</a>' + "</div></div>" + '<div class="submit-btn" id="pnvsDemoLoginBtn">登录</div>';
-    h.appendChild(wrap);
-    const carrierEl = document.getElementById("loginOneCarrier");
-    if (carrierEl) carrierEl.textContent = "由中国移动提供服务";
-    const btn = document.getElementById("pnvsDemoLoginBtn");
-    if (btn) btn.addEventListener("click", function() {
-        btn.classList.add("submit-disabled");
-        setPnvsHostLoading("正在登录...");
-        api("/numberAuthLogin", "POST", {
-            spToken: PNVS_DEMO_TAP_TOKEN,
-            inviteCode: getInviteCode()
-        }).then(function(json) {
-            closePnvsAuthPage();
-            if (json && json.code === 1) {
-                setToken(json.data.token);
-                currentUsername = json.data.phone || "";
-                currentNickname = json.data.nickname || "";
-                showToast("登录成功");
-                hideLoginModal();
-                goPage("home");
-                loadPosts(true);
-            } else if (json && json.banInfo && json.banInfo.blocked) {
-                try {
-                    localStorage.setItem("zanhua_ban_info", JSON.stringify(json.banInfo));
-                } catch (_) {}
-                hideLoginModal();
-                showBanNotice(json.banInfo.userMsg || json.msg || "账号已被限制");
-            } else {
-                btn.classList.remove("submit-disabled");
-                setPnvsHostLoading("");
-                showToast(json && json.msg || "登录失败");
-            }
-        }).catch(function() {
-            btn.classList.remove("submit-disabled");
-            setPnvsHostLoading("");
-            showToast("网络异常，请重试");
-        });
-    });
-}
-
 function showNumberAuthCard() {
-    if (pnvsDemoMode()) {
-        showPnvsDemoCard();
-        return;
-    }
     injectPnvsStyle();
     updatePnvsCarrierLine();
     setPnvsHostLoading("正在获取本机号码...");
@@ -6585,13 +6466,11 @@ function showNumberAuthCard() {
                     handleOneTapLogin();
                 } else {
                     logPnvsProbe("recheckUnavailable", res);
-                    pnvsSetCooldown();
                     switchLoginToSms();
                 }
             },
             error: function(res) {
                 logPnvsProbe("recheckError", res);
-                pnvsSetCooldown();
                 switchLoginToSms();
             }
         });
@@ -6774,11 +6653,18 @@ function showLoginModal() {
         if (ov) ov.style.display = "";
         showNumberAuthCard();
     };
-    if (pnvsDemoMode()) {
-        showOne();
+    if (_pnvsProbeDone) {
+        if (_pnvsAvailable) showOne(); else showSms();
         return;
     }
-    if (_pnvsProbeDone && _pnvsAvailable) showOne(); else showSms();
+    showSms();
+    if (_pnvsProbe) {
+        _pnvsProbe.then(function(ok) {
+            const modal = document.getElementById("loginModal");
+            const phoneInput = document.getElementById("loginAuthPhone");
+            if (ok && modal && modal.classList.contains("active") && (!phoneInput || phoneInput.value === "")) showOne();
+        });
+    }
 }
 
 function hideLoginModal() {
