@@ -6150,6 +6150,10 @@ let _pnvsAvailable = false;
 
 let _pnvsChecked = false;
 
+let _pnvsProbe = null;
+
+let _pnvsProbeDone = false;
+
 let _pnvsVendor = "";
 
 const PNVS_VENDOR_MAP = {
@@ -6209,31 +6213,34 @@ function fetchPnvsToken(force) {
     });
 }
 
+function logPnvsProbe(event, res) {
+    try {
+        const isFail = event !== "available";
+        if (!window.__pnvsDbg && !isFail) return;
+        const conn = navigator.connection && navigator.connection.type || "unknown";
+        fetch(API_BASE + "/numberAuth/probeLog", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                event: event,
+                code: res && res.code != null ? res.code : "",
+                msg: res && res.msg ? String(res.msg).slice(0, 120) : "",
+                vendor: res && res.vender ? res.vender : res && res.netType ? res.netType : "",
+                conn: conn
+            })
+        }).catch(function() {});
+    } catch (e) {}
+}
+
 function initNumberAuthCheck() {
     if (_pnvsChecked) return;
     _pnvsChecked = true;
-    getClientConfig().then(function(cfg) {
+    _pnvsProbe = getClientConfig().then(function(cfg) {
         if (!cfg || !cfg.pnvsEnabled) {
             _pnvsChecked = false;
-            return;
-        }
-        try {
-            Promise.all([ ensurePnvsSdk(), fetchPnvsToken(false) ]).then(function(results) {
-                const tk = results[1];
-                getPnvsServer().checkLoginAvailable({
-                    accessToken: tk.accessToken,
-                    jwtToken: tk.jwtToken,
-                    timeout: 5,
-                    success: function(res) {
-                        if (res && res.code === 6e5) _pnvsAvailable = true;
-                    },
-                    error: function() {
-                        _pnvsAvailable = false;
-                    }
-                });
-            }).catch(function() {});
-        } catch (e) {
-            _pnvsAvailable = false;
+            return false;
         }
         api("/numberAuth/carrier").then(function(res) {
             if (res && res.code === 1 && res.data && res.data.carrier) {
@@ -6241,7 +6248,46 @@ function initNumberAuthCheck() {
                 updatePnvsCarrierLine();
             }
         }).catch(function() {});
-    }).catch(function() {});
+        return Promise.all([ ensurePnvsSdk(), fetchPnvsToken(false) ]).then(function(results) {
+            const tk = results[1];
+            return new Promise(function(resolve) {
+                let done = false;
+                const finish = function(ok, res) {
+                    if (done) return;
+                    done = true;
+                    _pnvsAvailable = ok;
+                    _pnvsProbeDone = true;
+                    logPnvsProbe(ok ? "available" : "unavailable", res);
+                    resolve(ok);
+                };
+                getPnvsServer().checkLoginAvailable({
+                    accessToken: tk.accessToken,
+                    jwtToken: tk.jwtToken,
+                    timeout: 8,
+                    success: function(res) {
+                        finish(res && res.code === 6e5, res);
+                    },
+                    error: function(res) {
+                        finish(false, res);
+                    }
+                });
+                setTimeout(function() {
+                    finish(false, {
+                        code: "clientTimeout",
+                        msg: "probe >10s"
+                    });
+                }, 1e4);
+            });
+        });
+    }).catch(function(e) {
+        _pnvsAvailable = false;
+        _pnvsProbeDone = true;
+        logPnvsProbe("initFail", {
+            code: "initFail",
+            msg: e && e.message
+        });
+        return false;
+    });
 }
 
 function updatePnvsCarrierLine() {
@@ -6253,6 +6299,10 @@ function updatePnvsCarrierLine() {
 function switchLoginToSms() {
     const ov = document.getElementById("loginOneView");
     const sv = document.getElementById("loginSmsView");
+    const det = document.getElementById("pnvsDetecting");
+    const sub = document.getElementById("loginAuthSubtitle");
+    if (det) det.style.display = "none";
+    if (sub) sub.style.display = "";
     if (ov) ov.style.display = "none";
     if (sv) sv.style.display = "";
     initLoginCaptchaIfNeeded();
@@ -6336,6 +6386,7 @@ function openPnvsAuthPage() {
         timeout: 12,
         success: function(res) {
             if (!res || res.code !== 6e5 || !res.spToken) {
+                logPnvsProbe("getLoginTokenFail", res);
                 finishToSms("认证失败，请使用验证码登录");
                 return;
             }
@@ -6369,7 +6420,8 @@ function openPnvsAuthPage() {
                 finishToSms("网络异常，请使用验证码登录");
             });
         },
-        error: function() {
+        error: function(res) {
+            logPnvsProbe("getLoginTokenError", res);
             finishToSms("");
         },
         watch: function(status, netType) {
@@ -6578,15 +6630,36 @@ function showLoginModal() {
     document.getElementById("loginAuthCode").value = "";
     const ov = document.getElementById("loginOneView");
     const sv = document.getElementById("loginSmsView");
-    if (_pnvsAvailable && ov && sv) {
-        ov.style.display = "";
-        sv.style.display = "none";
-        showNumberAuthCard();
-    } else {
+    const det = document.getElementById("pnvsDetecting");
+    const sub = document.getElementById("loginAuthSubtitle");
+    const showSms = function() {
+        if (det) det.style.display = "none";
+        if (sub) sub.style.display = "";
         if (ov) ov.style.display = "none";
         if (sv) sv.style.display = "";
         initLoginCaptchaIfNeeded();
+    };
+    const showOne = function() {
+        if (det) det.style.display = "none";
+        if (sub) sub.style.display = "none";
+        if (sv) sv.style.display = "none";
+        if (ov) ov.style.display = "";
+        showNumberAuthCard();
+    };
+    if (_pnvsProbe && !_pnvsProbeDone) {
+        if (ov) ov.style.display = "none";
+        if (sv) sv.style.display = "none";
+        if (sub) sub.style.display = "none";
+        if (det) {
+            det.textContent = "正在检测本机号码…";
+            det.style.display = "";
+        }
+        _pnvsProbe.then(function(ok) {
+            if (ok) showOne(); else showSms();
+        });
+        return;
     }
+    if (_pnvsAvailable) showOne(); else showSms();
 }
 
 function hideLoginModal() {

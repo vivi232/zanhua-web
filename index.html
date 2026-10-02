@@ -293,7 +293,8 @@ if ("serviceWorker" in navigator) {
     <div class="modal-content" style="max-height:85vh;padding:30px 24px;display:flex;flex-direction:column;">
       <div class="modal-handler" style="margin-bottom:24px;"></div>
       <div class="auth-title" style="font-size:28px;font-weight:700;margin-top:4px;">欢迎登录</div>
-      <div class="auth-subtitle" style="color:#999;font-size:14px;margin-top:8px;margin-bottom:30px;">若您没有赞话账号，我们将会为您自动创建赞话账号</div>
+      <div class="auth-subtitle" id="loginAuthSubtitle" style="color:#999;font-size:14px;margin-top:8px;margin-bottom:30px;">若您没有赞话账号，我们将会为您自动创建赞话账号</div>
+      <div id="pnvsDetecting" style="text-align:center;color:#bbb;font-size:14px;padding:26px 0;">正在检测本机号码…</div>
       <div id="loginOneView" style="display:none;">
         <div id="loginOneCarrier" style="text-align:center;color:#999;font-size:13px;margin-bottom:6px;">正在识别运营商...</div>
         <div id="pnvsHost" style="position:relative;width:100%;"></div>
@@ -330,7 +331,7 @@ if ("serviceWorker" in navigator) {
   </div>
   <script>(function() {
   var s = document.createElement("script");
-  s.src = window.__BASE + "/app.js?v=35";
+  s.src = window.__BASE + "/app.js?v=36";
   document.body.appendChild(s);
 })();
 </script>
