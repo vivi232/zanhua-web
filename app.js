@@ -6200,7 +6200,7 @@ function getPnvsServer() {
 
 function fetchPnvsToken(force) {
     if (!force && _pnvsToken && Date.now() < _pnvsToken.expireAt) return Promise.resolve(_pnvsToken);
-    return api("/numberAuth/token").then(function(res) {
+    return api("/numberAuth/token" + (force ? "?force=1" : "")).then(function(res) {
         if (res && res.code === 1 && res.data && res.data.accessToken) {
             _pnvsToken = {
                 accessToken: res.data.accessToken,
@@ -6457,25 +6457,24 @@ function handleOneTapLogin() {
 function showNumberAuthCard() {
     injectPnvsStyle();
     updatePnvsCarrierLine();
-    const tkStale = !_pnvsToken || Date.now() >= _pnvsToken.expireAt;
-    if (!tkStale && _pnvsAvailable) {
-        handleOneTapLogin();
-        return;
-    }
     setPnvsHostLoading("正在获取本机号码...");
     Promise.all([ ensurePnvsSdk(), fetchPnvsToken(true) ]).then(function(results) {
         const tk = results[1];
         getPnvsServer().checkLoginAvailable({
             accessToken: tk.accessToken,
             jwtToken: tk.jwtToken,
-            timeout: 6,
+            timeout: 8,
             success: function(res) {
                 if (res && res.code === 6e5) {
                     _pnvsAvailable = true;
                     handleOneTapLogin();
-                } else switchLoginToSms();
+                } else {
+                    logPnvsProbe("recheckUnavailable", res);
+                    switchLoginToSms();
+                }
             },
-            error: function() {
+            error: function(res) {
+                logPnvsProbe("recheckError", res);
                 switchLoginToSms();
             }
         });
