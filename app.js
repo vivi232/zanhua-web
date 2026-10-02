@@ -6150,6 +6150,27 @@ let _pnvsAvailable = false;
 
 let _pnvsChecked = false;
 
+let _pnvsVendor = "";
+
+const PNVS_VENDOR_MAP = {
+    CM: "中国移动",
+    CU: "中国联通",
+    CT: "中国电信"
+};
+
+let _pnvsStyleInjected = false;
+
+const PNVS_CSS = [ "#pnvsHost.page-type-container-wrap{height:auto!important;width:100%!important;min-height:200px;overflow:visible!important;}", "#pnvsHost .page-type-container{position:relative!important;top:auto!important;left:auto!important;height:auto!important;width:100%!important;background:transparent!important;overflow:visible!important;align-items:stretch!important;}", "#pnvsHost .page-type-container .nav{height:26px!important;line-height:26px!important;padding:0!important;width:100%!important;}", "#pnvsHost .page-type-container .nav .nav-title{font-size:15px!important;font-weight:600;color:#1c1c1e!important;width:auto!important;text-align:center!important;}", "#pnvsHost .page-type-container .nav .nav-back-icon{padding:0!important;}", "#pnvsHost .page-type-container .nav .nav-back-icon-img{width:8px!important;height:auto!important;}", "#pnvsHost .page-type-container .number-con-wrap{width:100%!important;margin:20px 0 6px!important;}", "#pnvsHost .page-type-container .number-con{height:auto!important;line-height:1.4!important;font-size:24px!important;letter-spacing:1px!important;color:#1c1c1e!important;}", "#pnvsHost .page-type-container .number-con div{margin:0 1px!important;}", "#pnvsHost .page-type-container .number-con input{width:26px!important;height:30px!important;font-size:24px!important;margin:0 2px!important;border:0!important;border-bottom:1px solid #d1d1d6!important;border-radius:0!important;background:#fff!important;}", "#pnvsHost .page-type-container .number-con input.focus{border-bottom:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .page-type-container .number-tip{visibility:hidden!important;height:18px!important;font-size:11px!important;}", "#pnvsHost .page-type-container .agreement{margin:12px 0 0!important;padding:0 2px!important;align-items:flex-start!important;}", "#pnvsHost .page-type-container .agreement .agree-content{width:100%!important;font-size:11px!important;color:#8e8e93!important;line-height:1.6!important;}", "#pnvsHost .page-type-container .agreement .agreement-privacy-link,#pnvsHost .page-type-container .agreement a{color:var(--color-primary,#099536)!important;font-size:11px!important;display:inline!important;}", "#pnvsHost .page-type-container .agreement .check-box{display:none!important;}", "#pnvsHost .page-type-container .agreement .checke-0,#pnvsHost .page-type-container .agreement .checke-1{height:14px!important;width:14px!important;border-radius:3px!important;margin:2px 5px 0 0!important;flex-shrink:0!important;transition:none!important;}", "#pnvsHost .page-type-container .agreement .checke-1{background:var(--color-primary,#099536)!important;border:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .page-type-container .agreement .checke-0 img,#pnvsHost .page-type-container .agreement .checke-1 img{width:14px!important;height:14px!important;}", "#pnvsHost .page-type-container .agreement .agree-content-tip{font-size:11px!important;}", "#pnvsHost .page-type-container .submit-btn{width:100%!important;margin:16px 0 0!important;padding:13px 0!important;border:none!important;border-radius:12px!important;background:var(--color-primary,#099536)!important;background-image:none!important;color:#fff!important;font-size:16px!important;font-weight:600!important;}", "#pnvsHost .page-type-container .submit-btn.submit-disabled{opacity:.6!important;}", "#pnvsHost .dialog-type-container{position:relative!important;width:100%!important;height:auto!important;background:transparent!important;}", "#pnvsHost .dialog-type-container .dialog-type-inner-content{position:relative!important;top:auto!important;left:auto!important;transform:none!important;width:100%!important;padding:0!important;box-shadow:none!important;background:transparent!important;}", "#pnvsHost .dialog-type-container .dialog-title{font-size:15px!important;font-weight:600;color:#1c1c1e!important;margin-top:0!important;text-align:center!important;}", "#pnvsHost .dialog-type-container .close-btn,#pnvsHost .dialog-type-container .close-img{align-self:flex-start!important;}", "#pnvsHost .dialog-type-container .logo{display:none!important;}", "#pnvsHost .dialog-type-container .number-con-wrap{width:100%!important;margin:16px 0 6px!important;}", "#pnvsHost .dialog-type-container .number-con{height:auto!important;line-height:1.4!important;font-size:24px!important;letter-spacing:1px!important;color:#1c1c1e!important;}", "#pnvsHost .dialog-type-container .number-con div{margin:0 1px!important;}", "#pnvsHost .dialog-type-container .number-con input{width:26px!important;height:30px!important;font-size:24px!important;margin:0 2px!important;border:0!important;border-bottom:1px solid #d1d1d6!important;background:#fff!important;}", "#pnvsHost .dialog-type-container .number-tip{visibility:hidden!important;font-size:11px!important;}", "#pnvsHost .dialog-type-container .agreement{margin:12px 0 0!important;padding:0 2px!important;align-items:flex-start!important;}", "#pnvsHost .dialog-type-container .agreement .agree-content{width:100%!important;font-size:11px!important;color:#8e8e93!important;line-height:1.6!important;}", "#pnvsHost .dialog-type-container .agreement .agreement-privacy-link,#pnvsHost .dialog-type-container .agreement a{color:var(--color-primary,#099536)!important;font-size:11px!important;display:inline!important;}", "#pnvsHost .dialog-type-container .agreement .check-box{display:none!important;}", "#pnvsHost .dialog-type-container .agreement .checke-0,#pnvsHost .dialog-type-container .agreement .checke-1{height:14px!important;width:14px!important;border-radius:3px!important;margin:2px 5px 0 0!important;transition:none!important;}", "#pnvsHost .dialog-type-container .agreement .checke-1{background:var(--color-primary,#099536)!important;border:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .agreement .checke-1 svg,#pnvsHost .dialog-type-container .agreement .checke-1 svg{fill:#fff!important;width:14px!important;height:14px!important;}", "#pnvsHost .agreement .checke-1 svg g,#pnvsHost .dialog-type-container .agreement .checke-1 svg g{fill:#fff!important;}", "#pnvsHost .dialog-type-container .submit-btn{width:100%!important;margin:16px 0 0!important;padding:13px 0!important;border:none!important;border-radius:12px!important;background:var(--color-primary,#099536)!important;background-image:none!important;color:#fff!important;font-size:16px!important;font-weight:600!important;}" ].join("");
+
+function injectPnvsStyle() {
+    if (_pnvsStyleInjected) return;
+    _pnvsStyleInjected = true;
+    const st = document.createElement("style");
+    st.id = "pnvsStyle";
+    st.textContent = PNVS_CSS;
+    document.head.appendChild(st);
+}
+
 function ensurePnvsSdk() {
     if (typeof window.PhoneNumberServer === "function") return Promise.resolve();
     if (_pnvsSdkPromise) return _pnvsSdkPromise;
@@ -6214,7 +6235,19 @@ function initNumberAuthCheck() {
         } catch (e) {
             _pnvsAvailable = false;
         }
+        api("/numberAuth/carrier").then(function(res) {
+            if (res && res.code === 1 && res.data && res.data.carrier) {
+                _pnvsVendor = res.data.carrier;
+                updatePnvsCarrierLine();
+            }
+        }).catch(function() {});
     }).catch(function() {});
+}
+
+function updatePnvsCarrierLine() {
+    const el = document.getElementById("loginOneCarrier");
+    if (!el) return;
+    el.textContent = _pnvsVendor ? "由" + _pnvsVendor + "提供服务" : "由中国移动／联通／电信提供服务";
 }
 
 function switchLoginToSms() {
@@ -6225,90 +6258,149 @@ function switchLoginToSms() {
     initLoginCaptchaIfNeeded();
 }
 
-function handleOneTapLogin() {
-    const btn = document.getElementById("loginOneBtn");
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = "正在认证...";
-    }
-    const restore = function(msg) {
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = "本机号码一键登录";
+function getPnvsHost() {
+    return document.getElementById("pnvsHost");
+}
+
+function setPnvsHostLoading(text) {
+    const ld = document.getElementById("pnvsHostLoading");
+    if (!ld) return;
+    ld.textContent = text;
+    ld.style.display = text ? "" : "none";
+}
+
+function closePnvsAuthPage() {
+    try {
+        if (_pnvsServer && typeof _pnvsServer.closeLoginPage === "function") _pnvsServer.closeLoginPage();
+    } catch (e) {}
+    try {
+        const h = getPnvsHost();
+        if (h) {
+            Array.prototype.slice.call(h.children).forEach(function(n) {
+                if (n && n.id !== "pnvsHostLoading") h.removeChild(n);
+            });
         }
-        if (msg) showToast(msg);
-    };
-    const openAuthPage = function() {
-        getPnvsServer().getLoginToken({
-            authPageOption: {
-                navText: "本机号码登录",
-                btnText: "登录",
-                privacyBefore: "请阅读并同意",
-                vendorPrivacyPrefix: "《",
-                vendorPrivacySuffix: "》",
-                privacyOne: [ "《赞话用户服务协议》", location.origin + (window.__BASE || "") + "/#agreement" ],
-                privacyTwo: [ "《赞话隐私政策》", location.origin + (window.__BASE || "") + "/#privacy" ],
-                isDialog: true,
-                manualClose: true
-            },
-            timeout: 10,
-            success: function(res) {
-                if (!res || res.code !== 6e5 || !res.spToken) {
-                    try {
-                        getPnvsServer().closeLoginPage();
-                    } catch (e) {}
-                    restore("认证失败，请使用验证码登录");
-                    switchLoginToSms();
-                    return;
-                }
-                api("/numberAuthLogin", "POST", {
-                    spToken: res.spToken,
-                    inviteCode: getInviteCode()
-                }).then(function(json) {
-                    try {
-                        getPnvsServer().closeLoginPage();
-                    } catch (e) {}
-                    if (json && json.code === 1) {
-                        setToken(json.data.token);
-                        currentUsername = json.data.phone || "";
-                        currentNickname = json.data.nickname || "";
-                        showToast("登录成功");
-                        hideLoginModal();
-                        goPage("home");
-                        loadPosts(true);
-                    } else {
-                        if (json && json.banInfo && json.banInfo.blocked) {
-                            try {
-                                localStorage.setItem("zanhua_ban_info", JSON.stringify(json.banInfo));
-                            } catch (_) {}
-                            hideLoginModal();
-                            showBanNotice(json.banInfo.userMsg || json.msg || "账号已被限制");
-                        } else {
-                            restore(json && json.msg || "登录失败");
-                            switchLoginToSms();
-                        }
-                    }
-                }).catch(function() {
-                    restore("网络异常，请使用验证码登录");
-                    switchLoginToSms();
-                });
-            },
-            error: function() {
-                try {
-                    getPnvsServer().closeLoginPage();
-                } catch (e) {}
-                restore("");
-                switchLoginToSms();
-            },
-            watch: function(status) {}
-        });
-    };
-    const tkStale = !_pnvsToken || Date.now() >= _pnvsToken.expireAt;
-    if (!tkStale && _pnvsAvailable) {
-        openAuthPage();
+    } catch (e) {}
+    const ld = document.getElementById("pnvsHostLoading");
+    if (ld) {
+        ld.textContent = "正在获取本机号码...";
+        ld.style.display = "";
+    }
+}
+
+function openPnvsAuthPage() {
+    const h = getPnvsHost();
+    if (!h) {
+        switchLoginToSms();
         return;
     }
-    fetchPnvsToken(true).then(function(tk) {
+    injectPnvsStyle();
+    updatePnvsCarrierLine();
+    setPnvsHostLoading("正在获取本机号码...");
+    const finishToSms = function(msg) {
+        closePnvsAuthPage();
+        if (msg) showToast(msg);
+        switchLoginToSms();
+    };
+    const docBase = location.origin + (window.__BASE || "");
+    let srv = null;
+    try {
+        srv = getPnvsServer();
+    } catch (e) {}
+    if (!srv) {
+        finishToSms("认证组件加载失败，请使用验证码登录");
+        return;
+    }
+    srv.getLoginToken({
+        authPageOption: {
+            mount: "pnvsHost",
+            isDialog: false,
+            isHideLogo: true,
+            navText: "本机号码登录",
+            btnText: "登录",
+            numberLabel: "",
+            privacyBefore: "我已阅读并同意",
+            agreeSymbol: "、",
+            vendorPrivacyPrefix: "《",
+            vendorPrivacySuffix: "》",
+            privacyVenderIndex: 0,
+            privacyOne: [ "《赞话用户服务协议》", docBase + "/#agreement" ],
+            privacyTwo: [ "《赞话用户隐私政策》", docBase + "/#privacy" ],
+            showCustomView: true,
+            customView: {
+                element: '<div class="pnvs-extra"><a href="' + docBase + '/#minorPrivacy" target="_blank" rel="noopener noreferrer">《赞话未成年人（含儿童）隐私政策》</a></div>',
+                style: "#pnvsHost .custom-view-box{margin:6px 0 0!important;width:100%!important;padding:0 2px!important;}#pnvsHost .pnvs-extra{font-size:11px!important;line-height:1.6!important;color:#8e8e93!important;}#pnvsHost .pnvs-extra a{color:var(--color-primary,#099536)!important;font-size:11px!important;text-decoration:none;}"
+            },
+            manualClose: true
+        },
+        timeout: 12,
+        success: function(res) {
+            if (!res || res.code !== 6e5 || !res.spToken) {
+                finishToSms("认证失败，请使用验证码登录");
+                return;
+            }
+            setPnvsHostLoading("正在登录...");
+            api("/numberAuthLogin", "POST", {
+                spToken: res.spToken,
+                inviteCode: getInviteCode()
+            }).then(function(json) {
+                closePnvsAuthPage();
+                if (json && json.code === 1) {
+                    setToken(json.data.token);
+                    currentUsername = json.data.phone || "";
+                    currentNickname = json.data.nickname || "";
+                    showToast("登录成功");
+                    hideLoginModal();
+                    goPage("home");
+                    loadPosts(true);
+                } else {
+                    if (json && json.banInfo && json.banInfo.blocked) {
+                        try {
+                            localStorage.setItem("zanhua_ban_info", JSON.stringify(json.banInfo));
+                        } catch (_) {}
+                        hideLoginModal();
+                        showBanNotice(json.banInfo.userMsg || json.msg || "账号已被限制");
+                    } else {
+                        showToast(json && json.msg || "登录失败");
+                        switchLoginToSms();
+                    }
+                }
+            }).catch(function() {
+                finishToSms("网络异常，请使用验证码登录");
+            });
+        },
+        error: function() {
+            finishToSms("");
+        },
+        watch: function(status, netType) {
+            if (status === 1 && netType && PNVS_VENDOR_MAP[netType]) {
+                _pnvsVendor = PNVS_VENDOR_MAP[netType];
+                updatePnvsCarrierLine();
+                setPnvsHostLoading("");
+            } else if (status === 2) {
+                finishToSms("");
+            } else if (status === 5) {
+                setPnvsHostLoading("正在登录...");
+            }
+        }
+    });
+}
+
+function handleOneTapLogin() {
+    openPnvsAuthPage();
+}
+
+function showNumberAuthCard() {
+    injectPnvsStyle();
+    updatePnvsCarrierLine();
+    const tkStale = !_pnvsToken || Date.now() >= _pnvsToken.expireAt;
+    if (!tkStale && _pnvsAvailable) {
+        handleOneTapLogin();
+        return;
+    }
+    setPnvsHostLoading("正在获取本机号码...");
+    Promise.all([ ensurePnvsSdk(), fetchPnvsToken(true) ]).then(function(results) {
+        const tk = results[1];
         getPnvsServer().checkLoginAvailable({
             accessToken: tk.accessToken,
             jwtToken: tk.jwtToken,
@@ -6316,26 +6408,23 @@ function handleOneTapLogin() {
             success: function(res) {
                 if (res && res.code === 6e5) {
                     _pnvsAvailable = true;
-                    openAuthPage();
-                } else {
-                    restore("当前网络无法认证，请使用验证码登录");
-                    switchLoginToSms();
-                }
+                    handleOneTapLogin();
+                } else switchLoginToSms();
             },
             error: function() {
-                restore("当前网络无法认证，请使用验证码登录");
                 switchLoginToSms();
             }
         });
     }).catch(function() {
-        restore("");
         switchLoginToSms();
     });
 }
 
 function bindNumberAuthLogin() {
-    document.getElementById("loginOneBtn")?.addEventListener("click", handleOneTapLogin);
-    document.getElementById("loginOtherAccount")?.addEventListener("click", switchLoginToSms);
+    document.getElementById("loginOtherAccount")?.addEventListener("click", function() {
+        closePnvsAuthPage();
+        switchLoginToSms();
+    });
 }
 
 function initCaptchaIfNeeded() {
@@ -6492,6 +6581,7 @@ function showLoginModal() {
     if (_pnvsAvailable && ov && sv) {
         ov.style.display = "";
         sv.style.display = "none";
+        showNumberAuthCard();
     } else {
         if (ov) ov.style.display = "none";
         if (sv) sv.style.display = "";
@@ -6505,12 +6595,12 @@ function hideLoginModal() {
 }
 
 function cleanupPnvsAuthPage() {
+    closePnvsAuthPage();
     try {
-        if (_pnvsServer && typeof _pnvsServer.closeLoginPage === "function") _pnvsServer.closeLoginPage();
-    } catch (e) {}
-    try {
-        document.querySelectorAll('div[class*="aliyun-auth"],div[class*="auth-container"],div[class*="auth-dialog"]').forEach(function(n) {
-            if (n && n.parentNode && n.id !== "loginModal" && n.id !== "app" && n.id !== "app-skeleton") n.parentNode.removeChild(n);
+        Array.prototype.slice.call(document.body.children).forEach(function(n) {
+            if (!n || !n.className || typeof n.className !== "string") return;
+            if (n.id === "app" || n.id === "app-skeleton" || n.id === "loginModal") return;
+            if (/container-wrap|page-type-container|auth-container|aliyun-auth/.test(n.className)) n.parentNode.removeChild(n);
         });
     } catch (e) {}
 }

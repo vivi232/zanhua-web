@@ -295,10 +295,10 @@ if ("serviceWorker" in navigator) {
       <div class="auth-title" style="font-size:28px;font-weight:700;margin-top:4px;">欢迎登录</div>
       <div class="auth-subtitle" style="color:#999;font-size:14px;margin-top:8px;margin-bottom:30px;">若您没有赞话账号，我们将会为您自动创建赞话账号</div>
       <div id="loginOneView" style="display:none;">
-        <div id="loginOneMasked" style="text-align:center;font-size:26px;font-weight:700;letter-spacing:1px;margin:8px 0 4px;"></div>
-        <div style="text-align:center;color:#999;font-size:13px;margin-bottom:20px;">运营商认证 · 手机号自动填入</div>
-        <button id="loginOneBtn" style="width:100%;height:50px;background:var(--color-primary);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;">本机号码一键登录</button>
-        <div style="text-align:center;margin-top:16px;"><span id="loginOtherAccount" style="color:var(--color-primary);font-size:14px;cursor:pointer;">登录其他账号</span></div>
+        <div id="loginOneCarrier" style="text-align:center;color:#999;font-size:13px;margin-bottom:6px;">正在识别运营商...</div>
+        <div id="pnvsHost" style="position:relative;width:100%;"></div>
+        <div id="pnvsHostLoading" style="text-align:center;color:#bbb;font-size:13px;padding:24px 0;">正在获取本机号码...</div>
+        <div style="text-align:center;margin-top:14px;"><span id="loginOtherAccount" style="color:var(--color-primary);font-size:14px;cursor:pointer;">登录其他账号</span></div>
       </div>
       <div id="loginSmsView">
       <div class="auth-input-group"><input id="loginAuthPhone" type="tel" maxlength="11" placeholder="请输入手机号"></div>
@@ -330,7 +330,7 @@ if ("serviceWorker" in navigator) {
   </div>
   <script>(function() {
   var s = document.createElement("script");
-  s.src = window.__BASE + "/app.js?v=34";
+  s.src = window.__BASE + "/app.js?v=35";
   document.body.appendChild(s);
 })();
 </script>
