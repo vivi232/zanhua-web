@@ -44,7 +44,7 @@ function getInviteCode() {
     }
 }
 
-const API_HOST = "";
+const API_HOST = "https://154.201.81.86";
 
 const API_BASE = API_HOST + "/api";
 
@@ -6501,6 +6501,18 @@ function showLoginModal() {
 
 function hideLoginModal() {
     document.getElementById("loginModal").classList.remove("active");
+    cleanupPnvsAuthPage();
+}
+
+function cleanupPnvsAuthPage() {
+    try {
+        if (_pnvsServer && typeof _pnvsServer.closeLoginPage === "function") _pnvsServer.closeLoginPage();
+    } catch (e) {}
+    try {
+        document.querySelectorAll('div[class*="aliyun-auth"],div[class*="auth-container"],div[class*="auth-dialog"]').forEach(function(n) {
+            if (n && n.parentNode && n.id !== "loginModal" && n.id !== "app" && n.id !== "app-skeleton") n.parentNode.removeChild(n);
+        });
+    } catch (e) {}
 }
 
 function openAgreementFromLogin(page) {
