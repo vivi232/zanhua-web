@@ -6164,7 +6164,7 @@ const PNVS_VENDOR_MAP = {
 
 let _pnvsStyleInjected = false;
 
-const PNVS_CSS = [ "#pnvsHost.page-type-container-wrap{height:auto!important;width:100%!important;min-height:200px;overflow:visible!important;}", "#pnvsHost .page-type-container{position:relative!important;top:auto!important;left:auto!important;height:auto!important;width:100%!important;background:transparent!important;overflow:visible!important;align-items:stretch!important;}", "#pnvsHost .page-type-container .nav{height:26px!important;line-height:26px!important;padding:0!important;width:100%!important;}", "#pnvsHost .page-type-container .nav .nav-title{font-size:15px!important;font-weight:600;color:#1c1c1e!important;width:auto!important;text-align:center!important;}", "#pnvsHost .page-type-container .nav .nav-back-icon{padding:0!important;}", "#pnvsHost .page-type-container .nav .nav-back-icon-img{width:8px!important;height:auto!important;}", "#pnvsHost .page-type-container .number-con-wrap{width:100%!important;margin:20px 0 6px!important;}", "#pnvsHost .page-type-container .number-con{height:auto!important;line-height:1.4!important;font-size:24px!important;letter-spacing:1px!important;color:#1c1c1e!important;}", "#pnvsHost .page-type-container .number-con div{margin:0 1px!important;}", "#pnvsHost .page-type-container .number-con input{width:26px!important;height:30px!important;font-size:24px!important;margin:0 2px!important;border:0!important;border-bottom:1px solid #d1d1d6!important;border-radius:0!important;background:#fff!important;}", "#pnvsHost .page-type-container .number-con input.focus{border-bottom:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .page-type-container .number-tip{visibility:hidden!important;height:18px!important;font-size:11px!important;}", "#pnvsHost .page-type-container .agreement{margin:12px 0 0!important;padding:0 2px!important;align-items:flex-start!important;}", "#pnvsHost .page-type-container .agreement .agree-content{width:100%!important;font-size:11px!important;color:#8e8e93!important;line-height:1.6!important;}", "#pnvsHost .page-type-container .agreement .agreement-privacy-link,#pnvsHost .page-type-container .agreement a{color:var(--color-primary,#099536)!important;font-size:11px!important;display:inline!important;}", "#pnvsHost .page-type-container .agreement .check-box{display:none!important;}", "#pnvsHost .page-type-container .agreement .checke-0,#pnvsHost .page-type-container .agreement .checke-1{height:14px!important;width:14px!important;border-radius:3px!important;margin:2px 5px 0 0!important;flex-shrink:0!important;transition:none!important;}", "#pnvsHost .page-type-container .agreement .checke-1{background:var(--color-primary,#099536)!important;border:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .page-type-container .agreement .checke-0 img,#pnvsHost .page-type-container .agreement .checke-1 img{width:14px!important;height:14px!important;}", "#pnvsHost .page-type-container .agreement .agree-content-tip{font-size:11px!important;}", "#pnvsHost .page-type-container .submit-btn{width:100%!important;margin:16px 0 0!important;padding:13px 0!important;border:none!important;border-radius:12px!important;background:var(--color-primary,#099536)!important;background-image:none!important;color:#fff!important;font-size:16px!important;font-weight:600!important;}", "#pnvsHost .custom-view-box{margin:10px 0 0!important;width:100%!important;padding:0 2px!important;}", "#pnvsHost .pnvs-extra{font-size:11px!important;line-height:1.6!important;color:#8e8e93!important;text-align:center;}", "#pnvsHost .pnvs-extra a{color:var(--color-primary,#099536)!important;font-size:11px!important;text-decoration:none;}", "#pnvsHost .dialog-type-container .dialog-type-inner-content>.custom-view-box{order:5;margin:6px 0 0!important;}", "#pnvsHost .dialog-type-container .dialog-type-inner-content>.submit-btn{order:6;}", "#pnvsHost .page-type-container .submit-btn.submit-disabled{opacity:.6!important;}", "#pnvsHost .dialog-type-container{position:relative!important;width:100%!important;height:auto!important;background:transparent!important;}", "#pnvsHost .dialog-type-container .dialog-type-inner-content{position:relative!important;top:auto!important;left:auto!important;transform:none!important;width:100%!important;padding:0!important;box-shadow:none!important;background:transparent!important;}", "#pnvsHost .dialog-type-container .dialog-title{font-size:15px!important;font-weight:600;color:#1c1c1e!important;margin-top:0!important;text-align:center!important;}", "#pnvsHost .dialog-type-container .close-btn,#pnvsHost .dialog-type-container .close-img{align-self:flex-start!important;}", "#pnvsHost .dialog-type-container .logo{display:none!important;}", "#pnvsHost .dialog-type-container .number-con-wrap{width:100%!important;margin:16px 0 6px!important;}", "#pnvsHost .dialog-type-container .number-con{height:auto!important;line-height:1.4!important;font-size:24px!important;letter-spacing:1px!important;color:#1c1c1e!important;}", "#pnvsHost .dialog-type-container .number-con div{margin:0 1px!important;}", "#pnvsHost .dialog-type-container .number-con input{width:26px!important;height:30px!important;font-size:24px!important;margin:0 2px!important;border:0!important;border-bottom:1px solid #d1d1d6!important;background:#fff!important;}", "#pnvsHost .dialog-type-container .number-tip{visibility:hidden!important;font-size:11px!important;}", "#pnvsHost .dialog-type-container .agreement{margin:12px 0 0!important;padding:0 2px!important;align-items:flex-start!important;}", "#pnvsHost .dialog-type-container .agreement .agree-content{width:100%!important;font-size:11px!important;color:#8e8e93!important;line-height:1.6!important;}", "#pnvsHost .dialog-type-container .agreement .agreement-privacy-link,#pnvsHost .dialog-type-container .agreement a{color:var(--color-primary,#099536)!important;font-size:11px!important;display:inline!important;}", "#pnvsHost .dialog-type-container .agreement .check-box{display:none!important;}", "#pnvsHost .dialog-type-container .agreement .checke-0,#pnvsHost .dialog-type-container .agreement .checke-1{height:14px!important;width:14px!important;border-radius:3px!important;margin:2px 5px 0 0!important;transition:none!important;}", "#pnvsHost .dialog-type-container .agreement .checke-1{background:var(--color-primary,#099536)!important;border:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .agreement .checke-1 svg,#pnvsHost .dialog-type-container .agreement .checke-1 svg{fill:#fff!important;width:14px!important;height:14px!important;}", "#pnvsHost .agreement .checke-1 svg g,#pnvsHost .dialog-type-container .agreement .checke-1 svg g{fill:#fff!important;}", "#pnvsHost .dialog-type-container .submit-btn{width:100%!important;margin:16px 0 0!important;padding:13px 0!important;border:none!important;border-radius:12px!important;background:var(--color-primary,#099536)!important;background-image:none!important;color:#fff!important;font-size:16px!important;font-weight:600!important;}" ].join("");
+const PNVS_CSS = [ "#pnvsHost.page-type-container-wrap{height:auto!important;width:100%!important;min-height:200px;overflow:visible!important;}", "#pnvsHost .page-type-container{position:relative!important;top:auto!important;left:auto!important;height:auto!important;width:100%!important;background:transparent!important;overflow:visible!important;align-items:stretch!important;}", "#pnvsHost .page-type-container .nav{height:2px!important;line-height:2px!important;padding:0!important;width:100%!important;}", "#pnvsHost .page-type-container .nav .nav-title{font-size:1px!important;color:transparent!important;width:1px!important;height:1px!important;overflow:hidden!important;}", "#pnvsHost .page-type-container .nav .nav-back-icon{width:1px!important;height:1px!important;overflow:hidden!important;}", "#pnvsHost .page-type-container .nav .nav-back-icon-img{width:1px!important;height:1px!important;}", "#pnvsHost .page-type-container .number-con-wrap{width:100%!important;margin:20px 0 6px!important;}", "#pnvsHost .page-type-container .number-con{height:auto!important;line-height:1.4!important;font-size:24px!important;letter-spacing:1px!important;color:#1c1c1e!important;}", "#pnvsHost .page-type-container .number-con div{margin:0 1px!important;}", "#pnvsHost .page-type-container .number-con input{width:26px!important;height:30px!important;font-size:24px!important;margin:0 2px!important;border:0!important;border-bottom:1px solid #d1d1d6!important;border-radius:0!important;background:#fff!important;}", "#pnvsHost .page-type-container .number-con input.focus{border-bottom:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .page-type-container .number-tip{visibility:hidden!important;height:18px!important;font-size:11px!important;}", "#pnvsHost .page-type-container .agreement{margin:12px 0 0!important;padding:0 2px!important;align-items:flex-start!important;}", "#pnvsHost .page-type-container .agreement .agree-content{width:100%!important;font-size:11px!important;color:#8e8e93!important;line-height:1.6!important;}", "#pnvsHost .page-type-container .agreement .agreement-privacy-link,#pnvsHost .page-type-container .agreement a{color:var(--color-primary,#099536)!important;font-size:11px!important;display:inline!important;}", "#pnvsHost .page-type-container .agreement .check-box{display:none!important;}", "#pnvsHost .page-type-container .agreement .checke-0,#pnvsHost .page-type-container .agreement .checke-1{height:14px!important;width:14px!important;border-radius:3px!important;margin:2px 5px 0 0!important;flex-shrink:0!important;transition:none!important;}", "#pnvsHost .page-type-container .agreement .checke-1{background:var(--color-primary,#099536)!important;border:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .page-type-container .agreement .checke-0 img,#pnvsHost .page-type-container .agreement .checke-1 img{width:14px!important;height:14px!important;}", "#pnvsHost .page-type-container .agreement .agree-content-tip{font-size:11px!important;}", "#pnvsHost .page-type-container .submit-btn{width:100%!important;margin:16px 0 0!important;padding:13px 0!important;border:none!important;border-radius:12px!important;background:var(--color-primary,#099536)!important;background-image:none!important;color:#fff!important;font-size:16px!important;font-weight:600!important;}", "#pnvsHost .custom-view-box{margin:10px 0 0!important;width:100%!important;padding:0 2px!important;}", "#pnvsHost .pnvs-extra{font-size:11px!important;line-height:1.6!important;color:#8e8e93!important;text-align:center;}", "#pnvsHost .pnvs-extra a{color:var(--color-primary,#099536)!important;font-size:11px!important;text-decoration:none;}", "#pnvsHost .dialog-type-container .dialog-type-inner-content>.custom-view-box{order:5;margin:6px 0 0!important;}", "#pnvsHost .dialog-type-container .dialog-type-inner-content>.submit-btn{order:6;}", "#pnvsHost .page-type-container .submit-btn.submit-disabled{opacity:.6!important;}", "#pnvsHost .dialog-type-container{position:relative!important;width:100%!important;height:auto!important;background:transparent!important;}", "#pnvsHost .dialog-type-container .dialog-type-inner-content{position:relative!important;top:auto!important;left:auto!important;transform:none!important;width:100%!important;padding:0!important;box-shadow:none!important;background:transparent!important;}", "#pnvsHost .dialog-type-container .dialog-title{font-size:15px!important;font-weight:600;color:#1c1c1e!important;margin-top:0!important;text-align:center!important;}", "#pnvsHost .dialog-type-container .close-btn,#pnvsHost .dialog-type-container .close-img{align-self:flex-start!important;}", "#pnvsHost .dialog-type-container .logo{display:none!important;}", "#pnvsHost .dialog-type-container .number-con-wrap{width:100%!important;margin:16px 0 6px!important;}", "#pnvsHost .dialog-type-container .number-con{height:auto!important;line-height:1.4!important;font-size:24px!important;letter-spacing:1px!important;color:#1c1c1e!important;}", "#pnvsHost .dialog-type-container .number-con div{margin:0 1px!important;}", "#pnvsHost .dialog-type-container .number-con input{width:26px!important;height:30px!important;font-size:24px!important;margin:0 2px!important;border:0!important;border-bottom:1px solid #d1d1d6!important;background:#fff!important;}", "#pnvsHost .dialog-type-container .number-tip{visibility:hidden!important;font-size:11px!important;}", "#pnvsHost .dialog-type-container .agreement{margin:12px 0 0!important;padding:0 2px!important;align-items:flex-start!important;}", "#pnvsHost .dialog-type-container .agreement .agree-content{width:100%!important;font-size:11px!important;color:#8e8e93!important;line-height:1.6!important;}", "#pnvsHost .dialog-type-container .agreement .agreement-privacy-link,#pnvsHost .dialog-type-container .agreement a{color:var(--color-primary,#099536)!important;font-size:11px!important;display:inline!important;}", "#pnvsHost .dialog-type-container .agreement .check-box{display:none!important;}", "#pnvsHost .dialog-type-container .agreement .checke-0,#pnvsHost .dialog-type-container .agreement .checke-1{height:14px!important;width:14px!important;border-radius:3px!important;margin:2px 5px 0 0!important;transition:none!important;}", "#pnvsHost .dialog-type-container .agreement .checke-1{background:var(--color-primary,#099536)!important;border:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .agreement .checke-1 svg,#pnvsHost .dialog-type-container .agreement .checke-1 svg{fill:#fff!important;width:14px!important;height:14px!important;}", "#pnvsHost .agreement .checke-1 svg g,#pnvsHost .dialog-type-container .agreement .checke-1 svg g{fill:#fff!important;}", "#pnvsHost .dialog-type-container .submit-btn{width:100%!important;margin:16px 0 0!important;padding:13px 0!important;border:none!important;border-radius:12px!important;background:var(--color-primary,#099536)!important;background-image:none!important;color:#fff!important;font-size:16px!important;font-weight:600!important;}" ].join("");
 
 function injectPnvsStyle() {
     if (_pnvsStyleInjected) return;
@@ -6234,9 +6234,20 @@ function logPnvsProbe(event, res) {
     } catch (e) {}
 }
 
+function pnvsBlockedEnv() {
+    const ua = (navigator.userAgent || "").toLowerCase();
+    return /micromessenger|wechat|wxwork|mqqbrowser|qq\/|dingtalk|bytedance|aweme|lark/.test(ua);
+}
+
 function initNumberAuthCheck() {
     if (_pnvsChecked) return;
     _pnvsChecked = true;
+    if (pnvsBlockedEnv()) {
+        _pnvsAvailable = false;
+        _pnvsProbeDone = true;
+        _pnvsProbe = Promise.resolve(false);
+        return;
+    }
     _pnvsProbe = getClientConfig().then(function(cfg) {
         if (!cfg || !cfg.pnvsEnabled) {
             _pnvsChecked = false;
@@ -6299,9 +6310,9 @@ function updatePnvsCarrierLine() {
 function switchLoginToSms() {
     const ov = document.getElementById("loginOneView");
     const sv = document.getElementById("loginSmsView");
-    const det = document.getElementById("pnvsDetecting");
+    const ttl = document.getElementById("loginAuthTitle");
     const sub = document.getElementById("loginAuthSubtitle");
-    if (det) det.style.display = "none";
+    if (ttl) ttl.style.display = "";
     if (sub) sub.style.display = "";
     if (ov) ov.style.display = "none";
     if (sv) sv.style.display = "";
@@ -6368,6 +6379,7 @@ function openPnvsAuthPage() {
             isDialog: false,
             isHideLogo: true,
             navText: "本机号码登录",
+            navBackImg: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
             btnText: "登录",
             numberLabel: "",
             privacyBefore: "我已阅读并同意",
@@ -6630,36 +6642,34 @@ function showLoginModal() {
     document.getElementById("loginAuthCode").value = "";
     const ov = document.getElementById("loginOneView");
     const sv = document.getElementById("loginSmsView");
-    const det = document.getElementById("pnvsDetecting");
+    const ttl = document.getElementById("loginAuthTitle");
     const sub = document.getElementById("loginAuthSubtitle");
     const showSms = function() {
-        if (det) det.style.display = "none";
+        if (ttl) ttl.style.display = "";
         if (sub) sub.style.display = "";
         if (ov) ov.style.display = "none";
         if (sv) sv.style.display = "";
         initLoginCaptchaIfNeeded();
     };
     const showOne = function() {
-        if (det) det.style.display = "none";
+        if (ttl) ttl.style.display = "none";
         if (sub) sub.style.display = "none";
         if (sv) sv.style.display = "none";
         if (ov) ov.style.display = "";
         showNumberAuthCard();
     };
-    if (_pnvsProbe && !_pnvsProbeDone) {
-        if (ov) ov.style.display = "none";
-        if (sv) sv.style.display = "none";
-        if (sub) sub.style.display = "none";
-        if (det) {
-            det.textContent = "正在检测本机号码…";
-            det.style.display = "";
-        }
-        _pnvsProbe.then(function(ok) {
-            if (ok) showOne(); else showSms();
-        });
+    if (_pnvsProbeDone) {
+        if (_pnvsAvailable) showOne(); else showSms();
         return;
     }
-    if (_pnvsAvailable) showOne(); else showSms();
+    showSms();
+    if (_pnvsProbe) {
+        _pnvsProbe.then(function(ok) {
+            const modal = document.getElementById("loginModal");
+            const phoneInput = document.getElementById("loginAuthPhone");
+            if (ok && modal && modal.classList.contains("active") && (!phoneInput || phoneInput.value === "")) showOne();
+        });
+    }
 }
 
 function hideLoginModal() {
