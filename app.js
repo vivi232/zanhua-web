@@ -6294,6 +6294,7 @@ function openPnvsAuthPage() {
         switchLoginToSms();
         return;
     }
+    closePnvsAuthPage();
     injectPnvsStyle();
     updatePnvsCarrierLine();
     setPnvsHostLoading("正在获取本机号码...");
