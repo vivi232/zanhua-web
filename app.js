@@ -6164,7 +6164,7 @@ const PNVS_VENDOR_MAP = {
 
 let _pnvsStyleInjected = false;
 
-const PNVS_CSS = [ "#pnvsHost.page-type-container-wrap{height:auto!important;width:100%!important;min-height:200px;overflow:visible!important;}", "#pnvsHost .page-type-container{position:relative!important;top:auto!important;left:auto!important;height:auto!important;width:100%!important;background:transparent!important;overflow:visible!important;align-items:stretch!important;}", "#pnvsHost .page-type-container .nav{height:2px!important;line-height:2px!important;padding:0!important;width:100%!important;}", "#pnvsHost .page-type-container .nav .nav-title{font-size:1px!important;color:transparent!important;width:1px!important;height:1px!important;overflow:hidden!important;}", "#pnvsHost .page-type-container .nav .nav-back-icon{width:1px!important;height:1px!important;overflow:hidden!important;}", "#pnvsHost .page-type-container .nav .nav-back-icon-img{width:1px!important;height:1px!important;}", "#pnvsHost .page-type-container .number-con-wrap{width:100%!important;margin:20px 0 6px!important;}", "#pnvsHost .page-type-container .number-con{height:auto!important;line-height:1.4!important;font-size:24px!important;letter-spacing:1px!important;color:#1c1c1e!important;}", "#pnvsHost .page-type-container .number-con div{margin:0 1px!important;}", "#pnvsHost .page-type-container .number-con input{width:26px!important;height:30px!important;font-size:24px!important;margin:0 2px!important;border:0!important;border-bottom:1px solid #d1d1d6!important;border-radius:0!important;background:#fff!important;}", "#pnvsHost .page-type-container .number-con input.focus{border-bottom:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .page-type-container .number-tip{visibility:hidden!important;height:18px!important;font-size:11px!important;}", "#pnvsHost .page-type-container .agreement{margin:12px 0 0!important;padding:0 2px!important;align-items:flex-start!important;}", "#pnvsHost .page-type-container .agreement .agree-content{width:100%!important;font-size:11px!important;color:#8e8e93!important;line-height:1.6!important;}", "#pnvsHost .page-type-container .agreement .agreement-privacy-link,#pnvsHost .page-type-container .agreement a{color:var(--color-primary,#099536)!important;font-size:11px!important;display:inline!important;}", "#pnvsHost .page-type-container .agreement .check-box{display:none!important;}", "#pnvsHost .page-type-container .agreement .checke-0,#pnvsHost .page-type-container .agreement .checke-1{height:14px!important;width:14px!important;border-radius:3px!important;margin:2px 5px 0 0!important;flex-shrink:0!important;transition:none!important;}", "#pnvsHost .page-type-container .agreement .checke-1{background:var(--color-primary,#099536)!important;border:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .page-type-container .agreement .checke-0 img,#pnvsHost .page-type-container .agreement .checke-1 img{width:14px!important;height:14px!important;}", "#pnvsHost .page-type-container .agreement .agree-content-tip{font-size:11px!important;}", "#pnvsHost .page-type-container .submit-btn{width:100%!important;margin:16px 0 0!important;padding:13px 0!important;border:none!important;border-radius:12px!important;background:var(--color-primary,#099536)!important;background-image:none!important;color:#fff!important;font-size:16px!important;font-weight:600!important;}", "#pnvsHost .custom-view-box{margin:10px 0 0!important;width:100%!important;padding:0 2px!important;}", "#pnvsHost .pnvs-extra{font-size:11px!important;line-height:1.6!important;color:#8e8e93!important;text-align:center;}", "#pnvsHost .pnvs-extra a{color:var(--color-primary,#099536)!important;font-size:11px!important;text-decoration:none;}", "#pnvsHost .dialog-type-container .dialog-type-inner-content>.custom-view-box{order:5;margin:6px 0 0!important;}", "#pnvsHost .dialog-type-container .dialog-type-inner-content>.submit-btn{order:6;}", "#pnvsHost .page-type-container .submit-btn.submit-disabled{opacity:.6!important;}", "#pnvsHost .dialog-type-container{position:relative!important;width:100%!important;height:auto!important;background:transparent!important;}", "#pnvsHost .dialog-type-container .dialog-type-inner-content{position:relative!important;top:auto!important;left:auto!important;transform:none!important;width:100%!important;padding:0!important;box-shadow:none!important;background:transparent!important;}", "#pnvsHost .dialog-type-container .dialog-title{font-size:15px!important;font-weight:600;color:#1c1c1e!important;margin-top:0!important;text-align:center!important;}", "#pnvsHost .dialog-type-container .close-btn,#pnvsHost .dialog-type-container .close-img{align-self:flex-start!important;}", "#pnvsHost .dialog-type-container .logo{display:none!important;}", "#pnvsHost .dialog-type-container .number-con-wrap{width:100%!important;margin:16px 0 6px!important;}", "#pnvsHost .dialog-type-container .number-con{height:auto!important;line-height:1.4!important;font-size:24px!important;letter-spacing:1px!important;color:#1c1c1e!important;}", "#pnvsHost .dialog-type-container .number-con div{margin:0 1px!important;}", "#pnvsHost .dialog-type-container .number-con input{width:26px!important;height:30px!important;font-size:24px!important;margin:0 2px!important;border:0!important;border-bottom:1px solid #d1d1d6!important;background:#fff!important;}", "#pnvsHost .dialog-type-container .number-tip{visibility:hidden!important;font-size:11px!important;}", "#pnvsHost .dialog-type-container .agreement{margin:12px 0 0!important;padding:0 2px!important;align-items:flex-start!important;}", "#pnvsHost .dialog-type-container .agreement .agree-content{width:100%!important;font-size:11px!important;color:#8e8e93!important;line-height:1.6!important;}", "#pnvsHost .dialog-type-container .agreement .agreement-privacy-link,#pnvsHost .dialog-type-container .agreement a{color:var(--color-primary,#099536)!important;font-size:11px!important;display:inline!important;}", "#pnvsHost .dialog-type-container .agreement .check-box{display:none!important;}", "#pnvsHost .dialog-type-container .agreement .checke-0,#pnvsHost .dialog-type-container .agreement .checke-1{height:14px!important;width:14px!important;border-radius:3px!important;margin:2px 5px 0 0!important;transition:none!important;}", "#pnvsHost .dialog-type-container .agreement .checke-1{background:var(--color-primary,#099536)!important;border:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .agreement .checke-1 svg,#pnvsHost .dialog-type-container .agreement .checke-1 svg{fill:#fff!important;width:14px!important;height:14px!important;}", "#pnvsHost .agreement .checke-1 svg g,#pnvsHost .dialog-type-container .agreement .checke-1 svg g{fill:#fff!important;}", "#pnvsHost .dialog-type-container .submit-btn{width:100%!important;margin:16px 0 0!important;padding:13px 0!important;border:none!important;border-radius:12px!important;background:var(--color-primary,#099536)!important;background-image:none!important;color:#fff!important;font-size:16px!important;font-weight:600!important;}" ].join("");
+const PNVS_CSS = [ "#pnvsHost.page-type-container-wrap{height:auto!important;width:100%!important;min-height:200px;overflow:visible!important;}", "#pnvsHost .page-type-container{position:relative!important;top:auto!important;left:auto!important;height:auto!important;width:100%!important;background:transparent!important;overflow:visible!important;align-items:stretch!important;}", "#pnvsHost .page-type-container .nav{height:2px!important;line-height:2px!important;padding:0!important;width:100%!important;}", "#pnvsHost .page-type-container .nav .nav-title{font-size:1px!important;color:transparent!important;width:1px!important;height:1px!important;overflow:hidden!important;}", "#pnvsHost .page-type-container .nav .nav-back-icon{width:1px!important;height:1px!important;overflow:hidden!important;}", "#pnvsHost .page-type-container .nav .nav-back-icon-img{width:1px!important;height:1px!important;}", "#pnvsHost .page-type-container .number-con-wrap{width:100%!important;margin:20px 0 6px!important;}", "#pnvsHost .page-type-container .number-con{height:auto!important;line-height:1.4!important;font-size:24px!important;letter-spacing:1px!important;color:#1c1c1e!important;font-family:'ZanhuaSans',-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif!important;}", "#pnvsHost .page-type-container .number-con div{margin:0 1px!important;font-family:inherit!important;}", "#pnvsHost .page-type-container .number-con input{width:26px!important;height:30px!important;font-size:24px!important;margin:0 2px!important;border:0!important;border-bottom:1px solid #d1d1d6!important;border-radius:0!important;background:#fff!important;font-family:inherit!important;}", "#pnvsHost .page-type-container .number-con input.focus{border-bottom:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .page-type-container .number-tip{visibility:hidden!important;height:18px!important;font-size:11px!important;}", "#pnvsHost .page-type-container .agreement{margin:12px 0 0!important;padding:0 2px!important;align-items:flex-start!important;}", "#pnvsHost .page-type-container .agreement .agree-content{width:100%!important;font-size:11px!important;color:#8e8e93!important;line-height:1.6!important;}", "#pnvsHost .page-type-container .agreement .agreement-privacy-link,#pnvsHost .page-type-container .agreement a{color:var(--color-primary,#099536)!important;font-size:11px!important;display:inline!important;}", "#pnvsHost .page-type-container .agreement .check-box{display:none!important;}", "#pnvsHost .page-type-container .agreement .checke-0,#pnvsHost .page-type-container .agreement .checke-1{height:14px!important;width:14px!important;border-radius:3px!important;margin:2px 5px 0 0!important;flex-shrink:0!important;transition:none!important;}", "#pnvsHost .page-type-container .agreement .checke-1{background:var(--color-primary,#099536)!important;border:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .page-type-container .agreement .checke-0 img,#pnvsHost .page-type-container .agreement .checke-1 img{width:14px!important;height:14px!important;}", "#pnvsHost .page-type-container .agreement .agree-content-tip{font-size:11px!important;}", "#pnvsHost .page-type-container .submit-btn{width:100%!important;margin:16px 0 0!important;padding:13px 0!important;border:none!important;border-radius:12px!important;background:var(--color-primary,#099536)!important;background-image:none!important;color:#fff!important;font-size:16px!important;font-weight:600!important;}", "#pnvsHost .custom-view-box{margin:10px 0 0!important;width:100%!important;padding:0 2px!important;}", "#pnvsHost .pnvs-extra{font-size:11px!important;line-height:1.6!important;color:#8e8e93!important;text-align:center;}", "#pnvsHost .pnvs-extra a{color:var(--color-primary,#099536)!important;font-size:11px!important;text-decoration:none;}", "#pnvsHost .dialog-type-container .dialog-type-inner-content>.custom-view-box{order:5;margin:6px 0 0!important;}", "#pnvsHost .dialog-type-container .dialog-type-inner-content>.submit-btn{order:6;}", "#pnvsHost .page-type-container .submit-btn.submit-disabled{opacity:.6!important;}", "#pnvsHost .dialog-type-container{position:relative!important;width:100%!important;height:auto!important;background:transparent!important;}", "#pnvsHost .dialog-type-container .dialog-type-inner-content{position:relative!important;top:auto!important;left:auto!important;transform:none!important;width:100%!important;padding:0!important;box-shadow:none!important;background:transparent!important;}", "#pnvsHost .dialog-type-container .dialog-title{font-size:15px!important;font-weight:600;color:#1c1c1e!important;margin-top:0!important;text-align:center!important;}", "#pnvsHost .dialog-type-container .close-btn,#pnvsHost .dialog-type-container .close-img{align-self:flex-start!important;}", "#pnvsHost .dialog-type-container .logo{display:none!important;}", "#pnvsHost .dialog-type-container .number-con-wrap{width:100%!important;margin:16px 0 6px!important;}", "#pnvsHost .dialog-type-container .number-con{height:auto!important;line-height:1.4!important;font-size:24px!important;letter-spacing:1px!important;color:#1c1c1e!important;font-family:'ZanhuaSans',-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif!important;}", "#pnvsHost .dialog-type-container .number-con div{margin:0 1px!important;font-family:inherit!important;}", "#pnvsHost .dialog-type-container .number-con input{width:26px!important;height:30px!important;font-size:24px!important;margin:0 2px!important;border:0!important;border-bottom:1px solid #d1d1d6!important;background:#fff!important;font-family:inherit!important;}", "#pnvsHost .dialog-type-container .number-tip{visibility:hidden!important;font-size:11px!important;}", "#pnvsHost .dialog-type-container .agreement{margin:12px 0 0!important;padding:0 2px!important;align-items:flex-start!important;}", "#pnvsHost .dialog-type-container .agreement .agree-content{width:100%!important;font-size:11px!important;color:#8e8e93!important;line-height:1.6!important;}", "#pnvsHost .dialog-type-container .agreement .agreement-privacy-link,#pnvsHost .dialog-type-container .agreement a{color:var(--color-primary,#099536)!important;font-size:11px!important;display:inline!important;}", "#pnvsHost .dialog-type-container .agreement .check-box{display:none!important;}", "#pnvsHost .dialog-type-container .agreement .checke-0,#pnvsHost .dialog-type-container .agreement .checke-1{height:14px!important;width:14px!important;border-radius:3px!important;margin:2px 5px 0 0!important;transition:none!important;}", "#pnvsHost .dialog-type-container .agreement .checke-1{background:var(--color-primary,#099536)!important;border:1px solid var(--color-primary,#099536)!important;}", "#pnvsHost .agreement .checke-1 svg,#pnvsHost .dialog-type-container .agreement .checke-1 svg{fill:#fff!important;width:14px!important;height:14px!important;}", "#pnvsHost .agreement .checke-1 svg g,#pnvsHost .dialog-type-container .agreement .checke-1 svg g{fill:#fff!important;}", "#pnvsHost .dialog-type-container .submit-btn{width:100%!important;margin:16px 0 0!important;padding:13px 0!important;border:none!important;border-radius:12px!important;background:var(--color-primary,#099536)!important;background-image:none!important;color:#fff!important;font-size:16px!important;font-weight:600!important;}" ].join("");
 
 function injectPnvsStyle() {
     if (_pnvsStyleInjected) return;
@@ -6239,10 +6239,37 @@ function pnvsBlockedEnv() {
     return /micromessenger|wechat|wxwork|mqqbrowser|qq\/|dingtalk|bytedance|aweme|lark/.test(ua);
 }
 
+const PNVS_COOLDOWN_KEY = "zanhua_pnvs_cd";
+
+const PNVS_COOLDOWN_MS = 12 * 60 * 60 * 1e3;
+
+function pnvsInCooldown() {
+    try {
+        const t = parseInt(sessionStorage.getItem(PNVS_COOLDOWN_KEY) || "0", 10);
+        return t && Date.now() < t;
+    } catch (e) {
+        return false;
+    }
+}
+
+function pnvsSetCooldown() {
+    try {
+        sessionStorage.setItem(PNVS_COOLDOWN_KEY, String(Date.now() + PNVS_COOLDOWN_MS));
+    } catch (e) {}
+    _pnvsAvailable = false;
+    _pnvsProbeDone = true;
+}
+
 function initNumberAuthCheck() {
     if (_pnvsChecked) return;
     _pnvsChecked = true;
     if (pnvsBlockedEnv()) {
+        _pnvsAvailable = false;
+        _pnvsProbeDone = true;
+        _pnvsProbe = Promise.resolve(false);
+        return;
+    }
+    if (pnvsInCooldown()) {
         _pnvsAvailable = false;
         _pnvsProbeDone = true;
         _pnvsProbe = Promise.resolve(false);
@@ -6399,7 +6426,8 @@ function openPnvsAuthPage() {
         success: function(res) {
             if (!res || res.code !== 6e5 || !res.spToken) {
                 logPnvsProbe("getLoginTokenFail", res);
-                finishToSms("认证失败，请使用验证码登录");
+                pnvsSetCooldown();
+                finishToSms("");
                 return;
             }
             setPnvsHostLoading("正在登录...");
@@ -6424,6 +6452,7 @@ function openPnvsAuthPage() {
                         hideLoginModal();
                         showBanNotice(json.banInfo.userMsg || json.msg || "账号已被限制");
                     } else {
+                        pnvsSetCooldown();
                         showToast(json && json.msg || "登录失败");
                         switchLoginToSms();
                     }
@@ -6434,6 +6463,7 @@ function openPnvsAuthPage() {
         },
         error: function(res) {
             logPnvsProbe("getLoginTokenError", res);
+            pnvsSetCooldown();
             finishToSms("");
         },
         watch: function(status, netType) {
@@ -6470,11 +6500,13 @@ function showNumberAuthCard() {
                     handleOneTapLogin();
                 } else {
                     logPnvsProbe("recheckUnavailable", res);
+                    pnvsSetCooldown();
                     switchLoginToSms();
                 }
             },
             error: function(res) {
                 logPnvsProbe("recheckError", res);
+                pnvsSetCooldown();
                 switchLoginToSms();
             }
         });
@@ -6657,18 +6689,7 @@ function showLoginModal() {
         if (ov) ov.style.display = "";
         showNumberAuthCard();
     };
-    if (_pnvsProbeDone) {
-        if (_pnvsAvailable) showOne(); else showSms();
-        return;
-    }
-    showSms();
-    if (_pnvsProbe) {
-        _pnvsProbe.then(function(ok) {
-            const modal = document.getElementById("loginModal");
-            const phoneInput = document.getElementById("loginAuthPhone");
-            if (ok && modal && modal.classList.contains("active") && (!phoneInput || phoneInput.value === "")) showOne();
-        });
-    }
+    if (_pnvsProbeDone && _pnvsAvailable) showOne(); else showSms();
 }
 
 function hideLoginModal() {
