@@ -6501,11 +6501,9 @@ function openPnvsAuthPage(retryLeft, preRender) {
                     updatePnvsCarrierLine();
                 }
                 setPnvsHostLoading("");
+                _pnvsPreRenderState = "ready";
+                _pnvsPreRenderAt = Date.now();
                 if (preRender) {
-                    if (_pnvsPreRenderState === "rendering") {
-                        _pnvsPreRenderState = "ready";
-                        _pnvsPreRenderAt = Date.now();
-                    }
                     _pnvsAvailable = true;
                     _pnvsProbeDone = true;
                 }
