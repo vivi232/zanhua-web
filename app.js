@@ -6532,6 +6532,21 @@ function bindNumberAuthLogin() {
         closePnvsAuthPage();
         switchLoginToSms();
     });
+    const host = document.getElementById("pnvsHost");
+    if (host && !host.__pnvsAgreeBound) {
+        host.__pnvsAgreeBound = true;
+        host.addEventListener("click", function(ev) {
+            let el = ev.target;
+            while (el && el !== host && el.tagName !== "A") el = el.parentNode;
+            if (!el || el.tagName !== "A") return;
+            const href = el.getAttribute("href") || "";
+            const m = href.match(/#(agreement|privacy|minorPrivacy)(?:\?|$)/);
+            if (!m) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            openAgreementFromLogin(m[1]);
+        }, true);
+    }
 }
 
 function initCaptchaIfNeeded() {
