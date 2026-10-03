@@ -6457,28 +6457,66 @@ function showNumberAuthCard() {
     injectPnvsStyle();
     updatePnvsCarrierLine();
     setPnvsHostLoading("正在获取本机号码...");
-    Promise.all([ ensurePnvsSdk(), fetchPnvsToken(true) ]).then(function(results) {
-        const tk = results[1];
-        getPnvsServer().checkLoginAvailable({
-            accessToken: tk.accessToken,
-            jwtToken: tk.jwtToken,
-            timeout: 8,
-            success: function(res) {
-                if (res && res.code === 6e5) {
-                    _pnvsAvailable = true;
-                    handleOneTapLogin();
-                } else {
-                    logPnvsProbe("recheckUnavailable", res);
-                    switchLoginToSms();
-                }
-            },
-            error: function(res) {
-                logPnvsProbe("recheckError", res);
-                switchLoginToSms();
-            }
+    const recheckOnce = function() {
+        return Promise.all([ ensurePnvsSdk(), fetchPnvsToken(true) ]).then(function(results) {
+            const tk = results[1];
+            return new Promise(function(resolve) {
+                let settled = false;
+                const done = function(ok, res) {
+                    if (!settled) {
+                        settled = true;
+                        resolve({
+                            ok: ok,
+                            res: res
+                        });
+                    }
+                };
+                getPnvsServer().checkLoginAvailable({
+                    accessToken: tk.accessToken,
+                    jwtToken: tk.jwtToken,
+                    timeout: 8,
+                    success: function(res) {
+                        done(res && res.code === 6e5, res);
+                    },
+                    error: function(res) {
+                        done(false, res);
+                    }
+                });
+                setTimeout(function() {
+                    done(false, {
+                        code: "recheckTimeout",
+                        msg: "recheck >9s"
+                    });
+                }, 9e3);
+            });
         });
-    }).catch(function() {
-        switchLoginToSms();
+    };
+    const attempt = function(n) {
+        return recheckOnce().then(function(r) {
+            if (r.ok) return true;
+            logPnvsProbe(n === 0 ? "recheckUnavailable" : "recheckRetry" + n, r.res);
+            if (n < 2) return new Promise(function(res) {
+                setTimeout(res, 500);
+            }).then(function() {
+                return attempt(n + 1);
+            });
+            return false;
+        }).catch(function() {
+            if (n < 2) return new Promise(function(res) {
+                setTimeout(res, 500);
+            }).then(function() {
+                return attempt(n + 1);
+            });
+            return false;
+        });
+    };
+    attempt(0).then(function(ok) {
+        if (ok) {
+            _pnvsAvailable = true;
+            handleOneTapLogin();
+        } else {
+            switchLoginToSms();
+        }
     });
 }
 
