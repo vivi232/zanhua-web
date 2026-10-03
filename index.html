@@ -140,6 +140,18 @@ if ("serviceWorker" in navigator) {
 };
 </script>
   <script>(function() {
+  try {
+    if (!localStorage.getItem("zanhua_token") && !/micromessenger|wechat|dingtalk|bytedance|aweme|lark|mqqbrowser|qq\//i.test(navigator.userAgent)) {
+      var pl = document.createElement("link");
+      pl.rel = "preload";
+      pl.as = "script";
+      pl.href = "https://154.201.81.86/zanhua/static/numberAuth-web-sdk.js";
+      document.head.appendChild(pl);
+    }
+  } catch (e) {}
+})();
+</script>
+  <script>(function() {
   var ua = navigator.userAgent;
   var vendor = (navigator.vendor || "").toString();
   var isApple = vendor.indexOf("Apple") !== -1 || /Macintosh|Mac OS X|iPhone|iPad|iPod/i.test(ua);
@@ -330,7 +342,7 @@ if ("serviceWorker" in navigator) {
   </div>
   <script>(function() {
   var s = document.createElement("script");
-  s.src = window.__BASE + "/app.js?v=51";
+  s.src = window.__BASE + "/app.js?v=52";
   document.body.appendChild(s);
 })();
 </script>
