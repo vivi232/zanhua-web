@@ -6160,8 +6160,6 @@ let _pnvsMainlandPromise = Promise.resolve(null);
 
 let _pnvsPreRenderState = "off";
 
-let _pnvsPrerenderGen = 0;
-
 let _pnvsMainland = null;
 
 const PNVS_PRERENDER_ON = true;
@@ -6250,6 +6248,32 @@ function logPnvsProbe(event, res) {
     } catch (e) {}
 }
 
+let _pnvsSid = "";
+
+let _pnvsT0 = Date.now();
+
+function pnvsTrace(ev, info) {
+    try {
+        if (!_pnvsSid) _pnvsSid = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+        const conn = navigator.connection && navigator.connection.type || "unknown";
+        fetch(API_BASE + "/numberAuth/probeLog", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                event: "trace:" + ev,
+                code: info && info.code != null ? info.code : "",
+                msg: info && info.msg ? String(info.msg).slice(0, 120) : "",
+                vendor: info && (info.vendor || info.netType) ? info.vendor || info.netType : "",
+                conn: conn,
+                sid: _pnvsSid,
+                t: Date.now() - _pnvsT0
+            })
+        }).catch(function() {});
+    } catch (e) {}
+}
+
 function pnvsBlockedEnv() {
     const ua = (navigator.userAgent || "").toLowerCase();
     return /micromessenger|wechat|wxwork|mqqbrowser|qq\/|dingtalk|bytedance|aweme|lark/.test(ua);
@@ -6302,6 +6326,7 @@ function initNumberAuthCheck() {
                     _pnvsAvailable = ok;
                     _pnvsProbeDone = true;
                     if (ok) _pnvsSeededAt = Date.now();
+                    pnvsTrace(ok ? "probeOk" : "probeFail", res);
                     logPnvsProbe(ok ? "available" : "unavailable", res);
                     if (ok) _pnvsMainlandPromise.then(function() {
                         startPnvsPrerender();
@@ -6396,8 +6421,12 @@ function openPnvsAuthPage(retryLeft, preRender) {
     injectPnvsStyle();
     updatePnvsCarrierLine();
     setPnvsHostLoading("正在获取本机号码...");
+    if (!preRender) _pnvsPreRenderState = "off";
     const finishToSms = function(msg) {
         if (preRender) {
+            pnvsTrace("prerenderFail", {
+                code: msg && msg.code
+            });
             if (_pnvsPreRenderState !== "rendering") {
                 setPnvsPrerenderClass(false);
                 return;
@@ -6405,6 +6434,7 @@ function openPnvsAuthPage(retryLeft, preRender) {
             _pnvsPreRenderState = "failed";
             setPnvsPrerenderClass(false);
             setPnvsHostLoading("正在获取本机号码...");
+            schedulePrerenderRetry();
             return;
         }
         closePnvsAuthPage();
@@ -6413,6 +6443,7 @@ function openPnvsAuthPage(retryLeft, preRender) {
     };
     const tokenFail = function(res) {
         logPnvsProbe("getLoginTokenError", res);
+        pnvsTrace("getLoginTokenError", res);
         if (retryLeft > 0) {
             setPnvsHostLoading("正在获取本机号码...");
             pnvsReseed().then(function() {
@@ -6503,6 +6534,9 @@ function openPnvsAuthPage(retryLeft, preRender) {
                 setPnvsHostLoading("");
                 _pnvsPreRenderState = "ready";
                 _pnvsPreRenderAt = Date.now();
+                pnvsTrace(preRender ? "prerenderReady" : "renderReady", {
+                    vendor: netType
+                });
                 if (preRender) {
                     _pnvsAvailable = true;
                     _pnvsProbeDone = true;
@@ -6521,6 +6555,12 @@ function handleOneTapLogin() {
 }
 
 const PNVS_PRERENDER_MAX_AGE = 3 * 60 * 1e3;
+
+const PNVS_PRERENDER_RETRY_MAX = 5;
+
+const PNVS_PRERENDER_RETRY_DELAY = 2500;
+
+let _pnvsPrerenderAttempt = 0;
 
 function canPnvsPrerender() {
     if (!PNVS_PRERENDER_ON) return false;
@@ -6565,7 +6605,38 @@ function startPnvsPrerender() {
     if (sub) sub.style.display = "none";
     if (sms) sms.style.display = "none";
     one.style.display = "";
-    openPnvsAuthPage(1, true);
+    _pnvsPrerenderAttempt = 0;
+    openPnvsAuthPage(0, true);
+}
+
+function schedulePrerenderRetry() {
+    if (_pnvsPreRenderState !== "failed") return;
+    if (!canPnvsPrerender()) return;
+    if (_pnvsPrerenderAttempt >= PNVS_PRERENDER_RETRY_MAX) {
+        pnvsTrace("prerenderGiveUp", {
+            code: _pnvsPrerenderAttempt
+        });
+        return;
+    }
+    _pnvsPrerenderAttempt++;
+    const n = _pnvsPrerenderAttempt;
+    pnvsTrace("prerenderRetry", {
+        code: n
+    });
+    setTimeout(function() {
+        if (!canPnvsPrerender() || _pnvsPreRenderState !== "failed") return;
+        pnvsReseed().then(function(r) {
+            if (!r.ok) {
+                schedulePrerenderRetry();
+                return;
+            }
+            if (_pnvsPreRenderState !== "failed" || !canPnvsPrerender()) return;
+            _pnvsPreRenderState = "rendering";
+            openPnvsAuthPage(0, true);
+        }).catch(function() {
+            schedulePrerenderRetry();
+        });
+    }, PNVS_PRERENDER_RETRY_DELAY);
 }
 
 function pnvsReseed() {
@@ -6818,6 +6889,9 @@ function showLoginModal() {
     };
     const openOneTapThenResolve = function() {
         showOne();
+        pnvsTrace("tap", {
+            code: _pnvsPreRenderState + "@" + (Date.now() - _pnvsPreRenderAt)
+        });
         if (_pnvsPreRenderState === "ready") {
             const hh = getPnvsHost();
             const hasPage = hh && Array.prototype.some.call(hh.children, function(n) {
