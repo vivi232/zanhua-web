@@ -6160,6 +6160,8 @@ let _pnvsMainlandPromise = Promise.resolve(null);
 
 let _pnvsPreRenderState = "off";
 
+let _pnvsPrerenderGen = 0;
+
 let _pnvsMainland = null;
 
 const PNVS_PRERENDER_ON = true;
@@ -6395,12 +6397,17 @@ function openPnvsAuthPage(retryLeft, preRender) {
     updatePnvsCarrierLine();
     setPnvsHostLoading("正在获取本机号码...");
     const finishToSms = function(msg) {
-        closePnvsAuthPage();
         if (preRender) {
-            if (_pnvsPreRenderState === "rendering") _pnvsPreRenderState = "failed";
+            if (_pnvsPreRenderState !== "rendering") {
+                setPnvsPrerenderClass(false);
+                return;
+            }
+            _pnvsPreRenderState = "failed";
             setPnvsPrerenderClass(false);
+            setPnvsHostLoading("正在获取本机号码...");
             return;
         }
+        closePnvsAuthPage();
         if (msg) showToast(msg);
         switchLoginToSms();
     };
@@ -6560,7 +6567,7 @@ function startPnvsPrerender() {
     if (sub) sub.style.display = "none";
     if (sms) sms.style.display = "none";
     one.style.display = "";
-    openPnvsAuthPage(0, true);
+    openPnvsAuthPage(1, true);
 }
 
 function pnvsReseed() {
@@ -6813,9 +6820,15 @@ function showLoginModal() {
     };
     const openOneTapThenResolve = function() {
         showOne();
+        if (_pnvsPreRenderState === "ready") {
+            const hh = getPnvsHost();
+            const hasPage = hh && Array.prototype.some.call(hh.children, function(n) {
+                return n && n.id !== "pnvsHostLoading";
+            });
+            if (!hasPage) _pnvsPreRenderState = "off";
+        }
         if (_pnvsPreRenderState === "ready" && Date.now() - _pnvsPreRenderAt < PNVS_PRERENDER_MAX_AGE) {
             setPnvsPrerenderClass(false);
-            _pnvsPreRenderState = "off";
             return;
         }
         if (_pnvsPreRenderState === "ready") {
@@ -6827,16 +6840,10 @@ function showLoginModal() {
         } else if (_pnvsPreRenderState === "rendering") {
             setPnvsPrerenderClass(false);
             setPnvsHostLoading("正在获取本机号码...");
-            waitPnvsPreRender(6e3).then(function() {
+            waitPnvsPreRender(12e3).then(function() {
                 const modal = document.getElementById("loginModal");
-                if (!(modal && modal.classList.contains("active"))) {
-                    _pnvsPreRenderState = "off";
-                    return;
-                }
-                if (_pnvsPreRenderState === "ready") {
-                    _pnvsPreRenderState = "off";
-                    return;
-                }
+                if (!(modal && modal.classList.contains("active"))) return;
+                if (_pnvsPreRenderState === "ready") return;
                 _pnvsPreRenderState = "off";
                 if (_pnvsProbeDone && !_pnvsAvailable) {
                     showSms();
@@ -6857,8 +6864,12 @@ function showLoginModal() {
 
 function hideLoginModal() {
     document.getElementById("loginModal").classList.remove("active");
+    if (!getToken() && _pnvsPreRenderState === "ready" && Date.now() - _pnvsPreRenderAt < PNVS_PRERENDER_MAX_AGE) {
+        setPnvsPrerenderClass(true);
+        return;
+    }
     setPnvsPrerenderClass(false);
-    if (_pnvsPreRenderState !== "off") _pnvsPreRenderState = "off";
+    _pnvsPreRenderState = "off";
     cleanupPnvsAuthPage();
 }
 
