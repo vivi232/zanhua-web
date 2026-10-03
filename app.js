@@ -6158,7 +6158,7 @@ const PNVS_SEED_TTL = 5 * 60 * 1e3;
 
 let _pnvsMainlandPromise = Promise.resolve(null);
 
-let _pnvsPreRendered = false;
+let _pnvsPreRenderState = "off";
 
 let _pnvsMainland = null;
 
@@ -6397,7 +6397,7 @@ function openPnvsAuthPage(retryLeft, preRender) {
     const finishToSms = function(msg) {
         closePnvsAuthPage();
         if (preRender) {
-            _pnvsPreRendered = false;
+            if (_pnvsPreRenderState === "rendering") _pnvsPreRenderState = "failed";
             setPnvsPrerenderClass(false);
             return;
         }
@@ -6495,8 +6495,10 @@ function openPnvsAuthPage(retryLeft, preRender) {
                 }
                 setPnvsHostLoading("");
                 if (preRender) {
-                    _pnvsPreRendered = true;
-                    _pnvsPreRenderAt = Date.now();
+                    if (_pnvsPreRenderState === "rendering") {
+                        _pnvsPreRenderState = "ready";
+                        _pnvsPreRenderAt = Date.now();
+                    }
                     _pnvsAvailable = true;
                     _pnvsProbeDone = true;
                 }
@@ -6530,12 +6532,23 @@ function setPnvsPrerenderClass(on) {
     if (on) ov.classList.add("pnvs-prerender"); else ov.classList.remove("pnvs-prerender");
 }
 
-function removePnvsPrerenderClass() {
-    setPnvsPrerenderClass(false);
+function waitPnvsPreRender(maxMs) {
+    return new Promise(function(resolve) {
+        const t0 = Date.now();
+        const tick = function() {
+            if (_pnvsPreRenderState !== "rendering" || Date.now() - t0 >= maxMs) {
+                resolve();
+                return;
+            }
+            setTimeout(tick, 100);
+        };
+        tick();
+    });
 }
 
 function startPnvsPrerender() {
-    if (!canPnvsPrerender() || _pnvsPreRendered) return;
+    if (!canPnvsPrerender() || _pnvsPreRenderState !== "off") return;
+    _pnvsPreRenderState = "rendering";
     const ov = document.getElementById("loginModal");
     const one = document.getElementById("loginOneView");
     const sms = document.getElementById("loginSmsView");
@@ -6548,13 +6561,6 @@ function startPnvsPrerender() {
     if (sms) sms.style.display = "none";
     one.style.display = "";
     openPnvsAuthPage(0, true);
-}
-
-function revealPnvsPrerender() {
-    const ov = document.getElementById("loginModal");
-    setPnvsPrerenderClass(false);
-    if (ov) ov.classList.add("active");
-    _pnvsPreRendered = false;
 }
 
 function pnvsReseed() {
@@ -6788,16 +6794,6 @@ function showLoginModal() {
     document.getElementById("loginTipAgreement").textContent = "";
     document.getElementById("loginAuthPhone").value = "";
     document.getElementById("loginAuthCode").value = "";
-    if (_pnvsPreRendered && Date.now() - _pnvsPreRenderAt < PNVS_PRERENDER_MAX_AGE) {
-        setPnvsPrerenderClass(false);
-        _pnvsPreRendered = false;
-        return;
-    }
-    if (_pnvsPreRendered) {
-        setPnvsPrerenderClass(false);
-        _pnvsPreRendered = false;
-        closePnvsAuthPage();
-    }
     const ov = document.getElementById("loginOneView");
     const sv = document.getElementById("loginSmsView");
     const ttl = document.getElementById("loginAuthTitle");
@@ -6814,24 +6810,55 @@ function showLoginModal() {
         if (sub) sub.style.display = "none";
         if (sv) sv.style.display = "none";
         if (ov) ov.style.display = "";
+    };
+    const openOneTapThenResolve = function() {
+        showOne();
+        if (_pnvsPreRenderState === "ready" && Date.now() - _pnvsPreRenderAt < PNVS_PRERENDER_MAX_AGE) {
+            setPnvsPrerenderClass(false);
+            _pnvsPreRenderState = "off";
+            return;
+        }
+        if (_pnvsPreRenderState === "ready") {
+            setPnvsPrerenderClass(false);
+            _pnvsPreRenderState = "off";
+            closePnvsAuthPage();
+        } else if (_pnvsPreRenderState === "failed") {
+            _pnvsPreRenderState = "off";
+        } else if (_pnvsPreRenderState === "rendering") {
+            setPnvsPrerenderClass(false);
+            setPnvsHostLoading("正在获取本机号码...");
+            waitPnvsPreRender(6e3).then(function() {
+                const modal = document.getElementById("loginModal");
+                if (!(modal && modal.classList.contains("active"))) {
+                    _pnvsPreRenderState = "off";
+                    return;
+                }
+                if (_pnvsPreRenderState === "ready") {
+                    _pnvsPreRenderState = "off";
+                    return;
+                }
+                _pnvsPreRenderState = "off";
+                if (_pnvsProbeDone && !_pnvsAvailable) {
+                    showSms();
+                    return;
+                }
+                showNumberAuthCard();
+            });
+            return;
+        }
         showNumberAuthCard();
     };
-    if (_pnvsProbeDone) {
-        if (_pnvsAvailable) showOne(); else showSms();
+    if (pnvsBlockedEnv()) {
+        showSms();
         return;
     }
-    showSms();
-    if (_pnvsProbe) {
-        _pnvsProbe.then(function(ok) {
-            const modal = document.getElementById("loginModal");
-            const phoneInput = document.getElementById("loginAuthPhone");
-            if (ok && modal && modal.classList.contains("active") && (!phoneInput || phoneInput.value === "")) showOne();
-        });
-    }
+    openOneTapThenResolve();
 }
 
 function hideLoginModal() {
     document.getElementById("loginModal").classList.remove("active");
+    setPnvsPrerenderClass(false);
+    if (_pnvsPreRenderState !== "off") _pnvsPreRenderState = "off";
     cleanupPnvsAuthPage();
 }
 
