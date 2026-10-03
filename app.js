@@ -6156,6 +6156,14 @@ let _pnvsSeededAt = 0;
 
 const PNVS_SEED_TTL = 5 * 60 * 1e3;
 
+let _pnvsMainlandPromise = Promise.resolve(null);
+
+let _pnvsPreRendered = false;
+
+let _pnvsMainland = null;
+
+const PNVS_PRERENDER_ON = true;
+
 let _pnvsVendor = "";
 
 const PNVS_VENDOR_MAP = {
@@ -6175,6 +6183,10 @@ function injectPnvsStyle() {
     st.id = "pnvsStyle";
     st.textContent = PNVS_CSS;
     document.head.appendChild(st);
+    const st2 = document.createElement("style");
+    st2.id = "pnvsPrerenderStyle";
+    st2.textContent = ".modal-overlay.pnvs-prerender{display:flex!important;position:fixed!important;transform:translate(-99999px,-99999px)!important;pointer-events:none!important;}";
+    document.head.appendChild(st2);
 }
 
 function ensurePnvsSdk() {
@@ -6250,6 +6262,26 @@ function initNumberAuthCheck() {
         _pnvsProbe = Promise.resolve(false);
         return;
     }
+    _pnvsMainlandPromise = new Promise(function(resolve) {
+        let done = false;
+        const r = function(v) {
+            if (!done) {
+                done = true;
+                _pnvsMainland = v;
+                resolve(v);
+            }
+        };
+        const timer = setTimeout(function() {
+            r(null);
+        }, 1500);
+        api("/numberAuth/geo").then(function(res) {
+            clearTimeout(timer);
+            if (res && res.code === 1 && res.data && typeof res.data.mainland === "boolean") r(res.data.mainland); else r(null);
+        }).catch(function() {
+            clearTimeout(timer);
+            r(null);
+        });
+    });
     _pnvsProbe = getClientConfig().then(function(cfg) {
         if (!cfg || !cfg.pnvsEnabled) {
             _pnvsChecked = false;
@@ -6269,6 +6301,9 @@ function initNumberAuthCheck() {
                     _pnvsProbeDone = true;
                     if (ok) _pnvsSeededAt = Date.now();
                     logPnvsProbe(ok ? "available" : "unavailable", res);
+                    if (ok) _pnvsMainlandPromise.then(function() {
+                        startPnvsPrerender();
+                    });
                     resolve(ok);
                 };
                 getPnvsServer().checkLoginAvailable({
@@ -6349,10 +6384,10 @@ function closePnvsAuthPage() {
     }
 }
 
-function openPnvsAuthPage(retryLeft) {
+function openPnvsAuthPage(retryLeft, preRender) {
     const h = getPnvsHost();
     if (!h) {
-        switchLoginToSms();
+        if (!preRender) switchLoginToSms();
         return;
     }
     closePnvsAuthPage();
@@ -6361,6 +6396,11 @@ function openPnvsAuthPage(retryLeft) {
     setPnvsHostLoading("正在获取本机号码...");
     const finishToSms = function(msg) {
         closePnvsAuthPage();
+        if (preRender) {
+            _pnvsPreRendered = false;
+            setPnvsPrerenderClass(false);
+            return;
+        }
         if (msg) showToast(msg);
         switchLoginToSms();
     };
@@ -6369,7 +6409,7 @@ function openPnvsAuthPage(retryLeft) {
         if (retryLeft > 0) {
             setPnvsHostLoading("正在获取本机号码...");
             pnvsReseed().then(function() {
-                openPnvsAuthPage(retryLeft - 1);
+                openPnvsAuthPage(retryLeft - 1, preRender);
             }).catch(function() {
                 finishToSms("");
             });
@@ -6454,6 +6494,12 @@ function openPnvsAuthPage(retryLeft) {
                     updatePnvsCarrierLine();
                 }
                 setPnvsHostLoading("");
+                if (preRender) {
+                    _pnvsPreRendered = true;
+                    _pnvsPreRenderAt = Date.now();
+                    _pnvsAvailable = true;
+                    _pnvsProbeDone = true;
+                }
             } else if (status === 2) {
                 finishToSms("");
             } else if (status === 5) {
@@ -6465,6 +6511,50 @@ function openPnvsAuthPage(retryLeft) {
 
 function handleOneTapLogin() {
     openPnvsAuthPage(1);
+}
+
+const PNVS_PRERENDER_MAX_AGE = 3 * 60 * 1e3;
+
+function canPnvsPrerender() {
+    if (!PNVS_PRERENDER_ON) return false;
+    if (getToken()) return false;
+    if (_pnvsMainland === false) return false;
+    return true;
+}
+
+let _pnvsPreRenderAt = 0;
+
+function setPnvsPrerenderClass(on) {
+    const ov = document.getElementById("loginModal");
+    if (!ov) return;
+    if (on) ov.classList.add("pnvs-prerender"); else ov.classList.remove("pnvs-prerender");
+}
+
+function removePnvsPrerenderClass() {
+    setPnvsPrerenderClass(false);
+}
+
+function startPnvsPrerender() {
+    if (!canPnvsPrerender() || _pnvsPreRendered) return;
+    const ov = document.getElementById("loginModal");
+    const one = document.getElementById("loginOneView");
+    const sms = document.getElementById("loginSmsView");
+    const ttl = document.getElementById("loginAuthTitle");
+    const sub = document.getElementById("loginAuthSubtitle");
+    if (!ov || !one) return;
+    setPnvsPrerenderClass(true);
+    if (ttl) ttl.style.display = "none";
+    if (sub) sub.style.display = "none";
+    if (sms) sms.style.display = "none";
+    one.style.display = "";
+    openPnvsAuthPage(0, true);
+}
+
+function revealPnvsPrerender() {
+    const ov = document.getElementById("loginModal");
+    setPnvsPrerenderClass(false);
+    if (ov) ov.classList.add("active");
+    _pnvsPreRendered = false;
 }
 
 function pnvsReseed() {
@@ -6698,6 +6788,16 @@ function showLoginModal() {
     document.getElementById("loginTipAgreement").textContent = "";
     document.getElementById("loginAuthPhone").value = "";
     document.getElementById("loginAuthCode").value = "";
+    if (_pnvsPreRendered && Date.now() - _pnvsPreRenderAt < PNVS_PRERENDER_MAX_AGE) {
+        setPnvsPrerenderClass(false);
+        _pnvsPreRendered = false;
+        return;
+    }
+    if (_pnvsPreRendered) {
+        setPnvsPrerenderClass(false);
+        _pnvsPreRendered = false;
+        closePnvsAuthPage();
+    }
     const ov = document.getElementById("loginOneView");
     const sv = document.getElementById("loginSmsView");
     const ttl = document.getElementById("loginAuthTitle");
