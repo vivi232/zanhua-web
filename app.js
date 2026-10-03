@@ -6152,6 +6152,10 @@ let _pnvsProbe = null;
 
 let _pnvsProbeDone = false;
 
+let _pnvsSeededAt = 0;
+
+const PNVS_SEED_TTL = 5 * 60 * 1e3;
+
 let _pnvsVendor = "";
 
 const PNVS_VENDOR_MAP = {
@@ -6263,6 +6267,7 @@ function initNumberAuthCheck() {
                     done = true;
                     _pnvsAvailable = ok;
                     _pnvsProbeDone = true;
+                    if (ok) _pnvsSeededAt = Date.now();
                     logPnvsProbe(ok ? "available" : "unavailable", res);
                     resolve(ok);
                 };
@@ -6470,6 +6475,7 @@ function pnvsReseed() {
             const done = function(ok, res) {
                 if (!settled) {
                     settled = true;
+                    if (ok) _pnvsSeededAt = Date.now();
                     resolve({
                         ok: ok,
                         res: res,
@@ -6502,7 +6508,8 @@ function showNumberAuthCard() {
     injectPnvsStyle();
     updatePnvsCarrierLine();
     setPnvsHostLoading("正在获取本机号码...");
-    if (_pnvsProbeDone && _pnvsAvailable) {
+    const seedFresh = _pnvsSeededAt && Date.now() - _pnvsSeededAt < PNVS_SEED_TTL;
+    if (_pnvsProbeDone && _pnvsAvailable && seedFresh) {
         handleOneTapLogin();
         return;
     }
