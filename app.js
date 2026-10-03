@@ -6344,7 +6344,7 @@ function closePnvsAuthPage() {
     }
 }
 
-function openPnvsAuthPage() {
+function openPnvsAuthPage(retryLeft) {
     const h = getPnvsHost();
     if (!h) {
         switchLoginToSms();
@@ -6358,6 +6358,19 @@ function openPnvsAuthPage() {
         closePnvsAuthPage();
         if (msg) showToast(msg);
         switchLoginToSms();
+    };
+    const tokenFail = function(res) {
+        logPnvsProbe("getLoginTokenError", res);
+        if (retryLeft > 0) {
+            setPnvsHostLoading("正在获取本机号码...");
+            pnvsReseed().then(function() {
+                openPnvsAuthPage(retryLeft - 1);
+            }).catch(function() {
+                finishToSms("");
+            });
+        } else {
+            finishToSms("");
+        }
     };
     const docBase = location.origin + (window.__BASE || "");
     let srv = null;
@@ -6390,12 +6403,10 @@ function openPnvsAuthPage() {
             },
             manualClose: true
         },
-        timeout: 12,
+        timeout: 15,
         success: function(res) {
             if (!res || res.code !== 6e5 || !res.spToken) {
-                logPnvsProbe("getLoginTokenFail", res);
-                setPnvsHostLoading("");
-                showToast("号码输入错误，请重试");
+                tokenFail(res);
                 return;
             }
             setPnvsHostLoading("正在登录...");
@@ -6429,9 +6440,7 @@ function openPnvsAuthPage() {
             });
         },
         error: function(res) {
-            logPnvsProbe("getLoginTokenError", res);
-            setPnvsHostLoading("");
-            showToast("号码输入错误，请重试");
+            tokenFail(res);
         },
         watch: function(status, netType) {
             if (status === 1) {
@@ -6450,73 +6459,64 @@ function openPnvsAuthPage() {
 }
 
 function handleOneTapLogin() {
-    openPnvsAuthPage();
+    openPnvsAuthPage(1);
+}
+
+function pnvsReseed() {
+    return Promise.all([ ensurePnvsSdk(), fetchPnvsToken(true) ]).then(function(results) {
+        const tk = results[1];
+        return new Promise(function(resolve) {
+            let settled = false;
+            const done = function(ok, res) {
+                if (!settled) {
+                    settled = true;
+                    resolve({
+                        ok: ok,
+                        res: res,
+                        tk: tk
+                    });
+                }
+            };
+            getPnvsServer().checkLoginAvailable({
+                accessToken: tk.accessToken,
+                jwtToken: tk.jwtToken,
+                timeout: 10,
+                success: function(res) {
+                    done(res && res.code === 6e5, res);
+                },
+                error: function(res) {
+                    done(false, res);
+                }
+            });
+            setTimeout(function() {
+                done(false, {
+                    code: "seedTimeout",
+                    msg: "seed >12s"
+                });
+            }, 12e3);
+        });
+    });
 }
 
 function showNumberAuthCard() {
     injectPnvsStyle();
     updatePnvsCarrierLine();
     setPnvsHostLoading("正在获取本机号码...");
-    const recheckOnce = function() {
-        return Promise.all([ ensurePnvsSdk(), fetchPnvsToken(true) ]).then(function(results) {
-            const tk = results[1];
-            return new Promise(function(resolve) {
-                let settled = false;
-                const done = function(ok, res) {
-                    if (!settled) {
-                        settled = true;
-                        resolve({
-                            ok: ok,
-                            res: res
-                        });
-                    }
-                };
-                getPnvsServer().checkLoginAvailable({
-                    accessToken: tk.accessToken,
-                    jwtToken: tk.jwtToken,
-                    timeout: 8,
-                    success: function(res) {
-                        done(res && res.code === 6e5, res);
-                    },
-                    error: function(res) {
-                        done(false, res);
-                    }
-                });
-                setTimeout(function() {
-                    done(false, {
-                        code: "recheckTimeout",
-                        msg: "recheck >9s"
-                    });
-                }, 9e3);
-            });
-        });
-    };
-    const attempt = function(n) {
-        return recheckOnce().then(function(r) {
-            if (r.ok) return true;
-            logPnvsProbe(n === 0 ? "recheckUnavailable" : "recheckRetry" + n, r.res);
-            if (n < 2) return new Promise(function(res) {
-                setTimeout(res, 500);
-            }).then(function() {
-                return attempt(n + 1);
-            });
-            return false;
-        }).catch(function() {
-            if (n < 2) return new Promise(function(res) {
-                setTimeout(res, 500);
-            }).then(function() {
-                return attempt(n + 1);
-            });
-            return false;
-        });
-    };
-    attempt(0).then(function(ok) {
-        if (ok) {
+    if (_pnvsProbeDone && _pnvsAvailable) {
+        handleOneTapLogin();
+        return;
+    }
+    pnvsReseed().then(function(r) {
+        if (r.ok) {
             _pnvsAvailable = true;
+            _pnvsProbeDone = true;
             handleOneTapLogin();
         } else {
+            logPnvsProbe("recheckUnavailable", r.res);
             switchLoginToSms();
         }
+    }).catch(function() {
+        switchLoginToSms();
     });
 }
 
