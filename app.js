@@ -2345,6 +2345,87 @@ function waitSkeletonReady(container, timeout) {
     return Promise.all([ waitImagesLoaded(container, timeout), waitIconFontsReady(5e3) ]).then(function() {});
 }
 
+function waitBaseFontsReady(timeout) {
+    return new Promise(function(resolve) {
+        var done = false;
+        var finish = function() {
+            if (!done) {
+                done = true;
+                resolve();
+            }
+        };
+        try {
+            if (document.fonts && document.fonts.ready) document.fonts.ready.then(finish); else finish();
+        } catch (e) {
+            finish();
+        }
+        setTimeout(finish, timeout || 1500);
+    });
+}
+
+function _skImgReady(img) {
+    var src = img.getAttribute("src") || "";
+    if (src.indexOf("data:") === 0) return true;
+    return !!(img.complete && img.naturalWidth > 0);
+}
+
+function waitPriorityImages(container, capAvatars, capThumbs, maxMs) {
+    return new Promise(function(resolve) {
+        if (!container) {
+            resolve();
+            return;
+        }
+        var imgs = Array.prototype.slice.call(container.querySelectorAll("img"));
+        var avatars = imgs.filter(function(i) {
+            return i.classList && i.classList.contains("avatar");
+        });
+        var thumbs = imgs.filter(function(i) {
+            return !(i.classList && i.classList.contains("avatar"));
+        });
+        var need = avatars.slice(0, capAvatars).concat(thumbs.slice(0, capThumbs));
+        var pending = need.filter(function(i) {
+            return !_skImgReady(i);
+        });
+        if (!pending.length) {
+            resolve();
+            return;
+        }
+        pending.forEach(function(i) {
+            try {
+                i.loading = "eager";
+            } catch (e) {}
+        });
+        var done = false, seen = 0;
+        var timer = setTimeout(function() {
+            if (!done) {
+                done = true;
+                resolve();
+            }
+        }, maxMs);
+        var step = function() {
+            seen++;
+            if (seen >= pending.length) {
+                clearTimeout(timer);
+                if (!done) {
+                    done = true;
+                    resolve();
+                }
+            }
+        };
+        pending.forEach(function(i) {
+            i.addEventListener("load", step);
+            i.addEventListener("error", step);
+        });
+    });
+}
+
+function appSkeletonGate(container, maxMs) {
+    maxMs = maxMs || 3500;
+    return Promise.race([ Promise.all([ waitBaseFontsReady(1600), waitIconFontsReady(2600), getClientConfig().then(function() {}, function() {}), waitPriorityImages(container, 4, 2, Math.max(600, maxMs - 300)) ]), new Promise(function(r) {
+        setTimeout(r, maxMs);
+    }) ]).then(function() {});
+}
+
 let _lastRenderedPage = null;
 
 const PAGE_ANIM_SLIDE = new Set([ "topicDetail", "chat", "violationDetail", "report", "feedback", "editProfile", "securitySettings", "search", "strangerList", "followListPage", "fansListPage", "notificationLikes", "notificationFollows", "notificationComments", "safetyCenter", "rulesCenter", "createPost", "agreement", "privacy", "minorPrivacy" ]);
@@ -3172,7 +3253,9 @@ async function loadPosts(refresh = false) {
             postPage = (feedCache.pages || 1) + 1;
             const _plEl0 = document.getElementById("postList");
             if (_plEl0 && !_plEl0.innerHTML.trim()) _plEl0.innerHTML = feedCache.html || "";
-            hideAppSkeleton();
+            appSkeletonGate(document.getElementById("app"), 2500).then(function() {
+                hideAppSkeleton();
+            });
             loading = false;
             refreshFeedDelta();
             return;
@@ -3238,7 +3321,9 @@ async function loadPosts(refresh = false) {
     }
     loading = false;
     if (posts.length || refresh && document.getElementById("postList")) {
-        hideAppSkeleton();
+        appSkeletonGate(document.getElementById("app"), 3500).then(function() {
+            hideAppSkeleton();
+        });
     } else {
         waitSkeletonReady(document.getElementById("app"), 1500).then(function() {
             hideAppSkeleton();
@@ -11878,6 +11963,10 @@ if (_appealPathToken) {
     updateTabbar();
     checkAccountValid();
     if (getToken()) startBadgeRefresh();
+    try {
+        ensureCaptchaSdk();
+        getClientConfig();
+    } catch (e) {}
     initNumberAuthCheck();
 }
 
