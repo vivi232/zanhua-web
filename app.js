@@ -6284,6 +6284,12 @@ function pnvsBlockedEnv() {
 function initNumberAuthCheck() {
     if (_pnvsChecked) return;
     _pnvsChecked = true;
+    if (!PNVS_ONE_TAP_ON) {
+        _pnvsAvailable = false;
+        _pnvsProbeDone = true;
+        _pnvsProbe = Promise.resolve(false);
+        return;
+    }
     if (pnvsBlockedEnv()) {
         _pnvsAvailable = false;
         _pnvsProbeDone = true;
