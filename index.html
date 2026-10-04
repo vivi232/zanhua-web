@@ -141,7 +141,7 @@ if ("serviceWorker" in navigator) {
 </script>
   <script>(function() {
   try {
-    if (!localStorage.getItem("zanhua_token") && !/micromessenger|wechat|dingtalk|bytedance|aweme|lark|mqqbrowser|qq\//i.test(navigator.userAgent)) {
+    if (!localStorage.getItem("zanhua_token") && !/dingtalk|bytedance|aweme|lark/i.test(navigator.userAgent)) {
       var pl = document.createElement("link");
       pl.rel = "preload";
       pl.as = "script";
@@ -342,7 +342,7 @@ if ("serviceWorker" in navigator) {
   </div>
   <script>(function() {
   var s = document.createElement("script");
-  s.src = window.__BASE + "/app.js?v=52";
+  s.src = window.__BASE + "/app.js?v=53";
   document.body.appendChild(s);
 })();
 </script>

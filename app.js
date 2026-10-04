@@ -6276,7 +6276,7 @@ function pnvsTrace(ev, info) {
 
 function pnvsBlockedEnv() {
     const ua = (navigator.userAgent || "").toLowerCase();
-    return /micromessenger|wechat|wxwork|mqqbrowser|qq\/|dingtalk|bytedance|aweme|lark/.test(ua);
+    return /dingtalk|bytedance|aweme|lark/.test(ua);
 }
 
 function initNumberAuthCheck() {
