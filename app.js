@@ -949,44 +949,56 @@ function clearUserMediaCache() {
 }
 
 async function api(url, method = "GET", data = null) {
-    const controller = new AbortController;
-    const timeoutId = setTimeout(() => controller.abort(), 15e3);
-    const opts = {
-        method: method,
-        headers: {
-            Authorization: getToken(),
-            "X-Device-Id": getDeviceId(),
-            "X-Client-Fp": getClientFp()
-        },
-        signal: controller.signal
+    const _once = () => {
+        const controller = new AbortController;
+        const timeoutId = setTimeout(() => controller.abort(), 15e3);
+        const opts = {
+            method: method,
+            headers: {
+                Authorization: getToken(),
+                "X-Device-Id": getDeviceId(),
+                "X-Client-Fp": getClientFp()
+            },
+            signal: controller.signal
+        };
+        if (data && method === "POST") {
+            opts.headers["Content-Type"] = "application/json";
+            opts.body = JSON.stringify(data);
+        }
+        return fetch(API_BASE + url, opts).then(function(res) {
+            clearTimeout(timeoutId);
+            if (!res.ok) throw new Error("网络响应异常 (HTTP " + res.status + ")");
+            return res.json();
+        }).catch(function(e) {
+            clearTimeout(timeoutId);
+            if (e.name === "AbortError") throw new Error("请求超时，请检查网络");
+            throw e;
+        });
     };
-    if (data && method === "POST") {
-        opts.headers["Content-Type"] = "application/json";
-        opts.body = JSON.stringify(data);
-    }
+    let json;
     try {
-        const res = await fetch(API_BASE + url, opts);
-        clearTimeout(timeoutId);
-        if (!res.ok) throw new Error("网络响应异常 (HTTP " + res.status + ")");
-        const json = await res.json();
-        if (json && json.code === 403 && json.forceLogout) {
-            localStorage.removeItem("zanhua_token");
-            clearUserMediaCache();
-            const info = json.banInfo && typeof json.banInfo === "object" ? json.banInfo : {};
-            localStorage.setItem("zanhua_ban_info", JSON.stringify(info));
-            showBanNotice(info.userMsg || "账号已被限制");
-            throw new Error("账号已封禁");
-        }
-        if (json && (json.needLogin || json.code === 0 && json.msg === "未登录") && getToken()) {
-            localStorage.removeItem("zanhua_token");
-            clearUserMediaCache();
-        }
-        return json;
+        json = await _once();
     } catch (e) {
-        clearTimeout(timeoutId);
-        if (e.name === "AbortError") throw new Error("请求超时，请检查网络");
-        throw e;
+        if (method === "GET") {
+            await new Promise(r => setTimeout(r, 600));
+            json = await _once();
+        } else {
+            throw e;
+        }
     }
+    if (json && json.code === 403 && json.forceLogout) {
+        localStorage.removeItem("zanhua_token");
+        clearUserMediaCache();
+        const info = json.banInfo && typeof json.banInfo === "object" ? json.banInfo : {};
+        localStorage.setItem("zanhua_ban_info", JSON.stringify(info));
+        showBanNotice(info.userMsg || "账号已被限制");
+        throw new Error("账号已封禁");
+    }
+    if (json && (json.needLogin || json.code === 0 && json.msg === "未登录") && getToken()) {
+        localStorage.removeItem("zanhua_token");
+        clearUserMediaCache();
+    }
+    return json;
 }
 
 function apiForm(url, formData, onProgress, timeoutMs, xhrRef) {
@@ -3185,6 +3197,10 @@ async function refreshFeedDelta() {
             });
         }
         if (Array.isArray(newPosts) && newPosts.length) {
+            const existingIds = new Set(posts.map(p => p.id));
+            newPosts = newPosts.filter(n => n && !existingIds.has(n.id));
+        }
+        if (Array.isArray(newPosts) && newPosts.length) {
             let insertAt = 0;
             while (insertAt < posts.length && posts[insertAt].pinned) insertAt++;
             posts = [ ...posts.slice(0, insertAt), ...newPosts.map(n => ({
@@ -4394,33 +4410,51 @@ function bindCreatePostEvents() {
         }
     }
     loadHotTopics();
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(async pos => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            let pois = [];
-            try {
-                const res = await api("/nearbyPOI?lat=" + lat + "&lng=" + lng);
-                if (res.code === 1) {
-                    pois = res.data.map(p => ({
-                        name: p.name
-                    }));
-                }
-            } catch (e) {
-                showToast("获取附近位置失败，请手动选择");
-            }
-            let listHtml = `<span class="active" style="background:var(--color-primary-light);color:var(--color-primary);">不标记地点</span>`;
-            listHtml += pois.map(p => `<span>${p.name}</span>`).join("");
-            document.getElementById("createLocList").innerHTML = listHtml;
-            createLocation = "";
-            document.getElementById("locationDisp").textContent = "添加地点";
-            document.getElementById("locationDisp").style.color = "#999";
-        }, () => {
-            document.getElementById("createLocList").innerHTML = `<span class="active" style="background:var(--color-primary-light);color:var(--color-primary);">不标记地点</span>`;
-        });
-    } else {
-        document.getElementById("createLocList").innerHTML = `<span class="active" style="background:var(--color-primary-light);color:var(--color-primary);">不标记地点</span>`;
+    document.getElementById("createLocList").innerHTML = `<span class="active" style="background:var(--color-primary-light);color:var(--color-primary);">不标记地点</span>` + `<span onclick="event.stopPropagation();fetchNearbyLocations(this)" style="color:var(--color-primary);"><i class="fa-solid fa-location-crosshairs"></i> 获取附近位置</span>`;
+}
+
+async function fetchNearbyLocations(el) {
+    if (!navigator.geolocation) {
+        showToast("当前浏览器不支持定位，请手动输入地点");
+        return;
     }
+    if (el) {
+        el.style.pointerEvents = "none";
+        el.textContent = "定位中...";
+    }
+    navigator.geolocation.getCurrentPosition(async pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        let pois = [];
+        try {
+            const res = await api("/nearbyPOI?lat=" + lat + "&lng=" + lng);
+            if (res.code === 1 && Array.isArray(res.data)) pois = res.data.map(p => ({
+                name: p.name
+            }));
+        } catch (e) {}
+        let listHtml = `<span class="active" style="background:var(--color-primary-light);color:var(--color-primary);">不标记地点</span>`;
+        listHtml += pois.map(p => `<span>${p.name}</span>`).join("");
+        if (!pois.length) listHtml += `<span onclick="event.stopPropagation();fetchNearbyLocations(this)" style="color:var(--color-primary);"><i class="fa-solid fa-rotate-right"></i> 重新获取附近位置</span>`;
+        document.getElementById("createLocList").innerHTML = listHtml;
+        createLocation = "";
+        const disp = document.getElementById("locationDisp");
+        if (disp) {
+            disp.textContent = "添加地点";
+            disp.style.color = "#999";
+        }
+        if (!pois.length) showToast("附近没有找到可选地点");
+    }, err => {
+        let msg = "定位失败，请稍后再试";
+        if (err && err.code === 1) msg = "你拒绝了定位授权，无法获取附近位置"; else if (err && err.code === 2) msg = "无法获取位置信号，请到开阔处重试"; else if (err && err.code === 3) msg = "定位超时，请重试";
+        showToast(msg);
+        const _list = document.getElementById("createLocList");
+        if (_list) {
+            _list.innerHTML = `<span class="active" style="background:var(--color-primary-light);color:var(--color-primary);">不标记地点</span>` + `<span onclick="event.stopPropagation();fetchNearbyLocations(this)" style="color:var(--color-primary);"><i class="fa-solid fa-location-crosshairs"></i> 重新获取附近位置</span>`;
+        }
+    }, {
+        timeout: 1e4,
+        maximumAge: 3e5
+    });
 }
 
 function handleCreateVideos(files) {
@@ -5007,6 +5041,16 @@ async function submitCreatePost() {
             showToast("请输入内容或添加图片");
             return;
         }
+        const _pubFp = title + "||" + content + "||" + selectedCreateImages.map(f => f._uploadedUrl || f.name).join(",") + "||" + createPollData.options.join(",");
+        const _pubNow = Date.now();
+        if (window._lastPostFp === _pubFp && _pubNow - (window._lastPostFpAt || 0) < 6e4) {
+            showToast("这条内容已经发布成功了，请勿重复提交");
+            goPage("home");
+            loadPosts(true);
+            return;
+        }
+        window._lastPostFp = _pubFp;
+        window._lastPostFpAt = _pubNow;
         isPublishing = true;
         const btn = document.querySelector(".create-nav .btn-publish");
         if (btn) {
@@ -5090,12 +5134,20 @@ async function submitCreatePost() {
             goPage("home");
             loadPosts(true);
         } else {
+            if (res && res.dup) {
+                showToast("这条内容已经发布过了，请勿重复提交");
+                goPage("home");
+                loadPosts(true);
+                resetPublishBtn();
+                return;
+            }
+            window._lastPostFp = "";
             handleActionError(res, "发布失败");
             resetPublishBtn();
         }
     } catch (e) {
         console.error("发布流程彻底崩溃：", e);
-        showToast("系统错误: " + (e.message || "未知异常，请检查控制台"));
+        showToast("发布状态未知，请回首页确认是否已发布，勿重复点击");
         resetPublishBtn();
     }
 }
@@ -10954,7 +11006,7 @@ function renderCachedAppealSection(info) {
     if (!token) {
         return `<div style="text-align:center;padding:8px;background:#f5f5f7;border-radius:8px;">\n          <span style="font-size:13px;color:#666;">如需申诉，请点击下方查看详情。</span>\n        </div>`;
     }
-    const status = localStorage.getItem("zanhua_appeal_status_" + token) || (info.appealStatus || "");
+    const status = localStorage.getItem("zanhua_appeal_status_" + token) || info.appealStatus || "";
     if (status === "processing") {
         return `<div style="margin-bottom:12px;">\n          <div style="text-align:center;padding:12px;background:#E8F0FE;border-radius:8px;margin-bottom:10px;">\n            <span style="font-size:13px;color:#1677ff;">申诉处理中，我们会在1-3个工作日内审核</span>\n          </div>\n          ${renderAppealLinkSection(token)}\n        </div>`;
     }
@@ -11542,18 +11594,35 @@ async function submitRedeemCode() {
             code: code
         });
         if (r.code === 1) {
-            if (msg) msg.innerHTML = '<span style="color:#10b981;">🎉 ' + r.msg + "</span>";
+            if (msg) msg.innerHTML = '<span style="color:#10b981;">' + r.msg + "</span>";
             if (inp) inp.value = "";
             setTimeout(function() {
                 if (msg) msg.innerHTML = "";
             }, 5e3);
+            if (btn) btn.disabled = false;
+        } else if (r.limited) {
+            if (msg) msg.innerHTML = '<span style="color:#ef4444;">' + r.msg + "</span>";
+            var left = r.retry_after > 0 ? r.retry_after : 0;
+            var tick = function() {
+                if (left <= 0) {
+                    btn.disabled = false;
+                    btn.textContent = "确认兑换";
+                    return;
+                }
+                btn.disabled = true;
+                btn.textContent = "请稍后再试（" + left + "秒）";
+                left--;
+                setTimeout(tick, 1e3);
+            };
+            if (btn) tick();
         } else {
             if (msg) msg.innerHTML = '<span style="color:#ef4444;">' + r.msg + "</span>";
+            if (btn) btn.disabled = false;
         }
     } catch (e) {
         if (msg) msg.innerHTML = '<span style="color:#ef4444;">网络错误，请重试</span>';
+        if (btn) btn.disabled = false;
     }
-    if (btn) btn.disabled = false;
 }
 
 function renderPrivacyPage() {
