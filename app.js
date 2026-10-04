@@ -6162,7 +6162,9 @@ let _pnvsPreRenderState = "off";
 
 let _pnvsMainland = null;
 
-const PNVS_PRERENDER_ON = true;
+const PNVS_ONE_TAP_ON = false;
+
+const PNVS_PRERENDER_ON = false;
 
 let _pnvsVendor = "";
 
@@ -6927,7 +6929,7 @@ function showLoginModal() {
         }
         showNumberAuthCard();
     };
-    if (pnvsBlockedEnv()) {
+    if (!PNVS_ONE_TAP_ON || pnvsBlockedEnv()) {
         showSms();
         return;
     }
