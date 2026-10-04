@@ -4585,7 +4585,7 @@ async function handleCreateImages(files) {
     const xhrRef = {};
     let retryCount = 0;
     const maxRetries = 3;
-    const uploadTimeoutMs = hasVideo ? 6e5 : 12e4;
+    const uploadTimeoutMs = hasVideo ? 6e5 : 3e5;
     async function doUpload() {
         try {
             const uploadFd = new FormData;
