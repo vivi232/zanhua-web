@@ -2236,6 +2236,31 @@ function showAppSkeleton() {
     if (sk) sk.style.display = "";
 }
 
+(function appSkeletonWatchdog() {
+    var HARD_CAP = 5e3;
+    var t0 = Date.now();
+    var iv = setInterval(function() {
+        var sk = document.getElementById("app-skeleton");
+        if (!sk || sk.style.display === "none") {
+            clearInterval(iv);
+            return;
+        }
+        var pl = document.getElementById("postList");
+        if (pl && pl.innerHTML.trim()) {
+            hideAppSkeleton();
+            clearInterval(iv);
+            return;
+        }
+        if (Date.now() - t0 >= HARD_CAP) {
+            hideAppSkeleton();
+            clearInterval(iv);
+        }
+    }, 200);
+    setTimeout(function() {
+        clearInterval(iv);
+    }, HARD_CAP + 3e3);
+})();
+
 function _renderAsyncCached(name, renderFn, bindFn) {
     const _app = document.getElementById("app");
     const _key = name + ":" + (name === "paySubscribe" ? (window._pageParam2 || "advanced") + ":" + (window._verifSubTab || "month") : name === "verifSubscribe" ? window._verifSubTab || "month" : "def");
@@ -2420,8 +2445,8 @@ function waitPriorityImages(container, capAvatars, capThumbs, maxMs) {
 }
 
 function appSkeletonGate(container, maxMs) {
-    maxMs = maxMs || 3500;
-    return Promise.race([ Promise.all([ waitBaseFontsReady(1600), waitIconFontsReady(2600), getClientConfig().then(function() {}, function() {}), waitPriorityImages(container, 4, 2, Math.max(600, maxMs - 300)) ]), new Promise(function(r) {
+    maxMs = maxMs || 2e3;
+    return Promise.race([ Promise.all([ waitBaseFontsReady(900), waitIconFontsReady(1200), getClientConfig().then(function() {}, function() {}), waitPriorityImages(container, 3, 1, Math.max(400, maxMs - 200)) ]), new Promise(function(r) {
         setTimeout(r, maxMs);
     }) ]).then(function() {});
 }
@@ -3253,7 +3278,7 @@ async function loadPosts(refresh = false) {
             postPage = (feedCache.pages || 1) + 1;
             const _plEl0 = document.getElementById("postList");
             if (_plEl0 && !_plEl0.innerHTML.trim()) _plEl0.innerHTML = feedCache.html || "";
-            appSkeletonGate(document.getElementById("app"), 2500).then(function() {
+            appSkeletonGate(document.getElementById("app"), 1500).then(function() {
                 hideAppSkeleton();
             });
             loading = false;
@@ -3321,7 +3346,7 @@ async function loadPosts(refresh = false) {
     }
     loading = false;
     if (posts.length || refresh && document.getElementById("postList")) {
-        appSkeletonGate(document.getElementById("app"), 3500).then(function() {
+        appSkeletonGate(document.getElementById("app"), 2e3).then(function() {
             hideAppSkeleton();
         });
     } else {
