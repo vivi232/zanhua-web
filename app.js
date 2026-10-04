@@ -6996,7 +6996,7 @@ function initLoginCaptchaIfNeeded() {
 
 function loginCaptchaVerifyCallback(param) {
     if (loginCaptchaRequestLock) return Promise.resolve({
-        captchaResult: false,
+        captchaResult: true,
         bizResult: false
     });
     loginCaptchaRequestLock = true;
@@ -7017,21 +7017,28 @@ function loginCaptchaVerifyCallback(param) {
         if (data.code === 1) return {
             captchaResult: true,
             bizResult: true
-        }; else {
-            document.getElementById("loginTipCode").textContent = data.msg || "发送失败";
-            return {
-                captchaResult: false,
-                bizResult: false
-            };
-        }
+        };
+        document.getElementById("loginTipCode").textContent = loginSendMsg(data.msg);
+        return {
+            captchaResult: true,
+            bizResult: false
+        };
     }).catch(function() {
         loginCaptchaRequestLock = false;
-        document.getElementById("loginTipCode").textContent = "网络异常";
+        document.getElementById("loginTipCode").textContent = "网络异常，请稍后重试";
         return {
-            captchaResult: false,
+            captchaResult: true,
             bizResult: false
         };
     });
+}
+
+function loginSendMsg(m) {
+    if (!m) return "发送失败，请稍后重试";
+    if (m === "check frequency failed" || /FREQUENCY/i.test(m)) return "发送太频繁，请稍后再试";
+    if (/MOBILE|SEND_LIMIT|TODAY|DAILY|LIMIT/i.test(m)) return "今日发送次数已达上限，请明天再试";
+    if (/UNKNOWN|SYSTEM|INTERNAL|ERROR/i.test(m)) return "短信服务繁忙，请稍后重试";
+    return m;
 }
 
 function loginOnBizResultCallback(bizResult) {
