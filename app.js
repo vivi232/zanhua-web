@@ -2237,17 +2237,11 @@ function showAppSkeleton() {
 }
 
 (function appSkeletonWatchdog() {
-    var HARD_CAP = 5e3;
+    var HARD_CAP = 8e3;
     var t0 = Date.now();
     var iv = setInterval(function() {
         var sk = document.getElementById("app-skeleton");
         if (!sk || sk.style.display === "none") {
-            clearInterval(iv);
-            return;
-        }
-        var pl = document.getElementById("postList");
-        if (pl && pl.innerHTML.trim()) {
-            hideAppSkeleton();
             clearInterval(iv);
             return;
         }
@@ -2388,18 +2382,9 @@ function waitBaseFontsReady(timeout) {
     });
 }
 
-function _skImgReady(img) {
-    var src = img.getAttribute("src") || "";
-    if (src.indexOf("data:") === 0) return true;
-    return !!(img.complete && img.naturalWidth > 0);
-}
-
-function waitPriorityImages(container, capAvatars, capThumbs, maxMs) {
-    return new Promise(function(resolve) {
-        if (!container) {
-            resolve();
-            return;
-        }
+function kickPriorityImages(container, capAvatars, capThumbs) {
+    if (!container) return;
+    try {
         var imgs = Array.prototype.slice.call(container.querySelectorAll("img"));
         var avatars = imgs.filter(function(i) {
             return i.classList && i.classList.contains("avatar");
@@ -2407,46 +2392,32 @@ function waitPriorityImages(container, capAvatars, capThumbs, maxMs) {
         var thumbs = imgs.filter(function(i) {
             return !(i.classList && i.classList.contains("avatar"));
         });
-        var need = avatars.slice(0, capAvatars).concat(thumbs.slice(0, capThumbs));
-        var pending = need.filter(function(i) {
-            return !_skImgReady(i);
-        });
-        if (!pending.length) {
-            resolve();
-            return;
-        }
-        pending.forEach(function(i) {
+        avatars.slice(0, capAvatars || 6).concat(thumbs.slice(0, capThumbs || 3)).forEach(function(i) {
             try {
-                i.loading = "eager";
+                if (i.getAttribute("loading") === "lazy") i.loading = "eager";
             } catch (e) {}
         });
-        var done = false, seen = 0;
-        var timer = setTimeout(function() {
-            if (!done) {
-                done = true;
-                resolve();
-            }
-        }, maxMs);
-        var step = function() {
-            seen++;
-            if (seen >= pending.length) {
-                clearTimeout(timer);
-                if (!done) {
-                    done = true;
-                    resolve();
-                }
-            }
-        };
-        pending.forEach(function(i) {
-            i.addEventListener("load", step);
-            i.addEventListener("error", step);
-        });
-    });
+    } catch (e) {}
+}
+
+function waitInfoCollected() {
+    try {
+        getDeviceId();
+        getClientFp();
+    } catch (e) {}
+    return getClientConfig().then(function() {}, function() {});
+}
+
+function waitCaptchaSdkReady(timeout) {
+    return Promise.race([ Promise.all([ ensureCaptchaSdk(), getCaptchaSceneId() ]).then(function() {}, function() {}), new Promise(function(r) {
+        setTimeout(r, timeout || 3500);
+    }) ]);
 }
 
 function appSkeletonGate(container, maxMs) {
-    maxMs = maxMs || 2e3;
-    return Promise.race([ Promise.all([ waitBaseFontsReady(900), waitIconFontsReady(1200), getClientConfig().then(function() {}, function() {}), waitPriorityImages(container, 3, 1, Math.max(400, maxMs - 200)) ]), new Promise(function(r) {
+    maxMs = maxMs || 8e3;
+    kickPriorityImages(container);
+    return Promise.race([ Promise.all([ waitInfoCollected(), waitBaseFontsReady(4e3), waitIconFontsReady(4500), waitCaptchaSdkReady(4500) ]), new Promise(function(r) {
         setTimeout(r, maxMs);
     }) ]).then(function() {});
 }
@@ -3278,7 +3249,7 @@ async function loadPosts(refresh = false) {
             postPage = (feedCache.pages || 1) + 1;
             const _plEl0 = document.getElementById("postList");
             if (_plEl0 && !_plEl0.innerHTML.trim()) _plEl0.innerHTML = feedCache.html || "";
-            appSkeletonGate(document.getElementById("app"), 1500).then(function() {
+            appSkeletonGate(document.getElementById("app"), 2500).then(function() {
                 hideAppSkeleton();
             });
             loading = false;
@@ -3346,7 +3317,7 @@ async function loadPosts(refresh = false) {
     }
     loading = false;
     if (posts.length || refresh && document.getElementById("postList")) {
-        appSkeletonGate(document.getElementById("app"), 2e3).then(function() {
+        appSkeletonGate(document.getElementById("app"), 8e3).then(function() {
             hideAppSkeleton();
         });
     } else {
