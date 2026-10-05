@@ -1911,7 +1911,32 @@ function hidePlayerSpeedIndicator() {
 
 let isPageAnimating = false;
 
-let isPopState = false;
+const _navLock = {};
+
+function _navBusy(key) {
+    if (_navLock[key]) return true;
+    _navLock[key] = setTimeout(() => {
+        delete _navLock[key];
+    }, 1500);
+    return false;
+}
+
+function _navDone(key) {
+    if (_navLock[key]) {
+        clearTimeout(_navLock[key]);
+        delete _navLock[key];
+    }
+}
+
+function _navDoneByPage(pageName) {
+    Object.keys(_navLock).forEach(k => {
+        if (k.indexOf(pageName + ":") === 0) _navDone(k);
+    });
+}
+
+function _navClearAll() {
+    Object.keys(_navLock).forEach(k => _navDone(k));
+}
 
 function goPage(p, skipHistory, param2) {
     if (TAB_PAGES.includes(p) && p === currentPage && !param2) {
@@ -1921,23 +1946,30 @@ function goPage(p, skipHistory, param2) {
         showLoginModal();
         return;
     }
+    if (isPageAnimating) return;
     if (chatTimer && currentPage === "chat") {
         clearInterval(chatTimer);
         chatTimer = null;
     }
-    if (TAB_PAGES.includes(p)) {
-        pageHistory = [];
+    const tabToTab = TAB_PAGES.includes(p) && TAB_PAGES.includes(currentPage) && !param2;
+    if (tabToTab) {
+        if (!skipHistory) {
+            try {
+                history.replaceState({
+                    page: p
+                }, "", "#" + p);
+            } catch (e) {}
+        }
     } else {
         pageHistory.push(currentPage);
+        if (!skipHistory) {
+            try {
+                history.pushState({
+                    page: p
+                }, "", "#" + p);
+            } catch (e) {}
+        }
     }
-    if (!skipHistory && !isPopState) {
-        try {
-            history.pushState({
-                page: p
-            }, "", "#" + p);
-        } catch (e) {}
-    }
-    if (isPageAnimating) return;
     isPageAnimating = true;
     prevPage = currentPage;
     currentPage = p;
@@ -1998,6 +2030,7 @@ function goPage(p, skipHistory, param2) {
 }
 
 function render() {
+    _navDoneByPage(currentPage);
     const app = document.getElementById("app");
     const fl0 = document.getElementById("fixed-layer");
     if (fl0) fl0.innerHTML = "";
@@ -2667,6 +2700,7 @@ function renderConfessionCard(c) {
 }
 
 function goConfessionDetail(id) {
+    if (_navBusy("confessionDetail:" + id)) return;
     pageHistory.push(currentPage);
     prevPage = currentPage;
     currentPage = "confessionDetail";
@@ -2685,13 +2719,16 @@ function goConfessionDetail(id) {
                 updateTabbar();
             } catch (renderErr) {
                 console.error("render confessionDetail error:", renderErr);
-                pageHistory.pop();
-                currentPage = prevPage;
+                _rollbackFailedNav("confessionDetail");
                 showToast("加载失败，请稍后重试");
             }
         } else {
             showToast(r.msg || "加载失败");
+            _rollbackFailedNav("confessionDetail");
         }
+    }).catch(() => {
+        showToast("加载失败，请稍后重试");
+        _rollbackFailedNav("confessionDetail");
     });
 }
 
@@ -5684,23 +5721,43 @@ function goBack() {
     goBackLock = true;
     setTimeout(() => {
         goBackLock = false;
-    }, 300);
+    }, 350);
+    if (pageHistory.length > 0) {
+        try {
+            history.back();
+        } catch (e) {
+            _goBackFallback();
+        }
+    } else {
+        _goBackFallback();
+    }
+}
+
+function _goBackFallback() {
     if (pageHistory.length > 0) {
         const prev = pageHistory.pop();
         currentPage = prev;
         prevPage = currentPage;
-        try {
-            history.pushState({
-                page: currentPage,
-                handled: true
-            }, "", "#" + currentPage);
-        } catch (e) {}
-        window.scrollTo(0, 0);
-        render();
-        updateTabbar();
-    } else {
+    } else if (!TAB_PAGES.includes(currentPage)) {
         currentPage = "home";
         prevPage = "home";
+    } else {
+        return;
+    }
+    window.scrollTo(0, 0);
+    render();
+    updateTabbar();
+}
+
+function _rollbackFailedNav(expectPage) {
+    if (expectPage && currentPage !== expectPage) return;
+    if (pageHistory.length === 0) return;
+    try {
+        history.back();
+    } catch (e) {
+        const prev = pageHistory.pop();
+        currentPage = prev;
+        prevPage = currentPage;
         window.scrollTo(0, 0);
         render();
         updateTabbar();
@@ -7293,6 +7350,7 @@ function goPostDetail(id) {
         showToast("帖子ID异常");
         return;
     }
+    if (_navBusy("postDetail:" + id)) return;
     const dismissed = localStorage.getItem("zanhua_protected_post_dismissed") === "1";
     if (!dismissed) {
         api("/postDetail?id=" + encodeURIComponent(id)).then(r => {
@@ -7374,16 +7432,17 @@ function _goPostDetailDirect(id) {
                 updateTabbar();
             } catch (renderErr) {
                 console.error("render postDetail error:", renderErr);
-                pageHistory.pop();
-                currentPage = prevPage;
+                _rollbackFailedNav("postDetail");
                 showToast("加载失败，请稍后重试");
             }
         } else {
             showToast(r.msg || "加载失败");
+            _rollbackFailedNav("postDetail");
         }
     }).catch(e => {
         console.error("goPostDetail error:", e);
         showToast(e.message || "网络异常，请稍后重试");
+        _rollbackFailedNav("postDetail");
     });
 }
 
@@ -7450,6 +7509,7 @@ let topicNoMore = false;
 
 function goTopicDetail(name) {
     if (!requireLogin()) return;
+    if (_navBusy("topicDetail:" + name)) return;
     pageHistory.push(currentPage);
     prevPage = currentPage;
     currentPage = "topicDetail";
@@ -7491,15 +7551,16 @@ function goTopicDetail(name) {
                 updateTabbar();
             } catch (renderErr) {
                 console.error("render topicDetail error:", renderErr);
-                pageHistory.pop();
-                currentPage = prevPage;
+                _rollbackFailedNav("topicDetail");
                 showToast("加载失败，请稍后重试");
             }
         } else {
             showToast(r.msg || "话题不存在");
+            _rollbackFailedNav("topicDetail");
         }
     }).catch(() => {
         showToast("加载失败");
+        _rollbackFailedNav("topicDetail");
     });
 }
 
@@ -8043,6 +8104,7 @@ let userProfileCurrentTab = "posts";
 
 function goUserProfile(uid) {
     if (!requireLogin()) return;
+    if (_navBusy("userProfile:" + uid)) return;
     pageHistory.push(currentPage);
     prevPage = currentPage;
     currentPage = "userProfile";
@@ -8111,11 +8173,16 @@ function goUserProfile(uid) {
                 updateTabbar();
             } catch (renderErr) {
                 console.error("render userProfile error:", renderErr);
-                pageHistory.pop();
-                currentPage = prevPage;
+                _rollbackFailedNav("userProfile");
                 showToast("加载失败，请稍后重试");
             }
+        } else {
+            showToast(r.msg || "用户不存在");
+            _rollbackFailedNav("userProfile");
         }
+    }).catch(() => {
+        showToast("加载失败，请稍后重试");
+        _rollbackFailedNav("userProfile");
     });
 }
 
@@ -10245,6 +10312,11 @@ function bindRealnameVerifyEvents() {
                     prevPage = currentPage;
                     currentPage = "parentConsent";
                     setTabbarVisible(false);
+                    try {
+                        history.pushState({
+                            page: "parentConsent"
+                        }, "", "#parentConsent");
+                    } catch (e) {}
                     render();
                 } else {
                     showToast("认证成功");
@@ -10285,7 +10357,7 @@ function bindParentConsentEvents() {
                 showToast("认证成功，已开启青少年模式");
                 setTimeout(() => {
                     goBack();
-                    goBack();
+                    setTimeout(() => goBack(), 500);
                 }, 1e3);
             } else {
                 showToast(r.msg || "提交失败");
@@ -11974,24 +12046,19 @@ function renderRulesCenter() {
 
 function bindRulesCenterEvents() {}
 
-window.addEventListener("popstate", function(e) {
-    if (isPageAnimating) {
-        history.pushState({
-            page: currentPage
-        }, "", "#" + currentPage);
-        return;
-    }
-    if (goBackLock) return;
-    if (e.state && e.state.handled) return;
-    isPopState = true;
+window.addEventListener("popstate", function() {
+    _navClearAll();
     if (pageHistory.length > 0) {
         const prev = pageHistory.pop();
         currentPage = prev;
         prevPage = currentPage;
+        if (chatTimer && currentPage !== "chat") {
+            clearInterval(chatTimer);
+            chatTimer = null;
+        }
         try {
             history.replaceState({
-                page: currentPage,
-                handled: true
+                page: currentPage
             }, "", "#" + currentPage);
         } catch (e2) {}
         window.scrollTo(0, 0);
@@ -12002,17 +12069,22 @@ window.addEventListener("popstate", function(e) {
         prevPage = "home";
         try {
             history.replaceState({
-                page: "home",
-                handled: true
+                page: "home"
             }, "", "#home");
         } catch (e2) {}
         window.scrollTo(0, 0);
         render();
         updateTabbar();
+    } else {
+        const m = (location.hash || "").replace(/^#/, "");
+        if (TAB_PAGES.includes(m) && m !== currentPage) {
+            currentPage = m;
+            prevPage = m;
+            window.scrollTo(0, 0);
+            render();
+            updateTabbar();
+        }
     }
-    setTimeout(() => {
-        isPopState = false;
-    }, 300);
 });
 
 const _appealPathToken = getAppealPathToken();
