@@ -6033,6 +6033,7 @@ async function sendComment() {
         return;
     }
     if (!requireLogin()) return;
+    const _replySeq = replyTargetSeq || 0;
     input.value = "";
     input.placeholder = "说点什么...";
     updateCharCount();
@@ -6049,7 +6050,7 @@ async function sendComment() {
     const res = await api("/commentPost", "POST", {
         postId: currentPostDetail.id,
         content: content,
-        parentSeq: replyTargetSeq
+        parentSeq: _replySeq
     });
     if (res.code === 1) {
         await loadComments(currentPostDetail.id);
