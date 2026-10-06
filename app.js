@@ -2965,7 +2965,7 @@ async function loadConfessionComments(confessionId) {
         }
         return all;
     };
-    const buildTree = parentSeq => res.data.filter(c => c.parent_seq == parentSeq).map(c => {
+    const renderTopLevel = c => {
         const allDescendants = collectAllDescendants(c.post_seq);
         const repliesHtml = allDescendants.length > 0 ? `<div class="comment-replies">${allDescendants.map(d => {
             const parent = seqMap[d.parent_seq];
@@ -2973,8 +2973,10 @@ async function loadConfessionComments(confessionId) {
             return renderComment(d, "", parentName);
         }).join("")}</div>` : "";
         return renderComment(c, repliesHtml, "");
-    });
-    let html = buildTree(0).join("");
+    };
+    const buildTree = parentSeq => res.data.filter(c => c.parent_seq == parentSeq).map(renderTopLevel);
+    const orphanReplies = res.data.filter(c => c.parent_seq != 0 && !seqMap[c.parent_seq]);
+    let html = buildTree(0).concat(orphanReplies.map(renderTopLevel)).join("");
     if (!html.trim()) {
         list.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#999;">还没有评论，快来抢沙发吧</div>';
     } else {
@@ -3906,7 +3908,7 @@ async function loadHomeworkComments() {
         }
         return all;
     };
-    const buildTree = parentSeq => homeworkComments.filter(c => c.parent_seq == parentSeq).map(c => {
+    const renderTopLevel = c => {
         const allDescendants = collectAllDescendants(c.post_seq);
         const repliesHtml = allDescendants.length > 0 ? `<div class="comment-replies">${allDescendants.map(d => {
             const parent = seqMap[d.parent_seq];
@@ -3914,8 +3916,10 @@ async function loadHomeworkComments() {
             return renderHwComment(d, "", parentName);
         }).join("")}</div>` : "";
         return renderHwComment(c, repliesHtml, "");
-    });
-    let html = buildTree(0).join("");
+    };
+    const buildTree = parentSeq => homeworkComments.filter(c => c.parent_seq == parentSeq).map(renderTopLevel);
+    const orphanReplies = homeworkComments.filter(c => c.parent_seq != 0 && !seqMap[c.parent_seq]);
+    let html = buildTree(0).concat(orphanReplies.map(renderTopLevel)).join("");
     if (!html.trim()) {
         listEl.innerHTML = '<div style="text-align:center;padding:30px 20px;color:#999;font-size:13px;">暂无评论</div>';
     } else {
@@ -5939,7 +5943,7 @@ async function loadComments(postId) {
         }
         return all;
     };
-    const buildTree = parentSeq => res.data.filter(c => c.parent_seq == parentSeq).map(c => {
+    const renderTopLevel = c => {
         const allDescendants = collectAllDescendants(c.post_seq);
         const repliesHtml = allDescendants.length > 0 ? `<div class="comment-replies">${allDescendants.map(d => {
             const parent = seqMap[d.parent_seq];
@@ -5947,8 +5951,10 @@ async function loadComments(postId) {
             return renderComment(d, "", parentName);
         }).join("")}</div>` : "";
         return renderComment(c, repliesHtml, "");
-    });
-    let html = buildTree(0).join("");
+    };
+    const buildTree = parentSeq => res.data.filter(c => c.parent_seq == parentSeq).map(renderTopLevel);
+    const orphanReplies = res.data.filter(c => c.parent_seq != 0 && !seqMap[c.parent_seq]);
+    let html = buildTree(0).concat(orphanReplies.map(renderTopLevel)).join("");
     if (!html.trim()) {
         list.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#999;">还没有评论，快来抢沙发吧</div>';
         cacheSet(commentListCache, postId, list.innerHTML);
