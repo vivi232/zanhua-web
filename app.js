@@ -922,6 +922,7 @@ function setToken(t) {
     clearContentCaches();
     if (typeof dctWmClearTile === "function") dctWmClearTile();
     dctWmRemoveCanvas();
+    reportVisit();
 }
 
 function getUid() {
@@ -946,6 +947,11 @@ function clearUserMediaCache() {
             caches.delete("zanhua-usermedia-v1");
         }
     } catch (e) {}
+}
+
+function reportVisit() {
+    if (!getToken()) return;
+    api("/visit").catch(() => {});
 }
 
 async function api(url, method = "GET", data = null) {
@@ -12101,6 +12107,7 @@ if (_appealPathToken) {
     updateTabbar();
     checkAccountValid();
     if (getToken()) startBadgeRefresh();
+    reportVisit();
     try {
         ensureCaptchaSdk();
         getClientConfig();
@@ -12124,6 +12131,10 @@ if (window.visualViewport) {
 }
 
 window.addEventListener("resize", () => adjustModalsToKeyboard());
+
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") reportVisit();
+});
 
 if (!window.__modalObserverBound2) {
     window.__modalObserverBound2 = true;
