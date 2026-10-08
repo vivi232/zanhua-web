@@ -897,6 +897,27 @@ let currentUsername = "";
 
 let currentNickname = "";
 
+const _banBannerShown = {};
+
+function handleLoginBanBlocked(phone, banInfo, codeInputId, tipCodeId) {
+    if (_banBannerShown[phone]) {
+        if (codeInputId) {
+            const ci = document.getElementById(codeInputId);
+            if (ci) ci.value = "";
+        }
+        if (tipCodeId) {
+            const ti = document.getElementById(tipCodeId);
+            if (ti) ti.textContent = "请先获取验证码";
+        }
+        return;
+    }
+    _banBannerShown[phone] = 1;
+    try {
+        localStorage.setItem("zanhua_ban_info", JSON.stringify(banInfo));
+    } catch (_) {}
+    showBanNotice(banInfo.userMsg || "该账号已被限制使用，可点击查看详情进行申诉。");
+}
+
 function requireLogin() {
     if (!getToken()) {
         showLoginModal();
@@ -6719,11 +6740,8 @@ function openPnvsAuthPage(retryLeft, preRender) {
                     loadPosts(true);
                 } else if (json && json.banInfo && json.banInfo.blocked) {
                     closePnvsAuthPage();
-                    try {
-                        localStorage.setItem("zanhua_ban_info", JSON.stringify(json.banInfo));
-                    } catch (_) {}
                     hideLoginModal();
-                    showBanNotice(json.banInfo.userMsg || json.msg || "账号已被限制");
+                    handleLoginBanBlocked("_onetap", json.banInfo);
                 } else {
                     setPnvsHostLoading("");
                     showToast(json && json.msg || "号码输入错误，请重试");
@@ -7061,10 +7079,7 @@ async function handleAuth() {
             goPage("home");
         } else {
             if (res.banInfo && res.banInfo.blocked) {
-                try {
-                    localStorage.setItem("zanhua_ban_info", JSON.stringify(res.banInfo));
-                } catch (_) {}
-                showBanNotice(res.banInfo.userMsg || res.msg || "账号已被限制");
+                handleLoginBanBlocked(phone, res.banInfo, "authCode", "tipCode");
             } else {
                 showToast(res.msg || "登录失败");
             }
@@ -7322,10 +7337,7 @@ async function handleLoginAuth() {
             }
         } else {
             if (res.banInfo && res.banInfo.blocked) {
-                try {
-                    localStorage.setItem("zanhua_ban_info", JSON.stringify(res.banInfo));
-                } catch (_) {}
-                showBanNotice(res.banInfo.userMsg || res.msg || "账号已被限制");
+                handleLoginBanBlocked(phone, res.banInfo, "loginAuthCode", "loginTipCode");
             } else {
                 showToast(res.msg || "登录失败");
             }
@@ -11321,7 +11333,7 @@ function appealCaptchaCallback(token, param) {
 function renderAppealDetail(container, v, token) {
     const tip = v.violation_reason || "账号已被限制使用";
     const reason = v.violation_reason || "账号已被限制使用";
-    const blockedLabel = v.blockedLabel || (v.loginBlocked ? "禁止登录" : "") + (v.receiveBlocked ? (v.loginBlocked ? "、" : "") + "禁止接收新内容" : "");
+    const blockedLabel = v.blockedLabel || (v.permanent || v.loginBlocked || v.receiveBlocked ? "永久封禁" : v.penalty_type || "");
     let appealArea = "";
     if (v.appeal_status === "processing" || v.appeal_status === "approved" || v.appeal_status === "revoked") {
         let statusHtml = "";
@@ -11425,7 +11437,7 @@ function renderCachedBanDetail(container) {
     const reason = info.reason || "账号已被限制使用";
     const remark = info.remark || "";
     const showEndTime = !!info.endTime;
-    container.innerHTML = `<div style="padding:12px;">\n        <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;">\n          <div style="text-align:center;margin-bottom:16px;">\n            <div style="width:60px;height:60px;border-radius:50%;background:#FFF1F0;display:inline-flex;align-items:center;justify-content:center;color:#ff2442;font-size:28px;"><i class="fa-solid fa-circle-exclamation"></i></div>\n            <div style="font-size:16px;font-weight:600;color:#333;margin-top:10px;">账号限制通知</div>\n          </div>\n          <div style="background:#FFF1F0;border-radius:8px;padding:12px;margin-bottom:12px;">\n            <div style="font-size:14px;color:#ff2442;margin-bottom:6px;">${info.blockedLabel || (info.loginBlocked ? "禁止登录" : "") + (info.receiveBlocked ? (info.loginBlocked ? "、" : "") + "禁止接收新内容" : "")}</div>\n            <div style="font-size:13px;color:#666;line-height:1.6;">${tip}</div>\n          </div>\n          <div style="margin-bottom:12px;">\n            <div style="font-size:14px;font-weight:500;color:#333;margin-bottom:8px;">处理详情</div>\n            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #f0f0f0;">\n              <span style="font-size:13px;color:#999;">限制原因</span>\n              <span style="font-size:13px;color:#333;text-align:right;max-width:70%;">${reason}</span>\n            </div>\n            ${remark ? `\n            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #f0f0f0;">\n              <span style="font-size:13px;color:#999;">备注</span>\n              <span style="font-size:13px;color:#333;text-align:right;max-width:70%;">${remark}</span>\n            </div>` : ""}\n            ${showEndTime ? `\n            <div style="display:flex;justify-content:space-between;padding:8px 0;">\n              <span style="font-size:13px;color:#999;">解除时间</span>\n              <span style="font-size:13px;color:#333;">${String(info.endTime).slice(0, 16)}</span>\n            </div>` : ""}\n          </div>\n          ${renderAnnualUnbanArea(info)}\n          ${renderCachedAppealSection(info)}\n        </div>\n        <div onclick="goPage('rulesCenter')" style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:12px;cursor:pointer;">\n          <div style="display:flex;align-items:center;">\n            <i class="fa-solid fa-book-open" style="color:var(--color-primary);font-size:16px;"></i>\n            <span style="margin-left:8px;font-size:14px;color:#333;">查看赞话社区内容管理规范</span>\n            <i class="fa-solid fa-chevron-right" style="margin-left:auto;color:#ccc;"></i>\n          </div>\n        </div>\n      </div>`;
+    container.innerHTML = `<div style="padding:12px;">\n        <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;">\n          <div style="text-align:center;margin-bottom:16px;">\n            <div style="width:60px;height:60px;border-radius:50%;background:#FFF1F0;display:inline-flex;align-items:center;justify-content:center;color:#ff2442;font-size:28px;"><i class="fa-solid fa-circle-exclamation"></i></div>\n            <div style="font-size:16px;font-weight:600;color:#333;margin-top:10px;">账号限制通知</div>\n          </div>\n          <div style="background:#FFF1F0;border-radius:8px;padding:12px;margin-bottom:12px;">\n            <div style="font-size:14px;color:#ff2442;margin-bottom:6px;">${info.blockedLabel || "永久封禁"}</div>\n            <div style="font-size:13px;color:#666;line-height:1.6;">${tip}</div>\n          </div>\n          <div style="margin-bottom:12px;">\n            <div style="font-size:14px;font-weight:500;color:#333;margin-bottom:8px;">处理详情</div>\n            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #f0f0f0;">\n              <span style="font-size:13px;color:#999;">限制原因</span>\n              <span style="font-size:13px;color:#333;text-align:right;max-width:70%;">${reason}</span>\n            </div>\n            ${remark ? `\n            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #f0f0f0;">\n              <span style="font-size:13px;color:#999;">备注</span>\n              <span style="font-size:13px;color:#333;text-align:right;max-width:70%;">${remark}</span>\n            </div>` : ""}\n            ${showEndTime ? `\n            <div style="display:flex;justify-content:space-between;padding:8px 0;">\n              <span style="font-size:13px;color:#999;">解除时间</span>\n              <span style="font-size:13px;color:#333;">${String(info.endTime).slice(0, 16)}</span>\n            </div>` : ""}\n          </div>\n          ${renderAnnualUnbanArea(info)}\n          ${renderCachedAppealSection(info)}\n        </div>\n        <div onclick="goPage('rulesCenter')" style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:12px;cursor:pointer;">\n          <div style="display:flex;align-items:center;">\n            <i class="fa-solid fa-book-open" style="color:var(--color-primary);font-size:16px;"></i>\n            <span style="margin-left:8px;font-size:14px;color:#333;">查看赞话社区内容管理规范</span>\n            <i class="fa-solid fa-chevron-right" style="margin-left:auto;color:#ccc;"></i>\n          </div>\n        </div>\n      </div>`;
     refreshCachedAppealStatus(info);
 }
 
