@@ -897,21 +897,7 @@ let currentUsername = "";
 
 let currentNickname = "";
 
-const _banBannerShown = {};
-
-function handleLoginBanBlocked(phone, banInfo, codeInputId, tipCodeId) {
-    if (_banBannerShown[phone]) {
-        if (codeInputId) {
-            const ci = document.getElementById(codeInputId);
-            if (ci) ci.value = "";
-        }
-        if (tipCodeId) {
-            const ti = document.getElementById(tipCodeId);
-            if (ti) ti.textContent = "请先获取验证码";
-        }
-        return;
-    }
-    _banBannerShown[phone] = 1;
+function handleLoginBanBlocked(phone, banInfo) {
     try {
         localStorage.setItem("zanhua_ban_info", JSON.stringify(banInfo));
     } catch (_) {}
@@ -7079,7 +7065,7 @@ async function handleAuth() {
             goPage("home");
         } else {
             if (res.banInfo && res.banInfo.blocked) {
-                handleLoginBanBlocked(phone, res.banInfo, "authCode", "tipCode");
+                handleLoginBanBlocked(phone, res.banInfo);
             } else {
                 showToast(res.msg || "登录失败");
             }
@@ -7337,7 +7323,7 @@ async function handleLoginAuth() {
             }
         } else {
             if (res.banInfo && res.banInfo.blocked) {
-                handleLoginBanBlocked(phone, res.banInfo, "loginAuthCode", "loginTipCode");
+                handleLoginBanBlocked(phone, res.banInfo);
             } else {
                 showToast(res.msg || "登录失败");
             }
