@@ -771,6 +771,8 @@ let unreadTotalCount = 0;
 
 let atSearchCache = {};
 
+let atPickList = [];
+
 let atSearchTimer = null;
 
 let currentUploadXhr = null;
@@ -2584,7 +2586,7 @@ function renderPostCard(p) {
     } else if (p.content) {
         contentBlock = `<div id="${cardId}-wrap" class="post-content-wrap">\n          <div id="${cardId}-content" class="post-content post-content-collapsed">${contentHtml}</div>\n          <div id="${cardId}-btn" class="post-expand-btn"><span onclick="event.stopPropagation();togglePostExpand('${cardId}')"><i class="fa-solid fa-angles-down" style="margin-right:3px;"></i>展开全文</span></div>\n        </div>`;
     }
-    return `<div class="${cardClass}" id="pc-${p.id}" onclick="goPostDetail('${p.id}')">\n        <div class="post-header">\n          <img class="avatar" src="${resolveMediaUrl(p.avatar) || DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${p.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <div class="post-user">\n            <div class="post-nickname">${wrapNick(p.nickname || "用户" + p.user_id, p)}${renderListVerification(p)}</div>\n            <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || "未知"}</div>\n          </div>\n          ${isMine ? `<div onclick="event.stopPropagation();showPostActionSheet('${p.id}')" style="cursor:pointer;padding:4px 8px;margin-left:auto;"><i class="fa-solid fa-ellipsis" style="color:#999;font-size:16px;"></i></div>` : ""}\n        </div>\n        ${p.title ? `<div style="padding:0 16px 6px;font-size:16px;font-weight:600;">${escapeHtml(p.title)}</div>` : ""}\n        ${contentBlock}\n        ${isProtected ? "" : `${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}`}\n        ${isProtected ? "" : `${hasVideo ? `<div class="post-images single">\n          <div onclick="event.stopPropagation();openVideoPlayer('${p.video}', '${p.video_cover || ""}', ${p.allow_download != 0 ? "true" : "false"})" style="position:relative;cursor:pointer;width:75%;aspect-ratio:1;border-radius:8px;overflow:hidden;">\n            ${p.video_cover ? `<img loading="lazy" src="${resolveThumb(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ""}\n            <div style="display:${p.video_cover ? "none" : "flex"};position:absolute;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);align-items:center;justify-content:center;">\n              <div style="text-align:center;">\n                <i class="fa-solid fa-video" style="font-size:32px;color:rgba(255,255,255,0.9);"></i>\n                <div style="color:rgba(255,255,255,0.8);font-size:11px;margin-top:4px;">点击播放</div>\n              </div>\n            </div>\n            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;background:rgba(0,0,0,0.5);border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;">\n              <i class="fa-solid fa-play" style="color:#fff;font-size:16px;margin-left:2px;"></i>\n            </div>\n          </div>\n        </div>` : ""}`}\n        <div class="post-actions" onclick="event.stopPropagation()">\n          <div class="action-item" onclick="likePost('${p.id}',this)"><i class="${liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${liked ? "var(--color-red)" : ""}"></i><span>${p.likes || 0}</span></div>\n          <div class="action-item" onclick="goPostDetailAndScroll('${p.id}')"><i class="fa-regular fa-comment"></i><span>${p.comments || 0}</span></div>\n          <div class="action-item" onclick="collectPost('${p.id}',this)"><i class="${collected ? "fa-solid fa-star" : "fa-regular fa-star"}" style="color:${collected ? "var(--color-yellow)" : ""}"></i><span>${p.collects || 0}</span></div>\n        </div>\n      </div>`;
+    return `<div class="${cardClass}" id="pc-${p.id}" onclick="goPostDetail('${p.id}')">\n        <div class="post-header">\n          <img class="avatar" src="${resolveMediaUrl(p.avatar) || DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${p.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <div class="post-user">\n            <div class="post-nickname">${wrapNick(escapeHtml(p.nickname || "用户" + p.user_id), p)}${renderListVerification(p)}</div>\n            <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || "未知"}</div>\n          </div>\n          ${isMine ? `<div onclick="event.stopPropagation();showPostActionSheet('${p.id}')" style="cursor:pointer;padding:4px 8px;margin-left:auto;"><i class="fa-solid fa-ellipsis" style="color:#999;font-size:16px;"></i></div>` : ""}\n        </div>\n        ${p.title ? `<div style="padding:0 16px 6px;font-size:16px;font-weight:600;">${escapeHtml(p.title)}</div>` : ""}\n        ${contentBlock}\n        ${isProtected ? "" : `${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}`}\n        ${isProtected ? "" : `${hasVideo ? `<div class="post-images single">\n          <div onclick="event.stopPropagation();openVideoPlayer('${p.video}', '${p.video_cover || ""}', ${p.allow_download != 0 ? "true" : "false"})" style="position:relative;cursor:pointer;width:75%;aspect-ratio:1;border-radius:8px;overflow:hidden;">\n            ${p.video_cover ? `<img loading="lazy" src="${resolveThumb(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ""}\n            <div style="display:${p.video_cover ? "none" : "flex"};position:absolute;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);align-items:center;justify-content:center;">\n              <div style="text-align:center;">\n                <i class="fa-solid fa-video" style="font-size:32px;color:rgba(255,255,255,0.9);"></i>\n                <div style="color:rgba(255,255,255,0.8);font-size:11px;margin-top:4px;">点击播放</div>\n              </div>\n            </div>\n            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;background:rgba(0,0,0,0.5);border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;">\n              <i class="fa-solid fa-play" style="color:#fff;font-size:16px;margin-left:2px;"></i>\n            </div>\n          </div>\n        </div>` : ""}`}\n        <div class="post-actions" onclick="event.stopPropagation()">\n          <div class="action-item" onclick="likePost('${p.id}',this)"><i class="${liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${liked ? "var(--color-red)" : ""}"></i><span>${p.likes || 0}</span></div>\n          <div class="action-item" onclick="goPostDetailAndScroll('${p.id}')"><i class="fa-regular fa-comment"></i><span>${p.comments || 0}</span></div>\n          <div class="action-item" onclick="collectPost('${p.id}',this)"><i class="${collected ? "fa-solid fa-star" : "fa-regular fa-star"}" style="color:${collected ? "var(--color-yellow)" : ""}"></i><span>${p.collects || 0}</span></div>\n        </div>\n      </div>`;
 }
 
 function togglePostExpand(cardId) {
@@ -2709,7 +2711,7 @@ function renderConfessionCard(c) {
     const showUser = !c.is_anonymous && c.user_id;
     const avatar = showUser ? resolveMediaUrl(c.avatar) || DEFAULT_AVATAR : DEFAULT_AVATAR;
     const nickname = showUser ? c.nickname || "用户" + c.user_id : "匿名用户";
-    return `<div class="card" onclick="goConfessionDetail(${c.id})" style="margin:0 8px 8px;">\n        <div class="post-header">\n          <img class="avatar" src="${avatar}" onclick="event.stopPropagation();${showUser ? `goUserProfile('${c.user_id}')` : ""}" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <div class="post-user">\n            <div class="post-nickname">${wrapNick(nickname, c)}${showUser ? renderListVerification(c) : ""}</div>\n            <div class="post-time">${timeAgo(c.create_time)}</div>\n          </div>\n        </div>\n        <div class="post-content">${formatContentWithTopics(c.content || "")}</div>\n        ${imgs.length ? `<div class="post-images ${imgClass}" style="padding:0 16px 8px;">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}\n        <div class="post-actions" onclick="event.stopPropagation()">\n          <div class="action-item" onclick="likeConfession(${c.id},this)"><i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i><span>${c.likes || 0}</span></div>\n          <div class="action-item" onclick="goConfessionDetail(${c.id})"><i class="fa-regular fa-comment"></i><span>${c.comment_count || 0}</span></div>\n        </div>\n      </div>`;
+    return `<div class="card" onclick="goConfessionDetail(${c.id})" style="margin:0 8px 8px;">\n        <div class="post-header">\n          <img class="avatar" src="${avatar}" onclick="event.stopPropagation();${showUser ? `goUserProfile('${c.user_id}')` : ""}" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <div class="post-user">\n            <div class="post-nickname">${wrapNick(escapeHtml(nickname), c)}${showUser ? renderListVerification(c) : ""}</div>\n            <div class="post-time">${timeAgo(c.create_time)}</div>\n          </div>\n        </div>\n        <div class="post-content">${formatContentWithTopics(c.content || "")}</div>\n        ${imgs.length ? `<div class="post-images ${imgClass}" style="padding:0 16px 8px;">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}\n        <div class="post-actions" onclick="event.stopPropagation()">\n          <div class="action-item" onclick="likeConfession(${c.id},this)"><i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i><span>${c.likes || 0}</span></div>\n          <div class="action-item" onclick="goConfessionDetail(${c.id})"><i class="fa-regular fa-comment"></i><span>${c.comment_count || 0}</span></div>\n        </div>\n      </div>`;
 }
 
 function goConfessionDetail(id) {
@@ -2903,7 +2905,7 @@ function renderConfessionDetail() {
     const isMine = c.user_id && c.user_id === getUid();
     const isAdmin = currentNickname === "管理员";
     const canChat = c.user_id && c.user_id !== getUid();
-    return `<div class="post-detail" style="background:#fff;min-height:100vh;">\n        <div class="navbar" style="position:fixed;top:0;z-index:100;background:#fff;border-bottom:0.5px solid #eee;"><div onclick="goBack()" style="font-size:22px;cursor:pointer;color:#333;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div><h1 style="flex:1;text-align:center;font-size:17px;font-weight:600;">详情</h1>${isMine || isAdmin ? '<div onclick="showConfessionManageMenu(' + c.id + ')" style="font-size:20px;cursor:pointer;color:#333;padding:0 4px;"><i class="fa-solid fa-ellipsis"></i></div>' : "<div onclick=\"goReport('confession'," + c.id + ')" style="font-size:18px;cursor:pointer;padding:0 4px;"><i class="fa-solid fa-triangle-exclamation"></i></div>'}</div>\n        <div style="padding-top:50px;">\n          <div class="post-header" style="padding:12px 16px;">\n            <img class="avatar" src="${avatar}" onclick="${showUser ? `goUserProfile('${c.user_id}')` : ""}" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="post-user">\n              <div class="post-nickname">${wrapNick(nickname, c)}${c.is_anonymous ? '<span style="margin-left:6px;padding:2px 6px;background:#f0f0f0;color:#999;border-radius:10px;font-size:11px;">匿名</span>' : ""}${showUser ? renderListVerification(c) : ""}</div>\n              <div class="post-time">${timeAgo(c.create_time)}</div>\n            </div>\n            ${canChat ? `<button onclick="goChat('${c.user_id}', ${c.is_anonymous ? "true" : "false"}, ${c.id})" style="padding:6px 16px;background:var(--color-primary);color:#fff;border:none;border-radius:20px;font-size:13px;font-weight:500;">${c.is_anonymous ? "匿名私信" : "发私信"}</button>` : ""}\n          </div>\n          <div class="post-content">${formatContentWithTopics(c.content || "")}</div>\n          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}\n          <div class="post-actions" style="border-bottom:1px solid #eee;border-top:1px solid #eee;margin:0 16px;">\n            <div class="action-item" onclick="likeConfession(${c.id},this)"><i class="${liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${liked ? "var(--color-red)" : ""}"></i><span>${c.likes || 0}</span></div>\n            <div class="action-item" id="confessionCommentScrollTarget"><i class="fa-regular fa-comment"></i><span>${c.comment_count || 0}</span></div>\n          </div>\n          <div id="confessionCommentList" style="padding:16px;"></div>\n          <div style="height:60px;"></div>\n        </div>\n        <div class="comment-input-bar">\n          <img class="comment-input-avatar" src="${resolveMediaUrl(myAvatar) || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <input class="comment-input" id="confessionCommentInput" placeholder="说点什么...">\n          <span id="confessionCommentCharCount" class="comment-char-count"></span>\n          <div class="comment-send" id="confessionCommentSendBtn" onclick="sendConfessionComment()">发送</div>\n        </div>\n      </div>`;
+    return `<div class="post-detail" style="background:#fff;min-height:100vh;">\n        <div class="navbar" style="position:fixed;top:0;z-index:100;background:#fff;border-bottom:0.5px solid #eee;"><div onclick="goBack()" style="font-size:22px;cursor:pointer;color:#333;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div><h1 style="flex:1;text-align:center;font-size:17px;font-weight:600;">详情</h1>${isMine || isAdmin ? '<div onclick="showConfessionManageMenu(' + c.id + ')" style="font-size:20px;cursor:pointer;color:#333;padding:0 4px;"><i class="fa-solid fa-ellipsis"></i></div>' : "<div onclick=\"goReport('confession'," + c.id + ')" style="font-size:18px;cursor:pointer;padding:0 4px;"><i class="fa-solid fa-triangle-exclamation"></i></div>'}</div>\n        <div style="padding-top:50px;">\n          <div class="post-header" style="padding:12px 16px;">\n            <img class="avatar" src="${avatar}" onclick="${showUser ? `goUserProfile('${c.user_id}')` : ""}" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="post-user">\n              <div class="post-nickname">${wrapNick(escapeHtml(nickname), c)}${c.is_anonymous ? '<span style="margin-left:6px;padding:2px 6px;background:#f0f0f0;color:#999;border-radius:10px;font-size:11px;">匿名</span>' : ""}${showUser ? renderListVerification(c) : ""}</div>\n              <div class="post-time">${timeAgo(c.create_time)}</div>\n            </div>\n            ${canChat ? `<button onclick="goChat('${c.user_id}', ${c.is_anonymous ? "true" : "false"}, ${c.id})" style="padding:6px 16px;background:var(--color-primary);color:#fff;border:none;border-radius:20px;font-size:13px;font-weight:500;">${c.is_anonymous ? "匿名私信" : "发私信"}</button>` : ""}\n          </div>\n          <div class="post-content">${formatContentWithTopics(c.content || "")}</div>\n          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}\n          <div class="post-actions" style="border-bottom:1px solid #eee;border-top:1px solid #eee;margin:0 16px;">\n            <div class="action-item" onclick="likeConfession(${c.id},this)"><i class="${liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${liked ? "var(--color-red)" : ""}"></i><span>${c.likes || 0}</span></div>\n            <div class="action-item" id="confessionCommentScrollTarget"><i class="fa-regular fa-comment"></i><span>${c.comment_count || 0}</span></div>\n          </div>\n          <div id="confessionCommentList" style="padding:16px;"></div>\n          <div style="height:60px;"></div>\n        </div>\n        <div class="comment-input-bar">\n          <img class="comment-input-avatar" src="${resolveMediaUrl(myAvatar) || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <input class="comment-input" id="confessionCommentInput" placeholder="说点什么...">\n          <span id="confessionCommentCharCount" class="comment-char-count"></span>\n          <div class="comment-send" id="confessionCommentSendBtn" onclick="sendConfessionComment()">发送</div>\n        </div>\n      </div>`;
 }
 
 async function bindConfessionDetailEvents() {
@@ -2959,7 +2961,7 @@ async function loadConfessionComments(confessionId) {
     });
     const renderComment = (c, repliesHtml, parentName) => {
         const content = formatCommentContent(c.content);
-        const nameHtml = parentName ? `<span class="c-name">${c.nickname}</span><span class="reply-arrow"></span><span class="reply-parent-name">${parentName}</span>` : `<span class="c-name">${c.nickname}</span>`;
+        const nameHtml = parentName ? `<span class="c-name">${escapeHtml(c.nickname || "用户")}</span><span class="reply-arrow"></span><span class="reply-parent-name">${escapeHtml(parentName)}</span>` : `<span class="c-name">${escapeHtml(c.nickname || "用户")}</span>`;
         const isMine = c.user_id === myUid || currentNickname === "管理员";
         return `<div class="comment-item" data-ccomment-id="${c.id}" data-cis-mine="${isMine}">\n            <img class="c-avatar" src="${resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${c.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="c-body">\n              <div class="c-header">\n                ${nameHtml}\n                ${c.post_seq === 1 ? '<span class="comment-tag-first">首评</span>' : ""}\n              </div>\n              <div class="c-content collapsed" id="ccc-${c.id}">${content}</div>\n              <div class="c-meta">\n                <div class="c-meta-left">\n                  <span class="c-time">${timeAgo(c.create_time)}</span>\n                  ${cleanProvince(c.province) ? `<span>${cleanProvince(c.province)}</span>` : ""}\n                  <span class="c-action" onclick="setConfessionReply(${c.post_seq})">回复</span>\n                </div>\n                <span class="c-like" onclick="likeConfessionComment(${c.id},this)">\n                  <i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i>\n                  <span>${c.likes || 0}</span>\n                </span>\n              </div>\n              ${repliesHtml || ""}\n            </div>\n          </div>`;
     };
@@ -4987,7 +4989,7 @@ async function searchUserSelect() {
     const res = await api("/searchUser?keyword=" + encodeURIComponent(keyword));
     if (res.code === 1) {
         const targetList = tempUserSelectType === "visible" ? createVisibleUsers : createBlockedUsers;
-        list.innerHTML = res.data.map(u => `\n          <div class="user-select-item" onclick="toggleUserSelect('${u.uid}')">\n            <img src="${resolveMediaUrl(u.avatar) || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="info">${u.nickname}</div>\n            <div class="check ${targetList.includes(u.uid) ? "checked" : ""}"><i class="${targetList.includes(u.uid) ? "fa-solid fa-circle-check" : "fa-regular fa-circle"}"></i></div>\n          </div>\n        `).join("");
+        list.innerHTML = res.data.map(u => `\n          <div class="user-select-item" onclick="toggleUserSelect('${u.uid}')">\n            <img src="${resolveMediaUrl(u.avatar) || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="info">${escapeHtml(u.nickname)}</div>\n            <div class="check ${targetList.includes(u.uid) ? "checked" : ""}"><i class="${targetList.includes(u.uid) ? "fa-solid fa-circle-check" : "fa-regular fa-circle"}"></i></div>\n          </div>\n        `).join("");
     } else {
         list.innerHTML = '<div style="text-align:center;padding:20px;color:#999;">加载失败</div>';
     }
@@ -5066,10 +5068,17 @@ function searchAtUsers() {
     }, 300);
 }
 
+function insertAtUserByIndex(idx) {
+    const u = (atPickList || [])[idx];
+    if (!u) return;
+    insertAtUser(u.nickname, u.uid);
+}
+
 function renderAtUserList(users) {
+    atPickList = users || [];
     const list = document.getElementById("atUserList");
     if (!list) return;
-    list.innerHTML = users.map(u => `\n        <div class="user-select-item" onclick="insertAtUser('${u.nickname}', '${u.uid}')">\n          <img src="${resolveMediaUrl(u.avatar) || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <div class="info">${u.nickname}</div>\n        </div>\n      `).join("") || '<div style="text-align:center;padding:20px;color:#999;">未找到相关用户</div>';
+    list.innerHTML = (atPickList.length ? atPickList.map((u, idx) => `\n        <div class="user-select-item" onclick="insertAtUserByIndex(${idx})">\n          <img src="${resolveMediaUrl(u.avatar) || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <div class="info">${escapeHtml(u.nickname)}</div>\n        </div>\n      `).join("") : "") || '<div style="text-align:center;padding:20px;color:#999;">未找到相关用户</div>';
 }
 
 async function submitCreatePost() {
@@ -5396,7 +5405,7 @@ async function searchPostUserSelect() {
     const res = await api("/searchUser?keyword=" + encodeURIComponent(keyword));
     if (res.code === 1) {
         const targetList = tempPostUserType === "visible" ? tempPostVisibleUsers : tempPostBlockedUsers;
-        list.innerHTML = res.data.map(u => `\n          <div class="user-select-item" onclick="togglePostUserSelect('${u.uid}')">\n            <img src="${resolveMediaUrl(u.avatar) || DEFAULT_AVATAR}" style="width:36px;height:36px;border-radius:50%;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="info">${u.nickname}</div>\n            <div class="check ${targetList.includes(u.uid) ? "checked" : ""}"><i class="${targetList.includes(u.uid) ? "fa-solid fa-circle-check" : "fa-regular fa-circle"}"></i></div>\n          </div>\n        `).join("") || '<div style="text-align:center;padding:20px;color:#999;">未找到用户</div>';
+        list.innerHTML = res.data.map(u => `\n          <div class="user-select-item" onclick="togglePostUserSelect('${u.uid}')">\n            <img src="${resolveMediaUrl(u.avatar) || DEFAULT_AVATAR}" style="width:36px;height:36px;border-radius:50%;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="info">${escapeHtml(u.nickname)}</div>\n            <div class="check ${targetList.includes(u.uid) ? "checked" : ""}"><i class="${targetList.includes(u.uid) ? "fa-solid fa-circle-check" : "fa-regular fa-circle"}"></i></div>\n          </div>\n        `).join("") || '<div style="text-align:center;padding:20px;color:#999;">未找到用户</div>';
     } else {
         list.innerHTML = '<div style="text-align:center;padding:20px;color:#999;">加载失败</div>';
     }
@@ -5716,7 +5725,7 @@ function renderPostDetail() {
     } catch (e) {
         pollHtml = "";
     }
-    let html = `<div class="post-detail" style="background:#fff;min-height:100vh;">\n        <div class="detail-navbar">\n          <div class="detail-navbar-back" onclick="goBack()"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div>\n          <div class="detail-navbar-title">详情</div>\n          <div style="display:flex;align-items:center;gap:4px;">\n            ${p.is_owner === true || String(p.user_id) === getUid() || isAdminAccount() ? '<div class="detail-navbar-more" onclick="showPostManageMenu(\'' + p.id + '\')"><i class="fa-solid fa-ellipsis"></i></div>' : '<div class="detail-navbar-more" onclick="goReport(\'post\',' + p.id + ')"><i class="fa-solid fa-triangle-exclamation"></i></div>'}\n          </div>\n        </div>\n        <div class="pd-layout" style="padding-top:calc(50px + env(safe-area-inset-top));">\n          <div class="pd-main">\n          <div class="post-header">\n            <img class="avatar" src="${resolveMediaUrl(p.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${p.user_id}')" style="cursor:pointer;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="post-user">\n            <div class="post-nickname">${wrapNick(p.nickname || "用户" + p.user_id, p)}${renderListVerification(p)}</div>\n            <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || "未知"}</div>\n          </div>\n        </div>\n        ${p.title ? `<div style="padding:0 16px 8px;font-size:18px;font-weight:600;">${p.title}</div>` : ""}\n          ${p.content ? `<div class="post-content">${contentHtml}</div>` : ""}\n          ${p.location ? `<div style="padding:0 16px 8px;font-size:13px;color:#666;"><i class="fa-solid fa-location-dot" style="color:var(--color-primary);"></i> ${p.location}</div>` : ""}\n          ${p.original_declaration ? `<div style="padding:0 16px 8px;font-size:13px;color:#999;">声明: ${p.original_declaration}</div>` : ""}\n          ${pollHtml}\n          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}\n          ${p.video ? `<div style="padding:0 16px 8px;">\n            <div onclick="openVideoPlayer('${p.video}', '${p.video_cover || ""}', ${p.allow_download != 0 ? "true" : "false"})" style="position:relative;cursor:pointer;width:100%;aspect-ratio:1;border-radius:8px;overflow:hidden;">\n              ${p.video_cover ? `<img loading="lazy" src="${resolveThumb(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ""}\n              <div style="display:${p.video_cover ? "none" : "flex"};position:absolute;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);align-items:center;justify-content:center;">\n                <div style="text-align:center;">\n                  <i class="fa-solid fa-video" style="font-size:48px;color:rgba(255,255,255,0.9);"></i>\n                  <div style="color:rgba(255,255,255,0.8);font-size:14px;margin-top:8px;">点击播放视频</div>\n                </div>\n              </div>\n              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;background:rgba(0,0,0,0.5);border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;">\n                <i class="fa-solid fa-play" style="color:#fff;font-size:20px;margin-left:2px;"></i>\n              </div>\n            </div>\n          </div>` : ""}\n          <div class="post-actions" style="border-bottom:1px solid #eee;border-top:1px solid #eee;margin:0 16px;">\n            <div class="action-item" onclick="likePost('${p.id}',this)"><i class="${liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${liked ? "var(--color-red)" : ""}"></i><span>${p.likes || 0}</span></div>\n            <div class="action-item" id="commentScrollTarget"><i class="fa-regular fa-comment"></i><span>${p.comments || 0}</span></div>\n            <div class="action-item" onclick="collectPost('${p.id}',this)"><i class="${collected ? "fa-solid fa-star" : "fa-regular fa-star"}" style="color:${collected ? "var(--color-yellow)" : ""}"></i><span>${p.collects || 0}</span></div>\n          </div>\n          </div>\n          <div class="pd-comments">\n          <div class="pd-comments-title">评论</div>\n          <div id="commentList" style="padding:16px;">\n            ${(() => {
+    let html = `<div class="post-detail" style="background:#fff;min-height:100vh;">\n        <div class="detail-navbar">\n          <div class="detail-navbar-back" onclick="goBack()"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div>\n          <div class="detail-navbar-title">详情</div>\n          <div style="display:flex;align-items:center;gap:4px;">\n            ${p.is_owner === true || String(p.user_id) === getUid() || isAdminAccount() ? '<div class="detail-navbar-more" onclick="showPostManageMenu(\'' + p.id + '\')"><i class="fa-solid fa-ellipsis"></i></div>' : '<div class="detail-navbar-more" onclick="goReport(\'post\',' + p.id + ')"><i class="fa-solid fa-triangle-exclamation"></i></div>'}\n          </div>\n        </div>\n        <div class="pd-layout" style="padding-top:calc(50px + env(safe-area-inset-top));">\n          <div class="pd-main">\n          <div class="post-header">\n            <img class="avatar" src="${resolveMediaUrl(p.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${p.user_id}')" style="cursor:pointer;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="post-user">\n            <div class="post-nickname">${wrapNick(escapeHtml(p.nickname || "用户" + p.user_id), p)}${renderListVerification(p)}</div>\n            <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || "未知"}</div>\n          </div>\n        </div>\n        ${p.title ? `<div style="padding:0 16px 8px;font-size:18px;font-weight:600;">${p.title}</div>` : ""}\n          ${p.content ? `<div class="post-content">${contentHtml}</div>` : ""}\n          ${p.location ? `<div style="padding:0 16px 8px;font-size:13px;color:#666;"><i class="fa-solid fa-location-dot" style="color:var(--color-primary);"></i> ${p.location}</div>` : ""}\n          ${p.original_declaration ? `<div style="padding:0 16px 8px;font-size:13px;color:#999;">声明: ${p.original_declaration}</div>` : ""}\n          ${pollHtml}\n          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}\n          ${p.video ? `<div style="padding:0 16px 8px;">\n            <div onclick="openVideoPlayer('${p.video}', '${p.video_cover || ""}', ${p.allow_download != 0 ? "true" : "false"})" style="position:relative;cursor:pointer;width:100%;aspect-ratio:1;border-radius:8px;overflow:hidden;">\n              ${p.video_cover ? `<img loading="lazy" src="${resolveThumb(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ""}\n              <div style="display:${p.video_cover ? "none" : "flex"};position:absolute;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);align-items:center;justify-content:center;">\n                <div style="text-align:center;">\n                  <i class="fa-solid fa-video" style="font-size:48px;color:rgba(255,255,255,0.9);"></i>\n                  <div style="color:rgba(255,255,255,0.8);font-size:14px;margin-top:8px;">点击播放视频</div>\n                </div>\n              </div>\n              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;background:rgba(0,0,0,0.5);border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;">\n                <i class="fa-solid fa-play" style="color:#fff;font-size:20px;margin-left:2px;"></i>\n              </div>\n            </div>\n          </div>` : ""}\n          <div class="post-actions" style="border-bottom:1px solid #eee;border-top:1px solid #eee;margin:0 16px;">\n            <div class="action-item" onclick="likePost('${p.id}',this)"><i class="${liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${liked ? "var(--color-red)" : ""}"></i><span>${p.likes || 0}</span></div>\n            <div class="action-item" id="commentScrollTarget"><i class="fa-regular fa-comment"></i><span>${p.comments || 0}</span></div>\n            <div class="action-item" onclick="collectPost('${p.id}',this)"><i class="${collected ? "fa-solid fa-star" : "fa-regular fa-star"}" style="color:${collected ? "var(--color-yellow)" : ""}"></i><span>${p.collects || 0}</span></div>\n          </div>\n          </div>\n          <div class="pd-comments">\n          <div class="pd-comments-title">评论</div>\n          <div id="commentList" style="padding:16px;">\n            ${(() => {
         const _cc = cacheGet(commentListCache, p.id);
         return _cc ? _cc.html : new Array(3).fill(0).map(() => `\n              <div style="display:flex;gap:10px;margin-bottom:16px;">\n                <div class="sk-item" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;"></div>\n                <div style="flex:1;">\n                  <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;">\n                    <div class="sk-item" style="width:80px;height:13px;"></div>\n                    <div class="sk-item" style="width:45px;height:10px;"></div>\n                  </div>\n                  <div class="sk-item" style="width:100%;height:12px;margin-bottom:4px;"></div>\n                  <div class="sk-item" style="width:75%;height:12px;"></div>\n                </div>\n              </div>\n            `).join("");
     })()}\n          </div>\n          </div>\n          <div style="height:60px;"></div>\n        </div>\n        <div class="comment-input-bar">\n          <img class="comment-input-avatar" src="${resolveMediaUrl(myAvatar) || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <input class="comment-input" id="commentInput" placeholder="说点什么...">\n          <span id="commentCharCount" class="comment-char-count"></span>\n          <div class="comment-send" id="commentSendBtn" onclick="sendComment()">发送</div>\n        </div>\n      </div>`;
@@ -5937,7 +5946,7 @@ async function loadComments(postId) {
     });
     const renderComment = (c, repliesHtml, parentName) => {
         const content = formatCommentContent(c.content);
-        const nameHtml = parentName ? `<span class="c-name">${c.nickname}</span><span class="reply-arrow"></span><span class="reply-parent-name">${parentName}</span>` : `<span class="c-name">${c.nickname}</span>`;
+        const nameHtml = parentName ? `<span class="c-name">${escapeHtml(c.nickname || "用户")}</span><span class="reply-arrow"></span><span class="reply-parent-name">${escapeHtml(parentName)}</span>` : `<span class="c-name">${escapeHtml(c.nickname || "用户")}</span>`;
         const isMine = c.user_id === myUid || currentNickname === "管理员";
         return `<div class="comment-item" data-comment-id="${c.id}" data-is-mine="${isMine}">\n            <img class="c-avatar" src="${resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${c.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="c-body">\n              <div class="c-header">\n                ${nameHtml}\n                ${c.post_seq === 1 ? '<span class="comment-tag-first">首评</span>' : ""}\n              </div>\n              <div class="c-content collapsed" id="cc-${c.id}">${content}</div>\n              <div class="c-meta">\n                <div class="c-meta-left">\n                  <span class="c-time">${timeAgo(c.create_time)}</span>\n                  ${cleanProvince(c.province) ? `<span>${cleanProvince(c.province)}</span>` : ""}\n                  <span class="c-action" onclick="setReply(${c.post_seq})">回复</span>\n                </div>\n                <span class="c-like" onclick="likeComment(${c.id},this)">\n                  <i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i>\n                  <span>${c.likes || 0}</span>\n                </span>\n              </div>\n              ${repliesHtml || ""}\n            </div>\n          </div>`;
     };
@@ -7663,7 +7672,7 @@ async function bindMessageEvents() {
                 if (c.is_stranger_list) {
                     return `\n            <div class="chat-list-item" onclick="goStrangerList()" style="display:flex;align-items:center;padding:12px 16px;border-bottom:0.5px solid #f0f0f0;cursor:pointer;background:#ffffff !important;background-color:#ffffff !important;box-sizing:border-box;width:100%;">\n              <div style="width:44px;height:44px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#f093fb,#f5576c);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;"><i class="fa-solid fa-user-secret"></i></div>\n              <div style="flex:1;margin-left:12px;overflow:hidden;">\n                <div style="display:flex;justify-content:space-between;align-items:center;">\n                  <span style="font-weight:600;font-size:15px;">陌生人消息</span>\n                  <span style="font-size:12px;color:#999;">${c.lastTime ? timeAgo(c.lastTime) : ""}</span>\n                </div>\n                <div style="font-size:13px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">${c.type === "image" ? "[图片]" : c.type === "video" ? "[视频]" : c.lastMessage || ""}</div>\n              </div>\n              ${c.unread ? `<span style="background:#ff2442;color:#fff;font-size:11px;border-radius:10px;padding:2px 6px;margin-left:4px;">${c.unread}</span>` : ""}\n            </div>`;
                 }
-                return `\n            <div class="chat-list-item" onclick="goChat('${c.otherUser}', ${c.is_anonymous ? "true" : "false"})" style="display:flex;align-items:center;padding:12px 16px;border-bottom:0.5px solid #f0f0f0;cursor:pointer;background:#ffffff !important;background-color:#ffffff !important;box-sizing:border-box;width:100%;">\n              <img src="${c.is_anonymous ? DEFAULT_AVATAR : resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" style="width:44px;height:44px;border-radius:50%;flex-shrink:0;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n              <div style="flex:1;margin-left:12px;overflow:hidden;">\n                <div style="display:flex;justify-content:space-between;align-items:center;">\n                  <span style="font-weight:600;font-size:15px;">${c.nickname || "用户" + c.otherUser}${c.is_anonymous ? '<span style="margin-left:6px;padding:2px 6px;background:#f0f0f0;color:#999;border-radius:10px;font-size:11px;">匿名</span>' : ""}</span>\n                  <span style="font-size:12px;color:#999;">${timeAgo(c.lastTime)}</span>\n                </div>\n                <div style="font-size:13px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">${c.type === "image" ? "[图片]" : c.type === "video" ? "[视频]" : c.lastMessage || ""}</div>\n              </div>\n            </div>`;
+                return `\n            <div class="chat-list-item" onclick="goChat('${c.otherUser}', ${c.is_anonymous ? "true" : "false"})" style="display:flex;align-items:center;padding:12px 16px;border-bottom:0.5px solid #f0f0f0;cursor:pointer;background:#ffffff !important;background-color:#ffffff !important;box-sizing:border-box;width:100%;">\n              <img src="${c.is_anonymous ? DEFAULT_AVATAR : resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" style="width:44px;height:44px;border-radius:50%;flex-shrink:0;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n              <div style="flex:1;margin-left:12px;overflow:hidden;">\n                <div style="display:flex;justify-content:space-between;align-items:center;">\n                  <span style="font-weight:600;font-size:15px;">${escapeHtml(c.nickname || "用户" + c.otherUser)}${c.is_anonymous ? '<span style="margin-left:6px;padding:2px 6px;background:#f0f0f0;color:#999;border-radius:10px;font-size:11px;">匿名</span>' : ""}</span>\n                  <span style="font-size:12px;color:#999;">${timeAgo(c.lastTime)}</span>\n                </div>\n                <div style="font-size:13px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">${c.type === "image" ? "[图片]" : c.type === "video" ? "[视频]" : c.lastMessage || ""}</div>\n              </div>\n            </div>`;
             }).join("");
         }
         if (!(chatListCache && chatListCache.html === _listHtml)) {
@@ -7839,7 +7848,7 @@ async function _loadMyProfileContentInner() {
                     const imgs = c.images ? c.images.split(",").filter(x => x) : [];
                     const cover = imgs[0] || "";
                     const hasImages = imgs.length > 0;
-                    return `<div class="card" onclick="goConfessionDetail(${c.id})" style="margin:0 8px 8px;">\n                <div class="post-header" style="padding:10px 12px;">\n                  <img class="avatar" src="${c.is_anonymous ? DEFAULT_AVATAR : resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" style="width:32px;height:32px;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n                  <div class="post-user">\n                    <div class="post-nickname" style="font-size:13px;">${c.is_anonymous ? "匿名用户" : wrapNick(c.nickname || "用户" + c.user_id, c)}${c.is_anonymous ? '<span style="margin-left:4px;padding:1px 5px;background:#f0f0f0;color:#999;border-radius:8px;font-size:10px;">匿名</span>' : ""}${!c.is_anonymous ? renderListVerification(c) : ""}</div>\n                    <div class="post-time" style="font-size:11px;">${timeAgo(c.create_time)}</div>\n                  </div>\n                </div>\n                <div class="post-content" style="padding:0 12px 8px;font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;height:78px;max-height:78px;box-sizing:content-box;">${escapeHtml(c.content || "").replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, "@$1").replace(/\n/g, " ")}</div>\n                ${hasImages ? `<div style="padding:0 12px 8px;"><img loading="lazy" src="${resolveThumb(cover)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>` : ""}\n                <div class="post-actions" style="padding:6px 0 10px;font-size:12px;">\n                  <div class="action-item"><i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i><span>${c.likes || 0}</span></div>\n                  <div class="action-item"><i class="fa-regular fa-comment"></i><span>${c.comment_count || 0}</span></div>\n                </div>\n              </div>`;
+                    return `<div class="card" onclick="goConfessionDetail(${c.id})" style="margin:0 8px 8px;">\n                <div class="post-header" style="padding:10px 12px;">\n                  <img class="avatar" src="${c.is_anonymous ? DEFAULT_AVATAR : resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" style="width:32px;height:32px;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n                  <div class="post-user">\n                    <div class="post-nickname" style="font-size:13px;">${c.is_anonymous ? "匿名用户" : wrapNick(escapeHtml(c.nickname || "用户" + c.user_id), c)}${c.is_anonymous ? '<span style="margin-left:4px;padding:1px 5px;background:#f0f0f0;color:#999;border-radius:8px;font-size:10px;">匿名</span>' : ""}${!c.is_anonymous ? renderListVerification(c) : ""}</div>\n                    <div class="post-time" style="font-size:11px;">${timeAgo(c.create_time)}</div>\n                  </div>\n                </div>\n                <div class="post-content" style="padding:0 12px 8px;font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;height:78px;max-height:78px;box-sizing:content-box;">${escapeHtml(c.content || "").replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, "@$1").replace(/\n/g, " ")}</div>\n                ${hasImages ? `<div style="padding:0 12px 8px;"><img loading="lazy" src="${resolveThumb(cover)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>` : ""}\n                <div class="post-actions" style="padding:6px 0 10px;font-size:12px;">\n                  <div class="action-item"><i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i><span>${c.likes || 0}</span></div>\n                  <div class="action-item"><i class="fa-regular fa-comment"></i><span>${c.comment_count || 0}</span></div>\n                </div>\n              </div>`;
                 }).join(""));
             } else {
                 _write("", "", '<div style="text-align:center;padding:40px 20px;color:#999;">还没有发布过表白</div>');
@@ -7964,6 +7973,37 @@ let currentConfessionChatId = null;
 
 let searchCurrentTab = "all";
 
+let searchKeyword = "";
+
+let searchPage = 1;
+
+let searchSize = 20;
+
+let searchNoMore = false;
+
+let searchLoading = false;
+
+let searchAccum = {
+    posts: [],
+    users: [],
+    confession: [],
+    topics: [],
+    homework: []
+};
+
+function resetSearchState() {
+    searchPage = 1;
+    searchNoMore = false;
+    searchLoading = false;
+    searchAccum = {
+        posts: [],
+        users: [],
+        confession: [],
+        topics: [],
+        homework: []
+    };
+}
+
 function renderSearch() {
     return `<div class="search-page" style="background:#fff;min-height:100vh;">\n        <div class="navbar" style="position:sticky;top:0;z-index:10;">\n          <div onclick="goBack()" style="font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div>\n          <h1 style="flex:1;text-align:center;font-size:18px;font-weight:600;">搜索</h1>\n          <div style="width:40px;"></div>\n        </div>\n        <div style="padding:12px 16px;">\n          <div class="search-bar" style="display:flex;gap:10px;">\n            <input class="search-input" id="searchInput" placeholder="搜索帖子或用户..." style="flex:1;background:#f2f2f2;border-radius:20px;padding:10px 16px;border:none;">\n            <button class="btn" onclick="doSearch()" style="background:var(--color-primary);color:#fff;padding:8px 20px;border-radius:20px;border:none;font-weight:500;">搜索</button>\n          </div>\n        </div>\n        <div class="search-tabs" style="display:flex;background:#fff;border-bottom:0.5px solid #eee;overflow-x:auto;">\n          <div class="search-tab ${searchCurrentTab === "all" ? "active" : ""}" data-tab="all" onclick="switchSearchTab('all')" style="flex:1;text-align:center;padding:10px;font-size:14px;color:#999;font-weight:500;white-space:nowrap;">全部</div>\n          <div class="search-tab ${searchCurrentTab === "posts" ? "active" : ""}" data-tab="posts" onclick="switchSearchTab('posts')" style="flex:1;text-align:center;padding:10px;font-size:14px;color:#999;font-weight:500;white-space:nowrap;">帖子</div>\n          <div class="search-tab ${searchCurrentTab === "users" ? "active" : ""}" data-tab="users" onclick="switchSearchTab('users')" style="flex:1;text-align:center;padding:10px;font-size:14px;color:#999;font-weight:500;white-space:nowrap;">用户</div>\n          <div class="search-tab ${searchCurrentTab === "confession" ? "active" : ""}" data-tab="confession" onclick="switchSearchTab('confession')" style="flex:1;text-align:center;padding:10px;font-size:14px;color:#999;font-weight:500;white-space:nowrap;">表白墙</div>\n          <div class="search-tab ${searchCurrentTab === "topics" ? "active" : ""}" data-tab="topics" onclick="switchSearchTab('topics')" style="flex:1;text-align:center;padding:10px;font-size:14px;color:#999;font-weight:500;white-space:nowrap;">话题</div>\n          <div class="search-tab ${searchCurrentTab === "homework" ? "active" : ""}" data-tab="homework" onclick="switchSearchTab('homework')" style="flex:1;text-align:center;padding:10px;font-size:14px;color:#999;font-weight:500;white-space:nowrap;">作业</div>\n        </div>\n        <div id="searchResult"></div>\n      </div>`;
 }
@@ -7984,6 +8024,8 @@ function switchSearchTab(tab) {
 }
 
 function bindSearchEvents() {
+    resetSearchState();
+    searchKeyword = "";
     const input = document.getElementById("searchInput");
     if (input) {
         input.addEventListener("keydown", e => {
@@ -7994,6 +8036,7 @@ function bindSearchEvents() {
     document.querySelectorAll(".search-tab").forEach(tab => {
         tab.style.color = tab.classList.contains("active") ? "#333" : "#999";
     });
+    window.onscroll = onSearchScroll;
 }
 
 function renderSearchHomeworkCard(item) {
@@ -8017,7 +8060,7 @@ function renderSearchTopicCard(t) {
 }
 
 function renderSearchUserCard(u) {
-    return `<div class="user-select-item" onclick="goUserProfile('${u.uid}')" style="cursor:pointer;padding:12px 16px;border-bottom:0.5px solid #f0f0f0;">\n        <img src="${resolveMediaUrl(u.avatar) || DEFAULT_AVATAR}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n        <div class="info">${u.nickname}<div style="font-size:12px;color:#999;">赞话号: ${u.uid}</div></div>\n      </div>`;
+    return `<div class="user-select-item" onclick="goUserProfile('${u.uid}')" style="cursor:pointer;padding:12px 16px;border-bottom:0.5px solid #f0f0f0;">\n        <img src="${resolveMediaUrl(u.avatar) || DEFAULT_AVATAR}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n        <div class="info">${escapeHtml(u.nickname)}<div style="font-size:12px;color:#999;">赞话号: ${escapeHtml(u.uid)}</div></div>\n      </div>`;
 }
 
 function renderSearchSection(title, html) {
@@ -8031,83 +8074,112 @@ async function doSearch() {
         result.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">请输入关键词</div>';
         return;
     }
-    result.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">搜索中...</div>';
+    searchKeyword = keyword;
+    resetSearchState();
+    result.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">搜索中...</div>' + '<div id="searchLoadMore" style="display:none;"></div>' + '<div id="searchNoMore" style="display:none;text-align:center;padding:20px;color:#999;font-size:13px;"></div>';
+    await fetchSearchPage();
+}
+
+async function fetchSearchPage() {
+    if (searchLoading || searchNoMore || !searchKeyword) return;
+    const result = document.getElementById("searchResult");
+    if (!result) return;
+    searchLoading = true;
+    const loadEl = document.getElementById("searchLoadMore");
+    if (loadEl && searchPage > 1) loadEl.style.display = "block";
+    const cats = [ "posts", "users", "confession", "topics", "homework" ];
     try {
-        const res = await api("/search?keyword=" + encodeURIComponent(keyword) + "&tab=" + searchCurrentTab);
+        const res = await api("/search?keyword=" + encodeURIComponent(searchKeyword) + "&tab=" + searchCurrentTab + "&page=" + searchPage + "&size=" + searchSize);
         if (res.code !== 1) {
-            if (res.msg === "未登录") {
-                result.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#999;"><i class="fa-solid fa-lock" style="font-size:32px;margin-bottom:12px;display:block;"></i>登录后使用搜索功能</div>';
-            } else {
-                result.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">' + (res.msg || "搜索失败") + "</div>";
+            if (searchPage === 1) {
+                if (res.msg === "未登录") {
+                    result.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#999;"><i class="fa-solid fa-lock" style="font-size:32px;margin-bottom:12px;display:block;"></i>登录后使用搜索功能</div>';
+                } else {
+                    result.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">' + (res.msg || "搜索失败") + "</div>";
+                }
             }
+            searchNoMore = true;
+            searchLoading = false;
             return;
         }
         const data = res.data || {};
-        const posts = data.posts || [];
-        const confession = data.confession || [];
-        const users = data.users || [];
-        const topics = data.topics || [];
-        const homework = data.homework || [];
-        if (searchCurrentTab === "all") {
-            let allEmpty = posts.length === 0 && confession.length === 0 && users.length === 0 && topics.length === 0 && homework.length === 0;
-            if (allEmpty) {
-                result.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">未找到相关内容</div>';
-                return;
-            }
-            let html = "";
-            if (posts.length > 0) {
-                html += renderSearchSection("帖子", posts.map(renderPostCard).join(""));
-            }
-            if (homework.length > 0) {
-                html += renderSearchSection("作业", homework.map(renderSearchHomeworkCard).join(""));
-            }
-            if (confession.length > 0) {
-                html += renderSearchSection("表白墙", confession.map(renderConfessionCard).join(""));
-            }
-            if (topics.length > 0) {
-                html += renderSearchSection("话题", '<div style="background:#fff;">' + topics.map(renderSearchTopicCard).join("") + "</div>");
-            }
-            if (users.length > 0) {
-                html += renderSearchSection("用户", '<div style="background:#fff;">' + users.map(renderSearchUserCard).join("") + "</div>");
-            }
-            result.innerHTML = html;
-            if (posts.length > 0) setTimeout(refreshCardExpandButtons, 0);
-        } else if (searchCurrentTab === "posts") {
-            if (posts.length > 0) {
-                result.innerHTML = posts.map(renderPostCard).join("");
-                setTimeout(refreshCardExpandButtons, 0);
-            } else {
-                result.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">未找到帖子</div>';
-            }
-        } else if (searchCurrentTab === "users") {
-            if (users.length > 0) {
-                result.innerHTML = '<div style="background:#fff;">' + users.map(renderSearchUserCard).join("") + "</div>";
-            } else {
-                result.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">未找到用户</div>';
-            }
-        } else if (searchCurrentTab === "confession") {
-            if (confession.length > 0) {
-                result.innerHTML = confession.map(renderConfessionCard).join("");
-            } else {
-                result.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">未找到表白</div>';
-            }
-        } else if (searchCurrentTab === "topics") {
-            if (topics.length > 0) {
-                result.innerHTML = '<div style="background:#fff;">' + topics.map(renderSearchTopicCard).join("") + "</div>";
-            } else {
-                result.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">未找到话题</div>';
-            }
-        } else if (searchCurrentTab === "homework") {
-            if (homework.length > 0) {
-                result.innerHTML = homework.map(renderSearchHomeworkCard).join("");
-                setTimeout(refreshCardExpandButtons, 0);
-            } else {
-                result.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">未找到作业</div>';
+        for (const c of cats) {
+            const arr = data[c] || [];
+            if (!Array.isArray(searchAccum[c])) searchAccum[c] = [];
+            for (const it of arr) {
+                const key = c === "topics" ? it.topic : it.id || it.uid;
+                if (!searchAccum[c].some(x => (c === "topics" ? x.topic : x.id || x.uid) === key)) {
+                    searchAccum[c].push(it);
+                }
             }
         }
+        if (res.hasMore === false) searchNoMore = true; else searchPage++;
+        renderSearchResults();
     } catch (e) {
-        result.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">网络异常</div>';
+        if (searchPage === 1) {
+            result.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">网络异常</div>';
+            searchNoMore = true;
+        }
     }
+    if (loadEl) loadEl.style.display = "none";
+    searchLoading = false;
+    const noMoreEl = document.getElementById("searchNoMore");
+    if (noMoreEl) {
+        const any = cats.some(c => (searchAccum[c] || []).length > 0);
+        if (searchNoMore && any) {
+            noMoreEl.innerHTML = "— 没有更多了 —";
+            noMoreEl.style.display = "block";
+        } else {
+            noMoreEl.style.display = "none";
+        }
+    }
+}
+
+function renderSearchResults() {
+    const result = document.getElementById("searchResult");
+    if (!result) return;
+    const posts = searchAccum.posts || [];
+    const confession = searchAccum.confession || [];
+    const users = searchAccum.users || [];
+    const topics = searchAccum.topics || [];
+    const homework = searchAccum.homework || [];
+    let inner = "";
+    if (searchCurrentTab === "all") {
+        const allEmpty = posts.length === 0 && confession.length === 0 && users.length === 0 && topics.length === 0 && homework.length === 0;
+        if (allEmpty) inner = '<div style="text-align:center;padding:40px;color:#999;">未找到相关内容</div>'; else {
+            let html = "";
+            if (posts.length > 0) html += renderSearchSection("帖子", posts.map(renderPostCard).join(""));
+            if (homework.length > 0) html += renderSearchSection("作业", homework.map(renderSearchHomeworkCard).join(""));
+            if (confession.length > 0) html += renderSearchSection("表白墙", confession.map(renderConfessionCard).join(""));
+            if (topics.length > 0) html += renderSearchSection("话题", '<div style="background:#fff;">' + topics.map(renderSearchTopicCard).join("") + "</div>");
+            if (users.length > 0) html += renderSearchSection("用户", '<div style="background:#fff;">' + users.map(renderSearchUserCard).join("") + "</div>");
+            inner = html;
+        }
+    } else if (searchCurrentTab === "posts") {
+        inner = posts.length ? posts.map(renderPostCard).join("") : '<div style="text-align:center;padding:40px;color:#999;">未找到帖子</div>';
+    } else if (searchCurrentTab === "users") {
+        inner = users.length ? '<div style="background:#fff;">' + users.map(renderSearchUserCard).join("") + "</div>" : '<div style="text-align:center;padding:40px;color:#999;">未找到用户</div>';
+    } else if (searchCurrentTab === "confession") {
+        inner = confession.length ? confession.map(renderConfessionCard).join("") : '<div style="text-align:center;padding:40px;color:#999;">未找到表白</div>';
+    } else if (searchCurrentTab === "topics") {
+        inner = topics.length ? '<div style="background:#fff;">' + topics.map(renderSearchTopicCard).join("") + "</div>" : '<div style="text-align:center;padding:40px;color:#999;">未找到话题</div>';
+    } else if (searchCurrentTab === "homework") {
+        inner = homework.length ? homework.map(renderSearchHomeworkCard).join("") : '<div style="text-align:center;padding:40px;color:#999;">未找到作业</div>';
+    }
+    result.innerHTML = '<div id="searchList">' + inner + "</div>" + '<div id="searchLoadMore" style="display:none;padding:14px 16px 24px;"><div class="sk-item" style="height:14px;margin-bottom:8px;"></div><div class="sk-item" style="height:14px;width:60%;"></div></div>' + '<div id="searchNoMore" style="display:none;text-align:center;padding:20px;color:#999;font-size:13px;"></div>';
+    const noMoreEl = document.getElementById("searchNoMore");
+    const any = [ posts, confession, users, topics, homework ].some(a => a.length > 0);
+    if (noMoreEl && searchNoMore && any) {
+        noMoreEl.innerHTML = "— 没有更多了 —";
+        noMoreEl.style.display = "block";
+    }
+    if (posts.length > 0 || homework.length > 0) setTimeout(refreshCardExpandButtons, 0);
+}
+
+function onSearchScroll() {
+    if (currentPage !== "search") return;
+    if (searchNoMore || searchLoading || !searchKeyword) return;
+    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 300) fetchSearchPage();
 }
 
 let userProfileCurrentTab = "posts";
@@ -8219,7 +8291,7 @@ function renderUserProfile() {
         followBtnHtml = `<button id="followBtn" onclick="toggleFollow()" style="flex:1;padding:10px;border:none;border-radius:20px;font-size:15px;font-weight:600;cursor:pointer;background:var(--color-primary);color:#fff;">关注</button>`;
     }
     let privateBadge = isPrivate ? '<span style="margin-left:6px;padding:2px 6px;background:#fff3e0;color:#ff9800;border-radius:10px;font-size:11px;">私密</span>' : "";
-    return `<div class="page">\n        <div class="navbar"><div onclick="goBack()" style="font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div><h1 style="flex:1;text-align:center;">主页</h1>${isMine ? '<div style="width:40px;"></div>' : "<div onclick=\"goReport('user','" + u.uid + '\')" style="width:40px;text-align:center;cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i></div>'}</div>\n        <div class="profile-header">\n          <div class="profile-top">\n            <img class="profile-avatar" src="${resolveMediaUrl(u.avatar) || DEFAULT_AVATAR}" style="width:60px;height:60px;border-radius:50%;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="profile-info">\n              <div class="profile-name">${u.nickname || "用户" + u.uid}${privateBadge}</div>\n              <div class="profile-id">赞话号: ${u.uid} · IP: ${cleanProvince(u.province) || "未知"}</div>\n            </div>\n          </div>\n          ${(() => {
+    return `<div class="page">\n        <div class="navbar"><div onclick="goBack()" style="font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div><h1 style="flex:1;text-align:center;">主页</h1>${isMine ? '<div style="width:40px;"></div>' : "<div onclick=\"goReport('user','" + u.uid + '\')" style="width:40px;text-align:center;cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i></div>'}</div>\n        <div class="profile-header">\n          <div class="profile-top">\n            <img class="profile-avatar" src="${resolveMediaUrl(u.avatar) || DEFAULT_AVATAR}" style="width:60px;height:60px;border-radius:50%;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="profile-info">\n              <div class="profile-name">${escapeHtml(u.nickname || "用户" + u.uid)}${privateBadge}</div>\n              <div class="profile-id">赞话号: ${escapeHtml(u.uid)} · IP: ${cleanProvince(u.province) || "未知"}</div>\n            </div>\n          </div>\n          ${(() => {
         const vRows = renderProfileVerificationRows(u);
         if (!vRows) return "";
         return '<div class="profile-verifications">' + vRows + "</div>" + (!isMine ? '<div style="padding:6px 0 0;"><span style="font-size:13px;color:var(--color-primary);cursor:pointer;" onclick="goPage(\'verifSubscribe\')">我也要申请认证 <i class="fa-solid fa-chevron-right" style="font-size:11px;"></i></span></div>' : "");
@@ -8311,7 +8383,7 @@ async function loadUserProfileContent() {
                     const imgs = c.images ? c.images.split(",").filter(x => x) : [];
                     const cover = imgs[0] || "";
                     const hasImages = imgs.length > 0;
-                    return `<div class="card" onclick="goConfessionDetail(${c.id})" style="margin:0 8px 8px;">\n                <div class="post-header" style="padding:10px 12px;">\n                  <img class="avatar" src="${c.is_anonymous ? DEFAULT_AVATAR : resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" style="width:32px;height:32px;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n                  <div class="post-user">\n                    <div class="post-nickname" style="font-size:13px;">${c.is_anonymous ? "匿名用户" : wrapNick(c.nickname || "用户" + c.user_id, c)}${c.is_anonymous ? '<span style="margin-left:4px;padding:1px 5px;background:#f0f0f0;color:#999;border-radius:8px;font-size:10px;">匿名</span>' : ""}${!c.is_anonymous ? renderListVerification(c) : ""}</div>\n                    <div class="post-time" style="font-size:11px;">${timeAgo(c.create_time)}</div>\n                  </div>\n                </div>\n                <div class="post-content" style="padding:0 12px 8px;font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;height:78px;max-height:78px;box-sizing:content-box;">${escapeHtml(c.content || "").replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, "@$1").replace(/\n/g, " ")}</div>\n                ${hasImages ? `<div style="padding:0 12px 8px;"><img loading="lazy" src="${resolveThumb(cover)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>` : ""}\n                <div class="post-actions" style="padding:6px 0 10px;font-size:12px;">\n                  <div class="action-item"><i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i><span>${c.likes || 0}</span></div>\n                  <div class="action-item"><i class="fa-regular fa-comment"></i><span>${c.comment_count || 0}</span></div>\n                </div>\n              </div>`;
+                    return `<div class="card" onclick="goConfessionDetail(${c.id})" style="margin:0 8px 8px;">\n                <div class="post-header" style="padding:10px 12px;">\n                  <img class="avatar" src="${c.is_anonymous ? DEFAULT_AVATAR : resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" style="width:32px;height:32px;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n                  <div class="post-user">\n                    <div class="post-nickname" style="font-size:13px;">${c.is_anonymous ? "匿名用户" : wrapNick(escapeHtml(c.nickname || "用户" + c.user_id), c)}${c.is_anonymous ? '<span style="margin-left:4px;padding:1px 5px;background:#f0f0f0;color:#999;border-radius:8px;font-size:10px;">匿名</span>' : ""}${!c.is_anonymous ? renderListVerification(c) : ""}</div>\n                    <div class="post-time" style="font-size:11px;">${timeAgo(c.create_time)}</div>\n                  </div>\n                </div>\n                <div class="post-content" style="padding:0 12px 8px;font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;height:78px;max-height:78px;box-sizing:content-box;">${escapeHtml(c.content || "").replace(/@\[\d+\]([^\s\[\]<]{1,30})/g, "@$1").replace(/\n/g, " ")}</div>\n                ${hasImages ? `<div style="padding:0 12px 8px;"><img loading="lazy" src="${resolveThumb(cover)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;"></div>` : ""}\n                <div class="post-actions" style="padding:6px 0 10px;font-size:12px;">\n                  <div class="action-item"><i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i><span>${c.likes || 0}</span></div>\n                  <div class="action-item"><i class="fa-regular fa-comment"></i><span>${c.comment_count || 0}</span></div>\n                </div>\n              </div>`;
                 }).join(""));
             } else {
                 _write("", "", '<div style="text-align:center;padding:40px 20px;color:#999;">TA还没有发布过表白</div>');
@@ -8391,7 +8463,7 @@ async function bindStrangerListEvents() {
         if (!res.data || res.data.length === 0) {
             list.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">暂无陌生人消息</div>';
         } else {
-            list.innerHTML = res.data.map(c => `\n            <div class="chat-list-item" onclick="goChat('${c.otherUser}', ${c.is_anonymous ? "true" : "false"})" style="display:flex;align-items:center;padding:12px 16px;border-bottom:0.5px solid #f0f0f0;cursor:pointer;">\n              <img src="${c.is_anonymous ? DEFAULT_AVATAR : resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" style="width:44px;height:44px;border-radius:50%;flex-shrink:0;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n              <div style="flex:1;margin-left:12px;overflow:hidden;">\n                <div style="display:flex;justify-content:space-between;align-items:center;">\n                  <span style="font-weight:600;font-size:15px;">${c.nickname || "用户" + c.otherUser}${c.is_anonymous ? '<span style="margin-left:6px;padding:2px 6px;background:#f0f0f0;color:#999;border-radius:10px;font-size:11px;">匿名</span>' : ""}</span>\n                  <span style="font-size:12px;color:#999;">${timeAgo(c.lastTime)}</span>\n                </div>\n                <div style="font-size:13px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">${c.type === "image" ? "[图片]" : c.type === "video" ? "[视频]" : c.lastMessage || ""}</div>\n              </div>\n            </div>\n          `).join("");
+            list.innerHTML = res.data.map(c => `\n            <div class="chat-list-item" onclick="goChat('${c.otherUser}', ${c.is_anonymous ? "true" : "false"})" style="display:flex;align-items:center;padding:12px 16px;border-bottom:0.5px solid #f0f0f0;cursor:pointer;">\n              <img src="${c.is_anonymous ? DEFAULT_AVATAR : resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" style="width:44px;height:44px;border-radius:50%;flex-shrink:0;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n              <div style="flex:1;margin-left:12px;overflow:hidden;">\n                <div style="display:flex;justify-content:space-between;align-items:center;">\n                  <span style="font-weight:600;font-size:15px;">${escapeHtml(c.nickname || "用户" + c.otherUser)}${c.is_anonymous ? '<span style="margin-left:6px;padding:2px 6px;background:#f0f0f0;color:#999;border-radius:10px;font-size:11px;">匿名</span>' : ""}</span>\n                  <span style="font-size:12px;color:#999;">${timeAgo(c.lastTime)}</span>\n                </div>\n                <div style="font-size:13px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">${c.type === "image" ? "[图片]" : c.type === "video" ? "[视频]" : c.lastMessage || ""}</div>\n              </div>\n            </div>\n          `).join("");
         }
     } catch (e) {
         document.getElementById("strangerChatList").innerHTML = '<div style="text-align:center;padding:20px;color:#999;">加载失败</div>';
@@ -11089,7 +11161,7 @@ function renderCachedAppealSection(info) {
     if (!token) {
         return `<div style="text-align:center;padding:8px;background:#f5f5f7;border-radius:8px;">\n          <span style="font-size:13px;color:#666;">如需申诉，请点击下方查看详情。</span>\n        </div>`;
     }
-    const status = localStorage.getItem("zanhua_appeal_status_" + token) || info.appealStatus || "";
+    const status = localStorage.getItem("zanhua_appeal_status_" + token) || "";
     if (status === "processing") {
         return `<div style="margin-bottom:12px;">\n          <div style="text-align:center;padding:12px;background:#E8F0FE;border-radius:8px;margin-bottom:10px;">\n            <span style="font-size:13px;color:#1677ff;">申诉处理中，我们会在1-3个工作日内审核</span>\n          </div>\n          ${renderAppealLinkSection(token)}\n        </div>`;
     }
