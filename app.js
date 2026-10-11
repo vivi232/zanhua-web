@@ -6242,7 +6242,8 @@ async function loadDiscoverContent(tab) {
             }
         } else if (tab === "confession") {
             const CONFESSION_WALL_UID = "71196432";
-            const [res, wallRes] = await Promise.all([ api("/confessionList?page=1&size=20"), api("/myPosts?uid=" + CONFESSION_WALL_UID + "&page=1&size=20") ]);
+            const [res, wallRes, profRes] = await Promise.all([ api("/confessionList?page=1&size=20"), api("/myPosts?uid=" + CONFESSION_WALL_UID + "&page=1&size=20"), api("/userProfile?uid=" + CONFESSION_WALL_UID) ]);
+            const wallUid = profRes && profRes.code === 1 && profRes.data ? profRes.data : {};
             const confessions = (res && res.data && res.data.length ? res.data : []).map(c => ({
                 __kind: "confession",
                 __t: c.create_time || "",
@@ -6251,7 +6252,12 @@ async function loadDiscoverContent(tab) {
             const wallPosts = (wallRes && wallRes.code === 1 && wallRes.data ? wallRes.data : []).map(p => ({
                 __kind: "post",
                 __t: p.create_time || "",
-                __render: () => renderPostCard(p)
+                __render: () => {
+                    if (wallUid.nickname) p.nickname = wallUid.nickname;
+                    if (wallUid.avatar) p.avatar = wallUid.avatar;
+                    if (wallUid.verifications && !p.verifications) p.verifications = wallUid.verifications;
+                    return renderPostCard(p);
+                }
             }));
             const merged = confessions.concat(wallPosts).sort((a, b) => a.__t < b.__t ? 1 : a.__t > b.__t ? -1 : 0);
             let listHtml = "";
