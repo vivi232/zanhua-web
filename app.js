@@ -6241,10 +6241,22 @@ async function loadDiscoverContent(tab) {
                 setTimeout(refreshCardExpandButtons, 0);
             }
         } else if (tab === "confession") {
-            const res = await api("/confessionList?page=1&size=20");
+            const CONFESSION_WALL_UID = "71196432";
+            const [res, wallRes] = await Promise.all([ api("/confessionList?page=1&size=20"), api("/myPosts?uid=" + CONFESSION_WALL_UID + "&page=1&size=20") ]);
+            const confessions = (res && res.data && res.data.length ? res.data : []).map(c => ({
+                __kind: "confession",
+                __t: c.create_time || "",
+                __render: () => renderConfessionCard(c)
+            }));
+            const wallPosts = (wallRes && wallRes.code === 1 && wallRes.data ? wallRes.data : []).map(p => ({
+                __kind: "post",
+                __t: p.create_time || "",
+                __render: () => renderPostCard(p)
+            }));
+            const merged = confessions.concat(wallPosts).sort((a, b) => a.__t < b.__t ? 1 : a.__t > b.__t ? -1 : 0);
             let listHtml = "";
-            if (res.data && res.data.length > 0) {
-                listHtml = res.data.map(renderConfessionCard).join("");
+            if (merged.length > 0) {
+                listHtml = merged.map(x => x.__render()).join("");
             } else {
                 listHtml = '<div style="text-align:center;padding:60px 20px;color:#999;">暂无表白，来发布第一条吧</div>';
             }
