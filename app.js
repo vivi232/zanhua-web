@@ -8507,6 +8507,10 @@ function renderChat() {
 }
 
 async function bindChatEvents() {
+    try {
+        const meRes = await api("/userInfo", "POST");
+        if (meRes && meRes.code === 1) myAvatar = meRes.data && meRes.data.avatar || "";
+    } catch (e) {}
     await loadChatMessages();
     chatTimer = setInterval(loadChatMessages, 5e3);
     ensureChatInputVisible();
@@ -9660,7 +9664,11 @@ async function uploadNewAvatar(file) {
     try {
         const res = await apiForm("/uploadAvatar", fd);
         if (res.code === 1) {
+            myAvatar = res.data.avatar || "";
             document.getElementById("editAvatar").src = resolveMediaUrl(res.data.avatar);
+            const liveMyAvatarEl = document.getElementById("myAvatar");
+            if (liveMyAvatarEl) liveMyAvatarEl.src = resolveMediaUrl(myAvatar) || DEFAULT_AVATAR;
+            if (typeof loadChatMessages === "function" && currentPage === "chat") loadChatMessages();
             showToast("头像上传成功");
         } else {
             handleActionError(res, "上传失败");
