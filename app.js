@@ -6342,11 +6342,14 @@ function renderAuth() {
 let captchaSdkPromise = null;
 
 function getClientConfig() {
+    if (clientConfig && clientConfig.captchaSceneId) return Promise.resolve(clientConfig);
     if (clientConfigPromise) return clientConfigPromise;
     clientConfigPromise = api("/clientConfig").then(function(res) {
         if (res && res.code === 1 && res.data) clientConfig = res.data;
+        clientConfigPromise = null;
         return clientConfig;
     }).catch(function() {
+        clientConfigPromise = null;
         return clientConfig;
     });
     return clientConfigPromise;
@@ -7058,7 +7061,17 @@ function handleSendCode() {
         document.getElementById("tipPhone").textContent = "请输入正确的手机号";
         return;
     }
-    if (captchaIns) captchaIns.show(); else showToast("验证组件加载中，请稍后");
+    if (captchaIns) {
+        captchaIns.show();
+        return;
+    }
+    initCaptchaIfNeeded();
+    showToast("正在加载验证组件…");
+    ensureCaptchaSdk().then(getCaptchaSceneId).then(function() {
+        if (captchaIns) captchaIns.show(); else showToast("验证组件加载失败，请重试");
+    }).catch(function() {
+        showToast("验证组件加载失败，请重试");
+    });
 }
 
 async function handleAuth() {
@@ -7308,7 +7321,17 @@ function handleLoginSendCode() {
         document.getElementById("loginTipPhone").textContent = "请输入正确的手机号";
         return;
     }
-    if (loginCaptchaIns) loginCaptchaIns.show(); else showToast("验证组件加载中，请稍后");
+    if (loginCaptchaIns) {
+        loginCaptchaIns.show();
+        return;
+    }
+    initLoginCaptchaIfNeeded();
+    showToast("正在加载验证组件…");
+    ensureCaptchaSdk().then(getCaptchaSceneId).then(function() {
+        if (loginCaptchaIns) loginCaptchaIns.show(); else showToast("验证组件加载失败，请重试");
+    }).catch(function() {
+        showToast("验证组件加载失败，请重试");
+    });
 }
 
 async function handleLoginAuth() {
