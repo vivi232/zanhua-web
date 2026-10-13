@@ -363,6 +363,12 @@ let discoverCache = {};
 
 let discoverActiveTab = "hot";
 
+let _discoverReqSeq = 0;
+
+let _lastDiscoverTab = "";
+
+let _lastDiscoverTabAt = 0;
+
 let chatListCache = null;
 
 let profileHeaderCache = null;
@@ -567,6 +573,8 @@ let createDeclaration = "";
 
 let createAllowDownload = 0;
 
+const SCREEN_WATERMARK_DISABLED = true;
+
 function removeVisibleUidWatermark() {
     const visibleWm = document.getElementById("visible-wm-overlay");
     if (visibleWm) visibleWm.remove();
@@ -580,6 +588,7 @@ function _isCurrentPostProtected() {
 function injectVisibleUidWatermark() {
     const old = document.getElementById("visible-wm-overlay");
     if (old) old.remove();
+    if (SCREEN_WATERMARK_DISABLED) return;
     const needShow = visibleWatermarkEnabled || _isCurrentPostProtected();
     if (!needShow) return;
     const uid = getUid();
@@ -618,6 +627,11 @@ function _ensureVisibleWmOnScroll() {
 }
 
 function updateScreenWatermark() {
+    if (SCREEN_WATERMARK_DISABLED) {
+        removeVisibleUidWatermark();
+        dctWmRemoveCanvas();
+        return;
+    }
     if (currentPage === "postDetail" || currentPage === "confessionDetail" || currentPage === "homeworkDetail") {
         const needShow = visibleWatermarkEnabled || _isCurrentPostProtected();
         if (needShow) {
@@ -644,6 +658,7 @@ let dctWmTileLoading = null;
 let dctWmTileUrl = null;
 
 function dctWmShouldShow() {
+    if (SCREEN_WATERMARK_DISABLED) return false;
     if (!getUid()) return false;
     return DCT_WM_PAGES.indexOf(currentPage) >= 0;
 }
@@ -1273,23 +1288,46 @@ function formatCommentContent(content) {
 function getVerifSvg(type, size = 14, inline = false) {
     const align = inline ? "vertical-align:-2px;" : "";
     const s = `width:${size}px;height:${size}px;flex-shrink:0;${align}`;
+    const wmErr = "this.onerror=null;this.style.display='none';";
     if (type === "enterprise") {
-        return `<img src="${MEDIA_BASE}/res/icons/icon-i5xq4thdo.svg" style="${s};filter:invert(35%) sepia(94%) saturate(1587%) hue-rotate(185deg) brightness(97%) contrast(95%);" class="verif-icon verif-enterprise" alt="认证">`;
+        return `<img src="${MEDIA_BASE}/res/icons/icon-i5xq4thdo.svg" style="${s};filter:invert(35%) sepia(94%) saturate(1587%) hue-rotate(185deg) brightness(97%) contrast(95%);" class="verif-icon verif-enterprise" alt="认证" onerror="${wmErr}">`;
     }
     if (type === "basic") {
-        return `<img src="${MEDIA_BASE}/res/icons/icon-i5xq4thdo.svg" style="${s};filter:invert(52%) sepia(28%) saturate(614%) hue-rotate(86deg) brightness(94%) contrast(90%);" class="verif-icon verif-basic" alt="普通认证">`;
+        return `<img src="${MEDIA_BASE}/res/icons/icon-i5xq4thdo.svg" style="${s};filter:invert(52%) sepia(28%) saturate(614%) hue-rotate(86deg) brightness(94%) contrast(90%);" class="verif-icon verif-basic" alt="普通认证" onerror="${wmErr}">`;
     }
     if (type === "personal") {
-        return `<img src="${MEDIA_BASE}/res/icons/icon-i5xq4thdo.svg" style="${s};filter:invert(68%) sepia(98%) saturate(2000%) hue-rotate(10deg) brightness(95%) contrast(105%);" class="verif-icon verif-personal" alt="认证">`;
+        return `<img src="${MEDIA_BASE}/res/icons/icon-i5xq4thdo.svg" style="${s};filter:invert(68%) sepia(98%) saturate(2000%) hue-rotate(10deg) brightness(95%) contrast(105%);" class="verif-icon verif-personal" alt="认证" onerror="${wmErr}">`;
     }
     if (type === "advanced") {
-        return `<img src="${MEDIA_BASE}/res/icons/icon-jztvozsrv.svg" style="${s};filter:grayscale(100%) brightness(0.82) contrast(1.15);" class="verif-icon verif-advanced" alt="进阶认证">`;
+        return `<img src="${MEDIA_BASE}/res/icons/icon-jztvozsrv.svg" style="${s};filter:grayscale(100%) brightness(0.82) contrast(1.15);" class="verif-icon verif-advanced" alt="进阶认证" onerror="${wmErr}">`;
     }
     if (type === "premium") {
-        return `<img src="${MEDIA_BASE}/res/icons/icon-jztvozsrv.svg" style="${s}" class="verif-icon verif-premium" alt="高级认证">`;
+        return `<img src="${MEDIA_BASE}/res/icons/icon-jztvozsrv.svg" style="${s}" class="verif-icon verif-premium" alt="高级认证" onerror="${wmErr}">`;
     }
     return "";
 }
+
+(function() {
+    if (window.__imgErrGuardBound) return;
+    window.__imgErrGuardBound = true;
+    document.addEventListener("error", function(e) {
+        const t = e.target;
+        if (!t || t.tagName !== "IMG" || t.__imgErrHandled) return;
+        t.__imgErrHandled = true;
+        t.dataset.imgErrored = "1";
+        t.style.backgroundColor = "rgba(0,0,0,0.04)";
+        const cls = t.className || "";
+        if (cls.indexOf("verif-icon") >= 0 || cls.indexOf("icon") >= 0 && t.width <= 32) {
+            t.style.display = "none";
+            return;
+        }
+        if (t.closest && t.closest(".post-images") && t.closest(".post-images").querySelectorAll("img").length > 1) {
+            t.style.display = "none";
+            return;
+        }
+        t.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+    }, true);
+})();
 
 function getVerificationTypes(data) {
     if (!data) return [];
@@ -4467,6 +4505,17 @@ function bindCreatePostEvents() {
     }
     loadHotTopics();
     document.getElementById("createLocList").innerHTML = `<span class="active" style="background:var(--color-primary-light);color:var(--color-primary);">不标记地点</span>` + `<span onclick="event.stopPropagation();fetchNearbyLocations(this)" style="color:var(--color-primary);"><i class="fa-solid fa-location-crosshairs"></i> 获取附近位置</span>`;
+    try {
+        if (navigator.geolocation && navigator.permissions && navigator.permissions.query) {
+            navigator.permissions.query({
+                name: "geolocation"
+            }).then(function(st) {
+                if (st && st.state === "granted" && currentPage === "createPost") {
+                    fetchNearbyLocations(null);
+                }
+            }).catch(function() {});
+        }
+    } catch (e) {}
 }
 
 async function fetchNearbyLocations(el) {
@@ -5636,15 +5685,14 @@ function showFullImage(src, imgsJson, idx) {
         holder.onload = null;
         holder.onerror = null;
         if (th) {
+            holder.style.opacity = "1";
             holder.onload = function() {
                 holder.style.opacity = "1";
             };
-            if (holder.src === th && holder.complete) {
-                holder.style.opacity = "1";
-            } else {
+            holder.onerror = function() {
                 holder.style.opacity = "0";
-                holder.src = th;
-            }
+            };
+            if (holder.src !== th) holder.src = th;
         } else {
             holder.style.opacity = "0";
         }
@@ -6205,7 +6253,12 @@ function bindDiscoverEvents() {
             });
             tab.style.color = "#333";
             tab.classList.add("active");
-            loadDiscoverContent(tab.dataset.tab);
+            const _t = tab.dataset.tab;
+            const _now = Date.now();
+            if (_lastDiscoverTab === _t && _now - (_lastDiscoverTabAt || 0) < 400) return;
+            _lastDiscoverTab = _t;
+            _lastDiscoverTabAt = _now;
+            loadDiscoverContent(_t);
         };
     });
     loadDiscoverContent(_curActive);
@@ -6215,15 +6268,19 @@ async function loadDiscoverContent(tab) {
     discoverActiveTab = tab;
     const content = document.getElementById("discoverContent");
     if (!content) return;
+    const _mySeq = ++_discoverReqSeq;
+    const _alive = () => _mySeq === _discoverReqSeq;
     const _cached = cacheGet(discoverCache, tab);
     if (!_cached) {
         content.innerHTML = '<div style="padding:16px;"><div class="sk-item" style="height:120px;margin-bottom:10px;"></div><div class="sk-item" style="height:14px;margin-bottom:8px;"></div><div class="sk-item" style="height:14px;margin-bottom:8px;"></div><div class="sk-item" style="height:14px;width:60%;"></div></div>';
     }
     const _setError = html => {
+        if (!_alive()) return;
         if (_cached) return;
         content.innerHTML = html;
     };
     const _apply = html => {
+        if (!_alive()) return;
         if (_cached && content.querySelector(".modal-overlay.active, textarea:not(:placeholder-shown), input:not(:placeholder-shown)")) return;
         if (!(_cached && _cached.html === html)) content.innerHTML = html;
         cacheSet(discoverCache, tab, html);
@@ -7417,6 +7474,15 @@ function goPostDetail(id) {
             if (r.needLogin) {
                 showLoginModal();
                 return;
+            }
+            if (r.code === 1 && r.data) {
+                try {
+                    postDetailCache[String(r.data.id || id)] = {
+                        data: r.data,
+                        ts: Date.now(),
+                        raw: JSON.stringify(r.data)
+                    };
+                } catch (e) {}
             }
             if (r.code === 1 && r.data && r.data.watermark_protected == 1 && r.data.user_id !== getUid()) {
                 showProtectedPostWarning(id);

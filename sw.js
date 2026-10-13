@@ -2,8 +2,8 @@
     var LATIN_FONT = "https://154.201.81.86/zanhua/res/fonts/ZanhuaSans-Latin-Regular.woff2";
     var FA_BASE = "https://154.201.81.86/zanhua/static/fontawesome/webfonts/";
     var FONT_URLS = [ "https://emoji-fonts-1342939114.cos.ap-nanjing.myqcloud.com/ZanhuaSans-SC-Regular-Decrease.woff2", "https://emoji-fonts-1342939114.cos.ap-nanjing.myqcloud.com/emoji.ttf", LATIN_FONT, FA_BASE + "fa-solid-900.woff2", FA_BASE + "fa-regular-400.woff2", FA_BASE + "fa-brands-400.woff2", FA_BASE + "fa-v4compatibility.woff2" ];
-    var CACHE_NAME = "zanhua-fonts-v10";
-    var ASSET_CACHE = "zanhua-assets-v1";
+    var CACHE_NAME = "zanhua-fonts-v11";
+    var ASSET_CACHE = "zanhua-assets-v2";
     var ASSET_PATTERNS = [ "/zanhua/uploads/default_avatar.webp", "/zanhua/res/icons/icon-i5xq4thdo.svg", "/zanhua/res/icons/icon-jztvozsrv.svg", "/zanhua/static/fontawesome/" ];
     var KEY_ASSETS = [ "https://154.201.81.86/zanhua/uploads/default_avatar.webp", "https://154.201.81.86/zanhua/res/icons/icon-i5xq4thdo.svg", "https://154.201.81.86/zanhua/res/icons/icon-jztvozsrv.svg" ];
     function isSharedAsset(url) {
