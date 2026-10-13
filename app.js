@@ -1286,7 +1286,7 @@ function formatCommentContent(content) {
 }
 
 function getVerifSvg(type, size = 14, inline = false) {
-    const align = inline ? "vertical-align:-2px;" : "";
+    const align = inline ? "vertical-align:middle;" : "";
     const s = `width:${size}px;height:${size}px;flex-shrink:0;${align}`;
     const wmErr = "this.onerror=null;this.style.display='none';";
     if (type === "enterprise") {

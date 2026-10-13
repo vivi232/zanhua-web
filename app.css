@@ -2496,7 +2496,7 @@
       display: inline-flex;
       align-items: center;
       margin-left: 4px;
-      vertical-align: -1px;
+      vertical-align: middle;
       transition: transform 160ms var(--ease-out);
     }
     .post-nickname {
@@ -2505,7 +2505,7 @@
       flex-wrap: nowrap;
     }
     .post-nickname .verif-badge {
-      vertical-align: 0;
+      vertical-align: middle;
       margin-left: 4px;
     }
     .verif-badge:active {
