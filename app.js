@@ -369,6 +369,20 @@ let _lastDiscoverTab = "";
 
 let _lastDiscoverTabAt = 0;
 
+let _profileTabReqSeq = 0;
+
+let _profileTabKey = "";
+
+let _hwSubjectReqSeq = 0;
+
+let _lastProfileTab = "";
+
+let _lastProfileTabAt = 0;
+
+let _postDetailLoading = false;
+
+let _profileLoading = false;
+
 let chatListCache = null;
 
 let profileHeaderCache = null;
@@ -3765,6 +3779,8 @@ async function submitHomework() {
 async function loadHomeworkList(subject, _silent) {
     const listEl = document.getElementById("homeworkList");
     if (!listEl) return;
+    const _mySeq = ++_hwSubjectReqSeq;
+    const _alive = () => _mySeq === _hwSubjectReqSeq;
     homeworkActiveSubject = subject || "全部";
     const _stale = listEl.dataset.subject && listEl.dataset.subject !== subject;
     if (!listEl.innerHTML.trim() || _stale) listEl.innerHTML = '<div class="loading" style="text-align:center;padding:20px;">加载中...</div>';
@@ -3776,6 +3792,7 @@ async function loadHomeworkList(subject, _silent) {
     try {
         const apiSubject = subject === "全部" ? "all" : subject;
         const res = await api(`/homeworkList?subject=${encodeURIComponent(apiSubject)}&page=1&size=20`);
+        if (!_alive()) return;
         if (res.code === 0 && res.msg === "未登录") {
             if (!_silent) listEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#999;"><i class="fa-solid fa-lock" style="font-size:32px;margin-bottom:12px;display:block;"></i>登录后查看作业</div>';
             return;
@@ -3811,6 +3828,7 @@ async function loadHomeworkList(subject, _silent) {
             _snapHw();
         }
     } catch (e) {
+        if (!_alive()) return;
         if (!_silent) listEl.innerHTML = '<div class="network-error">网络异常</div>';
     }
 }
@@ -5747,6 +5765,7 @@ function goPostDetailAndScroll(id) {
 }
 
 function renderPostDetail() {
+    if (_postDetailLoading && !currentPostDetail) return '<div class="post-detail" style="background:#fff;min-height:100vh;"><div class="detail-navbar"><div class="detail-navbar-back" onclick="goBack()"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div><div class="detail-navbar-title">帖子详情</div><div style="width:32px;"></div></div><div style="padding-top:calc(50px + env(safe-area-inset-top));"><div class="loading" style="text-align:center;padding:60px;">加载中...</div></div></div>';
     if (!currentPostDetail) return '<div style="padding:40px;text-align:center;">帖子不存在或已删除</div>';
     const p = currentPostDetail;
     const imgs = p.images ? p.images.split(",").filter(x => x) : [];
@@ -7540,7 +7559,16 @@ function _goPostDetailDirect(id) {
         }).catch(() => {});
         return;
     }
+    _postDetailLoading = true;
+    currentPostDetail = null;
+    try {
+        window.scrollTo(0, 0);
+        render();
+        updateTabbar();
+    } catch (e) {}
     api("/postDetail?id=" + encodeURIComponent(id)).then(r => {
+        _postDetailLoading = false;
+        if (String(currentPage) !== "postDetail") return;
         if (r.code === 1) {
             currentPostDetail = r.data;
             if (r.data && r.data.id) {
@@ -7566,6 +7594,7 @@ function _goPostDetailDirect(id) {
             _rollbackFailedNav("postDetail");
         }
     }).catch(e => {
+        _postDetailLoading = false;
         console.error("goPostDetail error:", e);
         showToast(e.message || "网络异常，请稍后重试");
         _rollbackFailedNav("postDetail");
@@ -8343,7 +8372,16 @@ function goUserProfile(uid) {
         return;
     }
     userProfileCurrentTab = "posts";
+    _profileLoading = true;
+    currentViewUser = null;
+    try {
+        window.scrollTo(0, 0);
+        render();
+        updateTabbar();
+    } catch (e) {}
     api("/userProfile?uid=" + uid).then(r => {
+        _profileLoading = false;
+        if (String(currentPage) !== "userProfile") return;
         if (r.code === 1) {
             currentViewUser = r.data;
             if (r.data) {
@@ -8370,12 +8408,14 @@ function goUserProfile(uid) {
             _rollbackFailedNav("userProfile");
         }
     }).catch(() => {
+        _profileLoading = false;
         showToast("加载失败，请稍后重试");
         _rollbackFailedNav("userProfile");
     });
 }
 
 function renderUserProfile() {
+    if (_profileLoading && !currentViewUser) return '<div class="post-detail" style="background:#fff;min-height:100vh;"><div class="detail-navbar"><div class="detail-navbar-back" onclick="goBack()"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div><div class="detail-navbar-title">用户主页</div><div style="width:32px;"></div></div><div style="padding-top:calc(50px + env(safe-area-inset-top));"><div class="loading" style="text-align:center;padding:60px;">加载中...</div></div></div>';
     if (!currentViewUser) return '<div style="padding:40px;text-align:center;">用户不存在</div>';
     const u = currentViewUser;
     const isMine = u.uid == getUid();
@@ -8406,6 +8446,9 @@ function renderUserProfile() {
 }
 
 function switchUserProfileTab(tab) {
+    if (tab === _lastProfileTab && Date.now() - _lastProfileTabAt < 400) return;
+    _lastProfileTab = tab;
+    _lastProfileTabAt = Date.now();
     userProfileCurrentTab = tab;
     if (currentViewUser && userProfileObjCache[currentViewUser.uid]) userProfileObjCache[currentViewUser.uid].tab = tab;
     document.querySelectorAll(".profile-tabs .profile-tab").forEach(el => {
@@ -8421,6 +8464,9 @@ async function loadUserProfileContent() {
     const container = document.getElementById("userProfileContent");
     if (!container || !currentViewUser) return;
     const uid = currentViewUser.uid;
+    const _mySeq = ++_profileTabReqSeq;
+    _profileTabKey = uid + ":" + userProfileCurrentTab;
+    const _alive = () => _mySeq === _profileTabReqSeq && uid + ":" + userProfileCurrentTab === _profileTabKey;
     const _hadCache = !!cacheGet(userProfileCache, uid + ":" + userProfileCurrentTab);
     const _write = (cls, pad, html) => {
         const _key = uid + ":" + userProfileCurrentTab;
@@ -8440,6 +8486,7 @@ async function loadUserProfileContent() {
     if (userProfileCurrentTab === "posts") {
         try {
             const res = await api("/myPosts?page=1&size=20&uid=" + uid);
+            if (!_alive()) return;
             if (res.code === 1 && res.data.length > 0) {
                 _write("profile-grid", undefined, res.data.map(p => {
                     const imgs = p.images ? p.images.split(",").filter(x => x) : [];
@@ -8467,6 +8514,7 @@ async function loadUserProfileContent() {
     } else if (userProfileCurrentTab === "homework") {
         try {
             const res = await api("/homeworkList?uid=" + uid + "&page=1&size=20");
+            if (!_alive()) return;
             if (res.code === 1 && res.data.length > 0) {
                 _write("", "8px 0", res.data.map(hw => {
                     const imgs = hw.images ? hw.images.split(",").filter(x => x) : [];
@@ -8485,6 +8533,7 @@ async function loadUserProfileContent() {
     } else {
         try {
             const res = await api("/userConfessions?uid=" + uid + "&page=1&size=20");
+            if (!_alive()) return;
             if (res.code === 1 && res.data.length > 0) {
                 _write("", "8px 0", res.data.map(c => {
                     const imgs = c.images ? c.images.split(",").filter(x => x) : [];
