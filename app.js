@@ -1011,23 +1011,39 @@ async function api(url, method = "GET", data = null) {
         }
         return fetch(API_BASE + url, opts).then(function(res) {
             clearTimeout(timeoutId);
-            if (!res.ok) throw new Error("网络响应异常 (HTTP " + res.status + ")");
+            if (!res.ok) {
+                const err = new Error("网络响应异常 (HTTP " + res.status + ")");
+                if (res.status >= 500) {
+                    err._retryable = true;
+                    err._backoff = 600;
+                }
+                throw err;
+            }
             return res.json();
         }).catch(function(e) {
             clearTimeout(timeoutId);
-            if (e.name === "AbortError") throw new Error("请求超时，请检查网络");
+            if (e.name === "AbortError") {
+                const t = new Error("请求超时，请检查网络");
+                t._retryable = true;
+                t._backoff = 600;
+                throw t;
+            }
+            if (e instanceof TypeError) {
+                e._retryable = true;
+                e._backoff = 0;
+            }
             throw e;
         });
     };
     let json;
-    try {
-        json = await _once();
-    } catch (e) {
-        if (method === "GET") {
-            await new Promise(r => setTimeout(r, 600));
+    const _maxTries = method === "GET" ? 3 : 1;
+    for (let _try = 1; ;_try++) {
+        try {
             json = await _once();
-        } else {
-            throw e;
+            break;
+        } catch (e) {
+            if (_try >= _maxTries || !e._retryable) throw e;
+            if (e._backoff) await new Promise(r => setTimeout(r, e._backoff * _try));
         }
     }
     if (json && json.code === 403 && json.forceLogout) {
