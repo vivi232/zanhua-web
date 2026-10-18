@@ -239,7 +239,6 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
       
-      max-height: 72px;
       padding-bottom: 0;
       box-sizing: content-box;
     }
@@ -950,8 +949,6 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
       
-      height: 63px;
-      max-height: 63px;
       box-sizing: content-box;
     }
     .c-expand {
