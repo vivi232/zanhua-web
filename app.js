@@ -1032,26 +1032,23 @@ async function api(url, method = "GET", data = null) {
             }
             if (e instanceof TypeError) {
                 e._retryable = true;
+                e._net = true;
                 e._backoff = 0;
             }
             throw e;
         });
     };
     let json;
-    const _maxTries = method === "GET" ? 3 : 1;
+    const _maxTries = 10;
     for (let _try = 1; ;_try++) {
         try {
-            json = await _once(API_BASE);
+            const _base = API_FALLBACK && _try % 2 === 0 ? API_FALLBACK + "/api" : API_BASE;
+            json = await _once(_base);
             break;
         } catch (e) {
-            if (_try >= _maxTries || !e._retryable) {
-                if (API_FALLBACK && e._retryable) {
-                    json = await _once(API_FALLBACK + "/api");
-                    break;
-                }
-                throw e;
-            }
-            if (e._backoff) await new Promise(r => setTimeout(r, e._backoff * _try));
+            const _ok = method === "GET" ? !!e._retryable : !!e._net;
+            if (_try >= _maxTries || !_ok) throw e;
+            await new Promise(r => setTimeout(r, Math.min(300 * _try, 1200)));
         }
     }
     if (json && json.code === 403 && json.forceLogout) {
