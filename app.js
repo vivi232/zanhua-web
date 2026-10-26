@@ -46,6 +46,8 @@ function getInviteCode() {
 
 const API_HOST = "https://154.201.81.86";
 
+const API_FALLBACK = "https://zanhuaweb.asia";
+
 const API_BASE = API_HOST + "/api";
 
 const MEDIA_BASE = API_HOST + "/zanhua";
@@ -993,7 +995,7 @@ function reportVisit() {
 }
 
 async function api(url, method = "GET", data = null) {
-    const _once = () => {
+    const _once = (_base) => {
         const controller = new AbortController;
         const timeoutId = setTimeout(() => controller.abort(), 15e3);
         const opts = {
@@ -1009,7 +1011,7 @@ async function api(url, method = "GET", data = null) {
             opts.headers["Content-Type"] = "application/json";
             opts.body = JSON.stringify(data);
         }
-        return fetch(API_BASE + url, opts).then(function(res) {
+        return fetch(_base + url, opts).then(function(res) {
             clearTimeout(timeoutId);
             if (!res.ok) {
                 const err = new Error("网络响应异常 (HTTP " + res.status + ")");
@@ -1039,10 +1041,16 @@ async function api(url, method = "GET", data = null) {
     const _maxTries = method === "GET" ? 3 : 1;
     for (let _try = 1; ;_try++) {
         try {
-            json = await _once();
+            json = await _once(API_BASE);
             break;
         } catch (e) {
-            if (_try >= _maxTries || !e._retryable) throw e;
+            if (_try >= _maxTries || !e._retryable) {
+                if (API_FALLBACK && e._retryable) {
+                    json = await _once(API_FALLBACK + "/api");
+                    break;
+                }
+                throw e;
+            }
             if (e._backoff) await new Promise(r => setTimeout(r, e._backoff * _try));
         }
     }
