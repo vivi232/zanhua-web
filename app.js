@@ -994,7 +994,7 @@ function reportVisit() {
     api("/visit").catch(() => {});
 }
 
-async function api(url, method = "GET", data = null) {
+async function api(url, method = "GET", data = null, _opts) {
     const _once = (_base) => {
         const controller = new AbortController;
         const timeoutId = setTimeout(() => controller.abort(), 15e3);
@@ -1046,7 +1046,7 @@ async function api(url, method = "GET", data = null) {
             json = await _once(_base);
             break;
         } catch (e) {
-            const _ok = method === "GET" ? !!e._retryable : !!e._net;
+            const _ok = method === "GET" ? !!e._retryable : e._net || !!(_opts && _opts.idem && e._retryable);
             if (_try >= _maxTries || !_ok) throw e;
             await new Promise(r => setTimeout(r, Math.min(300 * _try, 1200)));
         }
@@ -6839,7 +6839,10 @@ function openPnvsAuthPage(retryLeft, preRender) {
             setPnvsHostLoading("正在登录...");
             api("/numberAuthLogin", "POST", {
                 spToken: res.spToken,
-                inviteCode: getInviteCode()
+                inviteCode: getInviteCode(),
+                loginId: genLoginId()
+            }, {
+                idem: true
             }).then(function(json) {
                 if (json && json.code === 1) {
                     closePnvsAuthPage();
@@ -7190,10 +7193,14 @@ async function handleAuth() {
         return;
     }
     try {
+        const _lid = genLoginId();
         const res = await api("/auth", "POST", {
             phone: phone,
             code: code,
-            inviteCode: getInviteCode()
+            inviteCode: getInviteCode(),
+            loginId: _lid
+        }, {
+            idem: true
         });
         if (res.code === 1) {
             setToken(res.data.token);
@@ -7430,6 +7437,10 @@ function handleLoginSendCode() {
     });
 }
 
+function genLoginId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+}
+
 async function handleLoginAuth() {
     const phone = document.getElementById("loginAuthPhone").value.trim();
     const code = document.getElementById("loginAuthCode").value.trim();
@@ -7450,10 +7461,14 @@ async function handleLoginAuth() {
         return;
     }
     try {
+        const _lid = genLoginId();
         const res = await api("/auth", "POST", {
             phone: phone,
             code: code,
-            inviteCode: getInviteCode()
+            inviteCode: getInviteCode(),
+            loginId: _lid
+        }, {
+            idem: true
         });
         if (res.code === 1) {
             setToken(res.data.token);
@@ -9655,62 +9670,8 @@ async function bindEditProfileEvents() {
                         html += '<div class="verif-check-item' + (checked ? " active" : "") + '" data-verif-type="' + c.type + '" onclick="toggleVerifProfile(this)">' + getVerifSvg(c.type, 16) + '<span style="flex:1;margin-left:8px;font-size:14px;">' + c.label + "</span>" + (checked ? '<i class="fa-solid fa-square-check" style="color:var(--color-primary);font-size:18px;"></i>' : '<i class="fa-regular fa-square" style="color:#ccc;font-size:18px;"></i>') + "</div>";
                     });
                     html += "</div></div>";
-                    if (verifTypes.includes("premium")) {
-                        const bubbles = [ {
-                            v: "none",
-                            label: "无气泡"
-                        }, {
-                            v: "gradient1",
-                            label: "紫"
-                        }, {
-                            v: "gradient2",
-                            label: "粉"
-                        }, {
-                            v: "gradient3",
-                            label: "蓝"
-                        }, {
-                            v: "solid_pink",
-                            label: "桃"
-                        }, {
-                            v: "solid_blue",
-                            label: "海"
-                        }, {
-                            v: "solid_gold",
-                            label: "金"
-                        } ];
-                        const curBubble = _NICK_BUBBLE_BG[settings.nick_bubble] ? settings.nick_bubble : "none";
-                        const curColor = /^#[0-9a-fA-F]{6}$/.test(settings.nick_color || "") ? settings.nick_color : "";
-                        html += '<div class="ep-item" style="margin-top:4px;"><div class="ep-item-label">昵称外观</div><div class="ep-item-desc" style="margin-bottom:10px;">高级认证专属：自定义昵称气泡与文字颜色</div>';
-                        html += '<div id="nickBubbleList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">';
-                        bubbles.forEach(b => {
-                            const active = curBubble === b.v;
-                            const bg = _NICK_BUBBLE_BG[b.v] || "transparent";
-                            const sw = b.v === "none" ? "background:transparent;border:1px solid #ccc;" : "background:" + bg + ";";
-                            html += '<div class="verif-radio-item' + (active ? " active" : "") + '" data-bubble="' + b.v + '" onclick="selectNickBubble(this)" style="flex:0 0 auto;padding:6px 12px;border:1px solid ' + (active ? "var(--color-primary)" : "#3a3a3c") + ';border-radius:10px;font-size:13px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:50%;' + sw + '"></span>' + b.label + "</div>";
-                        });
-                        html += "</div>";
-                        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="font-size:14px;color:#fff;">文字颜色</span><input type="color" id="nickColorInput" value="' + (curColor || "#ffffff") + '" style="width:48px;height:32px;border:none;background:none;cursor:pointer;padding:0;"><span id="nickColorLabel" style="font-size:12px;color:rgba(255,255,255,0.5);">' + (curColor || "默认") + "</span></div>";
-                        html += '<div style="display:flex;gap:10px;"><button onclick="resetNickAppearance()" style="flex:1;padding:10px;border:1px solid #3a3a3c;border-radius:10px;background:transparent;color:#fff;font-size:14px;cursor:pointer;">重置默认</button><button id="saveNickAppBtn" onclick="saveNickAppearance()" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--color-primary);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">保存外观</button></div>';
-                        html += '<div id="nickPreviewWrap" style="margin-top:12px;padding:12px;background:rgba(255,255,255,0.04);border-radius:10px;"><span style="font-size:12px;color:rgba(255,255,255,0.5);">预览：</span><span id="nickPreview" class="post-nickname" style="display:inline-block;"></span></div>';
-                        html += "</div>";
-                    }
                     html += "</div>";
                     verifArea.innerHTML = html;
-                    if (verifTypes.includes("premium")) {
-                        const _nickName = escapeHtml(u.nickname || "用户" + (u.uid || ""));
-                        const pv = document.getElementById("nickPreview");
-                        if (pv) pv.setAttribute("data-nick", _nickName);
-                        window._nickBubbleSel = settings.nick_bubble || "none";
-                        window._nickColorSel = /^#[0-9a-fA-F]{6}$/.test(settings.nick_color || "") ? settings.nick_color : "";
-                        _renderNickPreviewSafe();
-                        const ci = document.getElementById("nickColorInput");
-                        if (ci) ci.addEventListener("input", () => {
-                            window._nickColorSel = ci.value;
-                            const lbl = document.getElementById("nickColorLabel");
-                            if (lbl) lbl.textContent = ci.value;
-                            _renderNickPreviewSafe();
-                        });
-                    }
                     window._verifMainSelected = nameDisplay === "earliest" ? defaultMain : nameDisplay;
                 }
             }
