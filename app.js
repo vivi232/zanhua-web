@@ -253,15 +253,53 @@ function adImgsHtml(images) {
     }).join("") + '</div>';
 }
 
+function adVideoPlayerOf(el) {
+    return el && el.closest ? el.closest(".ad-video-player") : null;
+}
+
+function adVideoRawSrc(v) {
+    var pl = adVideoPlayerOf(v);
+    return (v && v.getAttribute("data-vsrc")) || (pl && pl.getAttribute("data-vsrc")) || "";
+}
+
 function adVideoVisible(en) {
     if (!en.isIntersecting) return false;
-    if (en.intersectionRatio >= 0.5) return true;
+    if (en.intersectionRatio >= 0.3) return true;
     var vh = window.innerHeight || 600;
-    return en.intersectionRect.height >= Math.min(180, vh * 0.35);
+    return en.intersectionRect.height >= Math.min(90, vh * 0.12);
+}
+
+function adVideoLoading(pl, on) {
+    if (!pl) return;
+    if (on) pl.classList.add("loading");
+    else pl.classList.remove("loading");
+}
+
+function adMediaYield() {
+    try {
+        imgPrefetch.pause();
+    } catch (e) {}
+    var imgs = document.querySelectorAll(".post-images img, .post-images video");
+    for (var i = 0; i < imgs.length; i++) {
+        var im = imgs[i];
+        if (adVideoPlayerOf(im)) continue;
+        if (im.complete) continue;
+        im.setAttribute("loading", "lazy");
+        im.setAttribute("decoding", "async");
+        if (!im.getAttribute("fetchpriority")) im.setAttribute("fetchpriority", "low");
+    }
+}
+
+function adMediaResume() {
+    if (document.querySelector(".ad-video-player.loading")) return;
+    try {
+        imgPrefetch.resume();
+    } catch (e) {}
 }
 
 function playAdVideo(v) {
-    var pl = v.closest(".ad-video-player");
+    var pl = adVideoPlayerOf(v);
+    if (!pl) return;
     v.dataset.wantplay = "1";
     if (v.getAttribute("src")) {
         var pr0 = v.play();
@@ -269,15 +307,31 @@ function playAdVideo(v) {
         return;
     }
     if (v.dataset.avBusy === "1") return;
+    var raw = adVideoRawSrc(v);
+    if (!raw) return;
     v.dataset.avBusy = "1";
-    resolveVideoUrl(v.dataset.vsrc).then(function(u) {
+    adVideoLoading(pl, true);
+    adMediaYield();
+    if (pl.dataset.avGuard !== "1") {
+        pl.dataset.avGuard = "1";
+        setTimeout(function() {
+            if (v.readyState >= 2) return;
+            v.dataset.avBusy = "0";
+            adVideoLoading(pl, false);
+            adMediaResume();
+        }, 15000);
+    }
+    resolveVideoUrl(raw).then(function(u) {
         if (!u) {
             v.dataset.avBusy = "0";
-            if (pl) pl.classList.remove("ready");
+            adVideoLoading(pl, false);
+            adMediaResume();
+            pl.classList.remove("ready");
             return;
         }
         v.muted = true;
         v.autoplay = true;
+        v.setAttribute("fetchpriority", "high");
         v.src = u;
         v.load();
         var pr = v.play();
@@ -290,13 +344,17 @@ function playAdVideo(v) {
             document.addEventListener("touchstart", retry);
             document.addEventListener("click", retry);
         });
+    }).catch(function() {
+        v.dataset.avBusy = "0";
+        adVideoLoading(pl, false);
+        adMediaResume();
     });
 }
 
 function adVideoOnIntersect(entries) {
     entries.forEach(function(en) {
         var v = en.target;
-        if (!v.closest(".ad-video-player")) return;
+        if (!adVideoPlayerOf(v)) return;
         if (adVideoVisible(en)) playAdVideo(v);
         else if (v.dataset.wantplay === "1") v.pause();
     });
@@ -306,21 +364,41 @@ function hookAdVideoPlayer(pl) {
     if (!pl || pl.getAttribute("data-av-obs") === "1") return;
     pl.setAttribute("data-av-obs", "1");
     var vv = pl.querySelector("video");
-    if (!vv || !window.AdVideoIO) return;
+    if (!vv) return;
+    if (!vv.getAttribute("data-vsrc")) {
+        var raw = pl.getAttribute("data-vsrc");
+        if (raw) vv.setAttribute("data-vsrc", raw);
+    }
     vv.addEventListener("playing", function() {
         pl.classList.add("ready");
+        adVideoLoading(pl, false);
+        adMediaResume();
+    });
+    vv.addEventListener("canplay", function() {
+        adVideoLoading(pl, false);
+        adMediaResume();
+    });
+    vv.addEventListener("waiting", function() {
+        if (pl.classList.contains("ready")) return;
+        adVideoLoading(pl, true);
     });
     vv.addEventListener("error", function() {
+        adVideoLoading(pl, false);
+        adMediaResume();
         pl.classList.remove("ready");
+        vv.removeAttribute("src");
+        vv.dataset.avBusy = "0";
     });
-    window.AdVideoIO.observe(vv);
+    if (!window.AdVideoIO && window.IntersectionObserver) window.AdVideoIO = new IntersectionObserver(adVideoOnIntersect, {
+        threshold: [0, 0.3, 0.5, 1]
+    });
+    if (window.AdVideoIO) window.AdVideoIO.observe(vv);
+    var r = pl.getBoundingClientRect ? pl.getBoundingClientRect() : null;
+    if (r && window.AdVideoIO && r.bottom > 0 && r.top < (window.innerHeight || 600)) playAdVideo(vv);
 }
 
 function registerAdVideos(root) {
-    if (!root || !window.IntersectionObserver) return;
-    if (!window.AdVideoIO) window.AdVideoIO = new IntersectionObserver(adVideoOnIntersect, {
-        threshold: [0, 0.35, 0.5, 1]
-    });
+    if (!root || !root.querySelectorAll || !window.IntersectionObserver) return;
     var nodes = root.querySelectorAll ? root.querySelectorAll(".ad-video-player:not([data-av-obs])") : [];
     for (var i = 0; i < nodes.length; i++) hookAdVideoPlayer(nodes[i]);
     setTimeout(initAdVideoObserver, 300);
@@ -2754,8 +2832,8 @@ function renderPostCard(p) {
     if (hasVideo && !isProtected) {
         if (isAd) {
             const vsrcEsc = escapeHtml(String(p.video));
-            const avCover = p.video_cover ? '<img class="ad-video-poster" loading="lazy" src="' + resolveMediaUrl(p.video_cover) + '" onload="var pl=this.closest(\'.ad-video-player\');if(pl&&this.naturalWidth)pl.style.aspectRatio=(this.naturalWidth/this.naturalHeight).toFixed(3)">' : "";
-            videoHtml = `<div class="post-images single">\n          <div class="ad-video-player${p.video_cover ? "" : " ready"}" data-vsrc="${vsrcEsc}" style="position:relative;width:75%;aspect-ratio:${p.video_w > 0 && p.video_h > 0 ? (p.video_w / p.video_h).toFixed(3) : "16/9"};border-radius:8px;overflow:hidden;background:#111;">\n            ${avCover}\n            <video muted loop playsinline autoplay preload="metadata" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#111;"></video>\n          </div>\n        </div>`;
+            const avCover = p.video_cover ? '<img class="ad-video-poster" src="' + resolveMediaUrl(p.video_cover) + '" onload="var pl=this.closest(\'.ad-video-player\');if(pl&&this.naturalWidth)pl.style.aspectRatio=(this.naturalWidth/this.naturalHeight).toFixed(3)">' : "";
+            videoHtml = `<div class="post-images single">\n          <div class="ad-video-player${p.video_cover ? "" : " ready"}" data-vsrc="${vsrcEsc}" onclick="event.stopPropagation();openVideoPlayer('${p.video}', '${p.video_cover || ""}', false)" style="position:relative;width:75%;aspect-ratio:${p.video_w > 0 && p.video_h > 0 ? (p.video_w / p.video_h).toFixed(3) : "16/9"};border-radius:8px;overflow:hidden;background:#111;">\n            ${avCover}\n            <video muted loop playsinline autoplay preload="auto" fetchpriority="high" data-vsrc="${vsrcEsc}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#111;pointer-events:none;"></video>\n            <div class="ad-video-loading"><span class="ad-video-spin"></span></div>\n            <div class="ad-video-expand"><i class="fa-solid fa-expand"></i></div>\n          </div>\n        </div>`;
         } else {
             videoHtml = `<div class="post-images single">\n          <div onclick="event.stopPropagation();openVideoPlayer('${p.video}', '${p.video_cover || ""}', ${p.allow_download != 0 ? "true" : "false"})" style="position:relative;cursor:pointer;width:75%;aspect-ratio:1;border-radius:8px;overflow:hidden;">\n            ${p.video_cover ? `<img loading="lazy" src="${resolveThumb(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ""}\n            <div style="display:${p.video_cover ? "none" : "flex"};position:absolute;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);align-items:center;justify-content:center;">\n              <div style="text-align:center;">\n                <i class="fa-solid fa-video" style="font-size:32px;color:rgba(255,255,255,0.9);"></i>\n                <div style="color:rgba(255,255,255,0.8);font-size:11px;margin-top:4px;">点击播放</div>\n              </div>\n            </div>\n            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;background:rgba(0,0,0,0.5);border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;">\n              <i class="fa-solid fa-play" style="color:#fff;font-size:16px;margin-left:2px;"></i>\n            </div>\n          </div>\n        </div>`;
         }
@@ -5923,7 +6001,7 @@ function renderPostDetail() {
     } catch (e) {
         pollHtml = "";
     }
-    let html = `<div class="post-detail" style="background:#fff;min-height:100vh;">\n        <div class="detail-navbar">\n          <div class="detail-navbar-back" onclick="goBack()"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div>\n          <div class="detail-navbar-title">详情</div>\n          <div style="display:flex;align-items:center;gap:4px;">\n            ${p.is_owner === true || String(p.user_id) === getUid() || isAdminAccount() ? '<div class="detail-navbar-more" onclick="showPostManageMenu(\'' + p.id + '\')"><i class="fa-solid fa-ellipsis"></i></div>' : '<div class="detail-navbar-more" onclick="goReport(\'post\',' + p.id + ')"><i class="fa-solid fa-triangle-exclamation"></i></div>'}\n          </div>\n        </div>\n        <div class="pd-layout" style="padding-top:calc(50px + env(safe-area-inset-top));">\n          <div class="pd-main">\n          <div class="post-header">\n            <img class="avatar" src="${resolveMediaUrl(p.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${p.user_id}')" style="cursor:pointer;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="post-user">\n            <div class="post-nickname">${wrapNick(escapeHtml(p.nickname || "用户" + p.user_id), p)}${renderListVerification(p)}</div>\n            <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || "未知"}</div>\n          </div>\n        </div>\n        ${p.title ? `<div style="padding:0 16px 8px;font-size:18px;font-weight:600;">${escapeHtml(p.title)}</div>` : ""}\n          ${p.content ? `<div class="post-content">${contentHtml}</div>` : ""}\n          ${p.location ? `<div style="padding:0 16px 8px;font-size:13px;color:#666;"><i class="fa-solid fa-location-dot" style="color:var(--color-primary);"></i> ${p.location}</div>` : ""}\n          ${p.original_declaration ? `<div style="padding:0 16px 8px;font-size:13px;color:#999;">声明: ${p.original_declaration}</div>` : ""}\n          ${pollHtml}\n          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}\n          ${p.video ? `<div style="padding:0 16px 8px;">\n            <div onclick="openVideoPlayer('${p.video}', '${p.video_cover || ""}', ${p.allow_download != 0 ? "true" : "false"})" style="position:relative;cursor:pointer;width:100%;aspect-ratio:1;border-radius:8px;overflow:hidden;">\n              ${p.video_cover ? `<img loading="lazy" src="${resolveThumb(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ""}\n              <div style="display:${p.video_cover ? "none" : "flex"};position:absolute;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);align-items:center;justify-content:center;">\n                <div style="text-align:center;">\n                  <i class="fa-solid fa-video" style="font-size:48px;color:rgba(255,255,255,0.9);"></i>\n                  <div style="color:rgba(255,255,255,0.8);font-size:14px;margin-top:8px;">点击播放视频</div>\n                </div>\n              </div>\n              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;background:rgba(0,0,0,0.5);border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;">\n                <i class="fa-solid fa-play" style="color:#fff;font-size:20px;margin-left:2px;"></i>\n              </div>\n            </div>\n          </div>` : ""}\n          <div class="post-actions" style="border-bottom:1px solid #eee;border-top:1px solid #eee;margin:0 16px;">\n            <div class="action-item"${isAd ? "" : ` onclick="likePost('${p.id}',this)`}"><i class="${liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${liked ? "var(--color-red)" : ""}"></i><span>${p.likes || 0}</span></div>\n            <div class="action-item" id="commentScrollTarget"><i class="fa-regular fa-comment"></i><span>${p.comments || 0}</span></div>\n            <div class="action-item" onclick="collectPost('${p.id}',this)"><i class="${collected ? "fa-solid fa-star" : "fa-regular fa-star"}" style="color:${collected ? "var(--color-yellow)" : ""}"></i><span>${p.collects || 0}</span></div>\n          </div>\n          </div>\n          <div class="pd-comments">\n          <div class="pd-comments-title">评论</div>\n          <div id="commentList" style="padding:16px;">\n            ${(() => {
+    let html = `<div class="post-detail" style="background:#fff;min-height:100vh;">\n        <div class="detail-navbar">\n          <div class="detail-navbar-back" onclick="goBack()"><i class="fa-solid fa-angle-left" style="font-weight:600;"></i></div>\n          <div class="detail-navbar-title">详情</div>\n          <div style="display:flex;align-items:center;gap:4px;">\n            ${p.is_owner === true || String(p.user_id) === getUid() || isAdminAccount() ? '<div class="detail-navbar-more" onclick="showPostManageMenu(\'' + p.id + '\')"><i class="fa-solid fa-ellipsis"></i></div>' : '<div class="detail-navbar-more" onclick="goReport(\'post\',' + p.id + ')"><i class="fa-solid fa-triangle-exclamation"></i></div>'}\n          </div>\n        </div>\n        <div class="pd-layout" style="padding-top:calc(50px + env(safe-area-inset-top));">\n          <div class="pd-main">\n          <div class="post-header">\n            <img class="avatar" src="${resolveMediaUrl(p.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${p.user_id}')" style="cursor:pointer;" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="post-user">\n            <div class="post-nickname">${wrapNick(escapeHtml(p.nickname || "用户" + p.user_id), p)}${renderListVerification(p)}</div>\n            <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || "未知"}</div>\n          </div>\n        </div>\n        ${p.title ? `<div style="padding:0 16px 8px;font-size:18px;font-weight:600;">${escapeHtml(p.title)}</div>` : ""}\n          ${p.content ? `<div class="post-content">${contentHtml}</div>` : ""}\n          ${p.location ? `<div style="padding:0 16px 8px;font-size:13px;color:#666;"><i class="fa-solid fa-location-dot" style="color:var(--color-primary);"></i> ${p.location}</div>` : ""}\n          ${p.original_declaration ? `<div style="padding:0 16px 8px;font-size:13px;color:#999;">声明: ${p.original_declaration}</div>` : ""}\n          ${pollHtml}\n          ${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}\n          ${p.video ? `<div style="padding:0 16px 8px;">\n            <div onclick="openVideoPlayer('${p.video}', '${p.video_cover || ""}', ${p.allow_download != 0 ? "true" : "false"})" style="position:relative;cursor:pointer;width:100%;aspect-ratio:1;border-radius:8px;overflow:hidden;">\n              ${p.video_cover ? `<img loading="lazy" src="${resolveThumb(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ""}\n              <div style="display:${p.video_cover ? "none" : "flex"};position:absolute;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);align-items:center;justify-content:center;">\n                <div style="text-align:center;">\n                  <i class="fa-solid fa-video" style="font-size:48px;color:rgba(255,255,255,0.9);"></i>\n                  <div style="color:rgba(255,255,255,0.8);font-size:14px;margin-top:8px;">点击播放视频</div>\n                </div>\n              </div>\n              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;background:rgba(0,0,0,0.5);border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;">\n                <i class="fa-solid fa-play" style="color:#fff;font-size:20px;margin-left:2px;"></i>\n              </div>\n            </div>\n          </div>` : ""}\n          <div class="post-actions" style="border-bottom:1px solid #eee;border-top:1px solid #eee;margin:0 16px;">\n            <div class="action-item" onclick="likePost('${p.id}',this)"><i class="${liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${liked ? "var(--color-red)" : ""}"></i><span>${p.likes || 0}</span></div>\n            <div class="action-item" id="commentScrollTarget"><i class="fa-regular fa-comment"></i><span>${p.comments || 0}</span></div>\n            <div class="action-item" onclick="collectPost('${p.id}',this)"><i class="${collected ? "fa-solid fa-star" : "fa-regular fa-star"}" style="color:${collected ? "var(--color-yellow)" : ""}"></i><span>${p.collects || 0}</span></div>\n          </div>\n          </div>\n          <div class="pd-comments">\n          <div class="pd-comments-title">评论</div>\n          <div id="commentList" style="padding:16px;">\n            ${(() => {
         const _cc = cacheGet(commentListCache, p.id);
         return _cc ? _cc.html : new Array(3).fill(0).map(() => `\n              <div style="display:flex;gap:10px;margin-bottom:16px;">\n                <div class="sk-item" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;"></div>\n                <div style="flex:1;">\n                  <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;">\n                    <div class="sk-item" style="width:80px;height:13px;"></div>\n                    <div class="sk-item" style="width:45px;height:10px;"></div>\n                  </div>\n                  <div class="sk-item" style="width:100%;height:12px;margin-bottom:4px;"></div>\n                  <div class="sk-item" style="width:75%;height:12px;"></div>\n                </div>\n              </div>\n            `).join("");
     })()}\n          </div>\n          </div>\n          <div style="height:60px;"></div>\n        </div>\n        <div class="comment-input-bar">\n          <img class="comment-input-avatar" src="${resolveMediaUrl(myAvatar) || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <input class="comment-input" id="commentInput" placeholder="说点什么...">\n          <span id="commentCharCount" class="comment-char-count"></span>\n          <div class="comment-send" id="commentSendBtn" onclick="sendComment()">发送</div>\n        </div>\n      </div>`;
