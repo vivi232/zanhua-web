@@ -271,27 +271,92 @@ function adVideoVisible(en) {
 
 function adVideoLoading(pl, on) {
     if (!pl) return;
-    if (on) pl.classList.add("loading");
-    else pl.classList.remove("loading");
+    if (on) pl.classList.add("av-loading");
+    else pl.classList.remove("av-loading");
 }
+
+function applyAdSound(pl) {
+    const v = pl.querySelector("video");
+    if (!v) return;
+    const want = pl.getAttribute("data-sound") !== "off";
+    const can = window.__adUnlocked === true;
+    v.muted = !(want && can);
+    v.volume = 1;
+    const btn = pl.querySelector(".ad-video-sound");
+    if (btn) btn.innerHTML = v.muted ? '<i class="fa-solid fa-volume-xmark"></i>' : '<i class="fa-solid fa-volume-high"></i>';
+    return v.muted;
+}
+
+function unlockAdSound() {
+    if (window.__adUnlocked === true) return;
+    window.__adUnlocked = true;
+    const pls = document.querySelectorAll(".ad-video-player");
+    for (let i = 0; i < pls.length; i++) {
+        const v = pls[i].querySelector("video");
+        if (!v || !v.getAttribute("src")) continue;
+        applyAdSound(pls[i]);
+        if (v.paused) {
+            const p = v.play();
+            if (p && p.catch) p.catch(function() {});
+        }
+    }
+}
+
+function toggleAdSound(btn) {
+    const pl = btn.closest(".ad-video-player");
+    if (!pl) return;
+    window.__adUnlocked = true;
+    pl.setAttribute("data-sound", pl.getAttribute("data-sound") === "off" ? "on" : "off");
+    applyAdSound(pl);
+    const v = pl.querySelector("video");
+    if (v) {
+        const p = v.play();
+        if (p && p.catch) p.catch(function() {});
+    }
+}
+
+(function() {
+    if (window.__adGestureBound) return;
+    window.__adGestureBound = true;
+    const on = {
+        passive: true
+    };
+    document.addEventListener("touchstart", unlockAdSound, on);
+    document.addEventListener("click", unlockAdSound, false);
+    document.addEventListener("keydown", unlockAdSound, false);
+})();
 
 function adMediaYield() {
     try {
         imgPrefetch.pause();
     } catch (e) {}
-    var imgs = document.querySelectorAll(".post-images img, .post-images video");
-    for (var i = 0; i < imgs.length; i++) {
-        var im = imgs[i];
+    const imgs = document.querySelectorAll(".post-images img");
+    for (let i = 0; i < imgs.length; i++) {
+        const im = imgs[i];
         if (adVideoPlayerOf(im)) continue;
-        if (im.complete) continue;
-        im.setAttribute("loading", "lazy");
-        im.setAttribute("decoding", "async");
-        if (!im.getAttribute("fetchpriority")) im.setAttribute("fetchpriority", "low");
+        if (im.complete && im.naturalWidth) continue;
+        const cur = im.getAttribute("src");
+        if (!cur || cur.indexOf("data:") === 0 || im.getAttribute("data-av-pend")) continue;
+        im.setAttribute("data-av-pend", cur);
+        im.removeAttribute("src");
+    }
+    const vids = document.querySelectorAll("video");
+    for (let i = 0; i < vids.length; i++) {
+        const vv = vids[i];
+        if (adVideoPlayerOf(vv)) continue;
+        if (!vv.paused) vv.pause();
     }
 }
 
-function adMediaResume() {
-    if (document.querySelector(".ad-video-player.loading")) return;
+function adMediaResume(force) {
+    if (!force && document.querySelector(".ad-video-player.av-loading")) return;
+    const pend = document.querySelectorAll(".post-images img[data-av-pend]");
+    for (let i = 0; i < pend.length; i++) {
+        const im = pend[i];
+        const u = im.getAttribute("data-av-pend");
+        im.removeAttribute("data-av-pend");
+        if (u) im.setAttribute("src", u);
+    }
     try {
         imgPrefetch.resume();
     } catch (e) {}
@@ -329,7 +394,7 @@ function playAdVideo(v) {
             pl.classList.remove("ready");
             return;
         }
-        v.muted = true;
+        applyAdSound(pl);
         v.autoplay = true;
         v.setAttribute("fetchpriority", "high");
         v.src = u;
@@ -1488,24 +1553,27 @@ function formatCommentContent(content) {
     return html;
 }
 
+const VERIF_ICON_BASIC = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9ImN1cnJlbnRDb2xvciIgZGF0YS1pY29uPSJpY29uLXZlcmlmaWVkIiB2aWV3Qm94PSIwIDAgMjIgMjIiIHdpZHRoPSIxZW0iIGhlaWdodD0iMWVtIiBkaXNwbGF5PSJmbGV4IiByb2xlPSJpbWciIGFyaWEtaGlkZGVuPSJ0cnVlIiBjbGFzcz0iZmlsbC1iYWRnZSI+PHBhdGggZD0iTTIwLjM5NiAxMWMtLjAxOC0uNjQ2LS4yMTUtMS4yNzUtLjU3LTEuODE2LS4zNTQtLjU0LS44NTItLjk3Mi0xLjQzOC0xLjI0Ni4yMjMtLjYwNy4yNy0xLjI2NC4xNC0xLjg5Ny0uMTMxLS42MzQtLjQzNy0xLjIxOC0uODgyLTEuNjg3LS40Ny0uNDQ1LTEuMDUzLS43NS0xLjY4Ny0uODgyLS42MzMtLjEzLTEuMjktLjA4My0xLjg5Ny4xNC0uMjczLS41ODctLjcwNC0xLjA4Ni0xLjI0NS0xLjQ0UzExLjY0NyAxLjYyIDExIDEuNjA0Yy0uNjQ2LjAxNy0xLjI3My4yMTMtMS44MTMuNTY4cy0uOTY5Ljg1NC0xLjI0IDEuNDRjLS42MDgtLjIyMy0xLjI2Ny0uMjcyLTEuOTAyLS4xNC0uNjM1LjEzLTEuMjIuNDM2LTEuNjkuODgyLS40NDUuNDctLjc0OSAxLjA1NS0uODc4IDEuNjg4LS4xMy42MzMtLjA4IDEuMjkuMTQ0IDEuODk2LS41ODcuMjc0LTEuMDg3LjcwNS0xLjQ0MyAxLjI0NS0uMzU2LjU0LS41NTUgMS4xNy0uNTc0IDEuODE3LjAyLjY0Ny4yMTggMS4yNzYuNTc0IDEuODE3LjM1Ni41NC44NTYuOTcyIDEuNDQzIDEuMjQ1LS4yMjQuNjA2LS4yNzQgMS4yNjMtLjE0NCAxLjg5Ni4xMy42MzQuNDMzIDEuMjE4Ljg3NyAxLjY4OC40Ny40NDMgMS4wNTQuNzQ3IDEuNjg3Ljg3OC42MzMuMTMyIDEuMjkuMDg0IDEuODk3LS4xMzYuMjc0LjU4Ni43MDUgMS4wODQgMS4yNDYgMS40MzkuNTQuMzU0IDEuMTcuNTUxIDEuODE2LjU2OS42NDctLjAxNiAxLjI3Ni0uMjEzIDEuODE3LS41NjdzLjk3Mi0uODU0IDEuMjQ1LTEuNDRjLjYwNC4yMzkgMS4yNjYuMjk2IDEuOTAzLjE2NC42MzYtLjEzMiAxLjIyLS40NDcgMS42OC0uOTA3LjQ2LS40Ni43NzYtMS4wNDQuOTA4LTEuNjgxcy4wNzUtMS4yOTktLjE2NS0xLjkwM2MuNTg2LS4yNzQgMS4wODQtLjcwNSAxLjQzOS0xLjI0Ni4zNTQtLjU0LjU1MS0xLjE3LjU2OS0xLjgxNnpNOS42NjIgMTQuODVsLTMuNDI5LTMuNDI4IDEuMjkzLTEuMzAyIDIuMDcyIDIuMDcyIDQuNC00Ljc5NCAxLjM0NyAxLjI0NnoiPjwvcGF0aD48L3N2Zz4=";
+const VERIF_ICON_GOLD = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9ImN1cnJlbnRDb2xvciIgZGF0YS1pY29uPSJpY29uLXZlcmlmaWVkLWdvbGQiIHZpZXdCb3g9IjAgMCAyMiAyMiIgd2lkdGg9IjFlbSIgaGVpZ2h0PSIxZW0iIGRpc3BsYXk9ImZsZXgiIHJvbGU9ImltZyIgYXJpYS1oaWRkZW49InRydWUiPjxsaW5lYXJHcmFkaWVudCBpZD0iYSIgeDE9IjQuNDExIiB4Mj0iMTguMDgzIiB5MT0iMi40OTUiIHkyPSIyMS41MDgiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmNGU3MmEiPjwvc3RvcD48c3RvcCBvZmZzZXQ9IjAuNTM5IiBzdG9wLWNvbG9yPSIjY2Q4MTA1Ij48L3N0b3A+PHN0b3Agb2Zmc2V0PSIwLjY4IiBzdG9wLWNvbG9yPSIjY2I3YjAwIj48L3N0b3A+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZjRlYzI2Ij48L3N0b3A+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZjRlNzJhIj48L3N0b3A+PC9saW5lYXJHcmFkaWVudD48bGluZWFyR3JhZGllbnQgaWQ9ImIiIHgxPSI1LjM1NSIgeDI9IjE2LjM2MSIgeTE9IjMuMzk1IiB5Mj0iMTkuMTMzIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZjllODdmIj48L3N0b3A+PHN0b3Agb2Zmc2V0PSIwLjQwNiIgc3RvcC1jb2xvcj0iI2UyYjcxOSI+PC9zdG9wPjxzdG9wIG9mZnNldD0iMC45ODkiIHN0b3AtY29sb3I9IiNlMmI3MTkiPjwvc3RvcD48L2xpbmVhckdyYWRpZW50PjxnIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIj48cGF0aCBmaWxsPSJ1cmwoI2EpIiBkPSJNMTMuMzI0IDMuODQ4TDExIDEuNiA4LjY3NiAzLjg0OGwtMy4yMDEtLjQ1My0uNTU5IDMuMTg0TDIuMDYgOC4wOTUgMy40OCAxMWwtMS40MiAyLjkwNCAyLjg1NiAxLjUxNi41NTkgMy4xODQgMy4yMDEtLjQ1MkwxMSAyMC40bDIuMzI0LTIuMjQ4IDMuMjAxLjQ1Mi41NTktMy4xODQgMi44NTYtMS41MTZMMTguNTIgMTFsMS40Mi0yLjkwNS0yLjg1Ni0xLjUxNi0uNTU5LTMuMTg0em0tNy4wOSA3LjU3NWwzLjQyOCAzLjQyOCA1LjY4My02LjIwNi0xLjM0Ny0xLjI0Ny00LjQgNC43OTUtMi4wNzItMi4wNzJ6Ij48L3BhdGg+PHBhdGggZmlsbD0idXJsKCNiKSIgZD0iTTEzLjEwMSA0LjUzM0wxMSAyLjUgOC44OTkgNC41MzNsLTIuODk1LS40MS0uNTA1IDIuODgtMi41ODMgMS4zN0w0LjIgMTFsLTEuMjg0IDIuNjI3IDIuNTgzIDEuMzcuNTA1IDIuODggMi44OTUtLjQxTDExIDE5LjVsMi4xMDEtMi4wMzMgMi44OTUuNDEuNTA1LTIuODggMi41ODMtMS4zN0wxNy44IDExbDEuMjg0LTIuNjI3LTIuNTgzLTEuMzctLjUwNS0yLjg4em0tNi44NjggNi44OWwzLjQyOSAzLjQyOCA1LjY4My02LjIwNi0xLjM0Ny0xLjI0Ny00LjQgNC43OTUtMi4wNzItMi4wNzJ6Ij48L3BhdGg+PHBhdGggZmlsbD0iI2QxODgwMCIgZD0iTTYuMjMzIDExLjQyM2wzLjQyOSAzLjQyOCA1LjY1LTYuMTcuMDM4LS4wMzMtLjAwNSAxLjM5OC01LjY4MyA2LjIwNi0zLjQyOS0zLjQyOS0uMDAzLTEuNDA1LjAwNS4wMDN6Ij48L3BhdGg+PC9nPjwvc3ZnPg==";
+
 function getVerifSvg(type, size = 14, inline = false) {
     const align = inline ? "vertical-align:middle;" : "";
     const s = `width:${size}px;height:${size}px;flex-shrink:0;${align}`;
     const wmErr = "this.onerror=null;this.style.display='none';";
     if (type === "enterprise") {
-        return `<img src="${MEDIA_BASE}/res/icons/icon-i5xq4thdo.svg" style="${s};filter:invert(35%) sepia(94%) saturate(1587%) hue-rotate(185deg) brightness(97%) contrast(95%);" class="verif-icon verif-enterprise" alt="认证" onerror="${wmErr}">`;
+        return `<img src="${VERIF_ICON_BASIC}" style="${s};filter:invert(35%) sepia(94%) saturate(1587%) hue-rotate(185deg) brightness(97%) contrast(95%);" class="verif-icon verif-enterprise" alt="认证" onerror="${wmErr}">`;
     }
     if (type === "basic") {
-        return `<img src="${MEDIA_BASE}/res/icons/icon-i5xq4thdo.svg" style="${s};filter:invert(52%) sepia(28%) saturate(614%) hue-rotate(86deg) brightness(94%) contrast(90%);" class="verif-icon verif-basic" alt="普通认证" onerror="${wmErr}">`;
+        return `<img src="${VERIF_ICON_BASIC}" style="${s};filter:invert(52%) sepia(28%) saturate(614%) hue-rotate(86deg) brightness(94%) contrast(90%);" class="verif-icon verif-basic" alt="普通认证" onerror="${wmErr}">`;
     }
     if (type === "personal") {
-        return `<img src="${MEDIA_BASE}/res/icons/icon-i5xq4thdo.svg" style="${s};filter:invert(68%) sepia(98%) saturate(2000%) hue-rotate(10deg) brightness(95%) contrast(105%);" class="verif-icon verif-personal" alt="认证" onerror="${wmErr}">`;
+        return `<img src="${VERIF_ICON_BASIC}" style="${s};filter:invert(68%) sepia(98%) saturate(2000%) hue-rotate(10deg) brightness(95%) contrast(105%);" class="verif-icon verif-personal" alt="认证" onerror="${wmErr}">`;
     }
     if (type === "advanced") {
-        return `<img src="${MEDIA_BASE}/res/icons/icon-jztvozsrv.svg" style="${s};filter:grayscale(100%) brightness(0.82) contrast(1.15);" class="verif-icon verif-advanced" alt="进阶认证" onerror="${wmErr}">`;
+        return `<img src="${VERIF_ICON_GOLD}" style="${s};filter:grayscale(100%) brightness(0.82) contrast(1.15);" class="verif-icon verif-advanced" alt="进阶认证" onerror="${wmErr}">`;
     }
     if (type === "premium") {
-        return `<img src="${MEDIA_BASE}/res/icons/icon-jztvozsrv.svg" style="${s}" class="verif-icon verif-premium" alt="高级认证" onerror="${wmErr}">`;
+        return `<img src="${VERIF_ICON_GOLD}" style="${s}" class="verif-icon verif-premium" alt="高级认证" onerror="${wmErr}">`;
     }
     return "";
 }
@@ -2833,13 +2901,13 @@ function renderPostCard(p) {
         if (isAd) {
             const vsrcEsc = escapeHtml(String(p.video));
             const avCover = p.video_cover ? '<img class="ad-video-poster" src="' + resolveMediaUrl(p.video_cover) + '" onload="var pl=this.closest(\'.ad-video-player\');if(pl&&this.naturalWidth)pl.style.aspectRatio=(this.naturalWidth/this.naturalHeight).toFixed(3)">' : "";
-            videoHtml = `<div class="post-images single">\n          <div class="ad-video-player${p.video_cover ? "" : " ready"}" data-vsrc="${vsrcEsc}" onclick="event.stopPropagation();openVideoPlayer('${p.video}', '${p.video_cover || ""}', false)" style="position:relative;width:75%;aspect-ratio:${p.video_w > 0 && p.video_h > 0 ? (p.video_w / p.video_h).toFixed(3) : "16/9"};border-radius:8px;overflow:hidden;background:#111;">\n            ${avCover}\n            <video muted loop playsinline autoplay preload="auto" fetchpriority="high" data-vsrc="${vsrcEsc}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#111;pointer-events:none;"></video>\n            <div class="ad-video-loading"><span class="ad-video-spin"></span></div>\n            <div class="ad-video-expand"><i class="fa-solid fa-expand"></i></div>\n          </div>\n        </div>`;
+            videoHtml = `<div class="post-images single">\n          <div class="ad-video-player${p.video_cover ? "" : " ready"}" data-vsrc="${vsrcEsc}" onclick="event.stopPropagation();openVideoPlayer('${p.video}', '${p.video_cover || ""}', false)" style="position:relative;width:75%;aspect-ratio:${p.video_w > 0 && p.video_h > 0 ? (p.video_w / p.video_h).toFixed(3) : "16/9"};border-radius:8px;overflow:hidden;background:#111;">\n            ${avCover}\n            <video muted loop playsinline autoplay preload="auto" fetchpriority="high" data-vsrc="${vsrcEsc}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#111;pointer-events:none;"></video>\n            <div class="ad-video-loading"><span class="ad-video-spin"></span></div>\n            <div class="ad-video-expand"><i class="fa-solid fa-expand"></i></div>\n            <div class="ad-video-sound" onclick="event.stopPropagation();toggleAdSound(this)"><i class="fa-solid fa-volume-xmark"></i></div>\n          </div>\n        </div>`;
         } else {
             videoHtml = `<div class="post-images single">\n          <div onclick="event.stopPropagation();openVideoPlayer('${p.video}', '${p.video_cover || ""}', ${p.allow_download != 0 ? "true" : "false"})" style="position:relative;cursor:pointer;width:75%;aspect-ratio:1;border-radius:8px;overflow:hidden;">\n            ${p.video_cover ? `<img loading="lazy" src="${resolveThumb(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ""}\n            <div style="display:${p.video_cover ? "none" : "flex"};position:absolute;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);align-items:center;justify-content:center;">\n              <div style="text-align:center;">\n                <i class="fa-solid fa-video" style="font-size:32px;color:rgba(255,255,255,0.9);"></i>\n                <div style="color:rgba(255,255,255,0.8);font-size:11px;margin-top:4px;">点击播放</div>\n              </div>\n            </div>\n            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;background:rgba(0,0,0,0.5);border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;">\n              <i class="fa-solid fa-play" style="color:#fff;font-size:16px;margin-left:2px;"></i>\n            </div>\n          </div>\n        </div>`;
         }
     }
     const cardClick = isAd ? "" : ` onclick="goPostDetail('${p.id}')"`;
-    return `<div class="${cardClass}" id="pc-${p.id}"${cardClick}>\n        <div class="post-header">\n          <img class="avatar" src="${resolveMediaUrl(p.avatar) || DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${p.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <div class="post-user">\n            <div class="post-nickname">${wrapNick(escapeHtml(p.nickname || "用户" + p.user_id), p)}${isAd ? '<span class="ad-badge">广告</span>' : ""}${renderListVerification(p)}</div>\n            <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || "未知"}</div>\n          </div>\n          ${isMine ? `<div onclick="event.stopPropagation();showPostActionSheet('${p.id}')" style="cursor:pointer;padding:4px 8px;margin-left:auto;"><i class="fa-solid fa-ellipsis" style="color:#999;font-size:16px;"></i></div>` : ""}\n        </div>\n        ${p.title ? `<div style="padding:0 16px 6px;font-size:16px;font-weight:600;">${escapeHtml(p.title)}</div>` : ""}\n        ${contentBlock}\n        ${isAd ? adImgsHtml(p.images) : ""}\n        ${isProtected || isAd ? "" : `${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}`}\n        ${videoHtml}\n        <div class="post-actions" onclick="event.stopPropagation()">\n          <div class="action-item"${isAd ? "" : ` onclick="likePost('${p.id}',this)`}"><i class="${liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${liked ? "var(--color-red)" : ""}"></i><span>${p.likes || 0}</span></div>\n          <div class="action-item"${isAd ? "" : ` onclick="goPostDetailAndScroll('${p.id}')`}"><i class="fa-regular fa-comment"></i><span>${p.comments || 0}</span></div>\n          <div class="action-item"${isAd ? "" : ` onclick="collectPost('${p.id}',this)`}"><i class="${collected ? "fa-solid fa-star" : "fa-regular fa-star"}" style="color:${collected ? "var(--color-yellow)" : ""}"></i><span>${p.collects || 0}</span></div>\n        </div>\n      </div>`;
+    return `<div class="${cardClass}" id="pc-${p.id}"${cardClick}>\n        <div class="post-header">\n          <img class="avatar" src="${resolveMediaUrl(p.avatar) || DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${p.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <div class="post-user">\n            <div class="post-nickname">${wrapNick(escapeHtml(p.nickname || "用户" + p.user_id), p)}${renderListVerification(p)}${isAd ? '<span class="ad-badge">广告</span>' : ""}</div>\n            <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || "未知"}</div>\n          </div>\n          ${isMine ? `<div onclick="event.stopPropagation();showPostActionSheet('${p.id}')" style="cursor:pointer;padding:4px 8px;margin-left:auto;"><i class="fa-solid fa-ellipsis" style="color:#999;font-size:16px;"></i></div>` : ""}\n        </div>\n        ${p.title ? `<div style="padding:0 16px 6px;font-size:16px;font-weight:600;">${escapeHtml(p.title)}</div>` : ""}\n        ${contentBlock}\n        ${isAd ? adImgsHtml(p.images) : ""}\n        ${isProtected || isAd ? "" : `${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}`}\n        ${videoHtml}\n        <div class="post-actions" onclick="event.stopPropagation()">\n          <div class="action-item"${isAd ? "" : ` onclick="likePost('${p.id}',this)`}"><i class="${liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${liked ? "var(--color-red)" : ""}"></i><span>${p.likes || 0}</span></div>\n          <div class="action-item"${isAd ? "" : ` onclick="goPostDetailAndScroll('${p.id}')`}"><i class="fa-regular fa-comment"></i><span>${p.comments || 0}</span></div>\n          <div class="action-item"${isAd ? "" : ` onclick="collectPost('${p.id}',this)`}"><i class="${collected ? "fa-solid fa-star" : "fa-regular fa-star"}" style="color:${collected ? "var(--color-yellow)" : ""}"></i><span>${p.collects || 0}</span></div>\n        </div>\n      </div>`;
 }
 
 function togglePostExpand(cardId) {
@@ -6451,7 +6519,7 @@ function renderDiscover() {
     const skeletonCards = _discoverSkeletonHtml();
     const _tab = discoverActiveTab || "hot";
     const _tabColor = t => t === _tab ? "#333" : "#999";
-    return `<div class="page">${renderNavbar("发现", false)}\n        <div class="tabs" id="discoverTabs" style="display:flex;background:#fff;padding:10px 0;border-bottom:0.5px solid #eee;">\n          <div class="tab${_tab === "hot" ? " active" : ""}" data-tab="hot" style="flex:1;text-align:center;font-weight:600;color:${_tabColor("hot")};">热门</div>\n          <div class="tab${_tab === "confession" ? " active" : ""}" data-tab="confession" style="flex:1;text-align:center;font-weight:600;color:${_tabColor("confession")};">表白墙</div>\n          <div class="tab${_tab === "homework" ? " active" : ""}" data-tab="homework" style="flex:1;text-align:center;font-weight:600;color:${_tabColor("homework")};">作业</div>\n          <div class="tab${_tab === "topic" ? " active" : ""}" data-tab="topic" style="flex:1;text-align:center;font-weight:600;color:${_tabColor("topic")};">话题</div>\n        </div>\n        <div style="margin:12px 16px 0;background:linear-gradient(135deg,#1C1C1E,#2C2C2E);border-radius:14px;padding:16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="goPage('verifSubscribe')">\n          <div style="display:flex;align-items:center;gap:10px;">\n            <img src="${MEDIA_BASE}/res/icons/icon-jztvozsrv.svg" style="width:40px;height:40px;" alt="认证">\n            <div>\n              <div style="font-size:15px;font-weight:700;color:#fff;">认证中心</div>\n              <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px;">解锁创作者专属特权</div>\n            </div>\n          </div>\n          <i class="fa-solid fa-chevron-right" style="color:rgba(255,255,255,0.3);font-size:14px;"></i>\n        </div>\n        <div id="discoverContent">${_dcContentHtml(skeletonCards)}</div>\n      </div>`;
+    return `<div class="page">${renderNavbar("发现", false)}\n        <div class="tabs" id="discoverTabs" style="display:flex;background:#fff;padding:10px 0;border-bottom:0.5px solid #eee;">\n          <div class="tab${_tab === "hot" ? " active" : ""}" data-tab="hot" style="flex:1;text-align:center;font-weight:600;color:${_tabColor("hot")};">热门</div>\n          <div class="tab${_tab === "confession" ? " active" : ""}" data-tab="confession" style="flex:1;text-align:center;font-weight:600;color:${_tabColor("confession")};">表白墙</div>\n          <div class="tab${_tab === "homework" ? " active" : ""}" data-tab="homework" style="flex:1;text-align:center;font-weight:600;color:${_tabColor("homework")};">作业</div>\n          <div class="tab${_tab === "topic" ? " active" : ""}" data-tab="topic" style="flex:1;text-align:center;font-weight:600;color:${_tabColor("topic")};">话题</div>\n        </div>\n        <div style="margin:12px 16px 0;background:linear-gradient(135deg,#1C1C1E,#2C2C2E);border-radius:14px;padding:16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="goPage('verifSubscribe')">\n          <div style="display:flex;align-items:center;gap:10px;">\n            <img src="${VERIF_ICON_GOLD}" style="width:40px;height:40px;" alt="认证">\n            <div>\n              <div style="font-size:15px;font-weight:700;color:#fff;">认证中心</div>\n              <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px;">解锁创作者专属特权</div>\n            </div>\n          </div>\n          <i class="fa-solid fa-chevron-right" style="color:rgba(255,255,255,0.3);font-size:14px;"></i>\n        </div>\n        <div id="discoverContent">${_dcContentHtml(skeletonCards)}</div>\n      </div>`;
 }
 
 function _dcContentHtml(skeletonCards) {
