@@ -367,6 +367,149 @@ function adMediaResume(force) {
 }
 
 var _adBlobCache = {};
+var _adDlInflight = {};
+
+function adMediaDb() {
+    if (adMediaDb._p) return adMediaDb._p;
+    adMediaDb._p = new Promise(function(res, rej) {
+        if (typeof indexedDB === "undefined") return rej(new Error("noidb"));
+        let rq;
+        try {
+            rq = indexedDB.open("zanhua_admedia", 1);
+        } catch (e) {
+            return rej(e);
+        }
+        rq.onupgradeneeded = function() {
+            try {
+                rq.result.createObjectStore("v1");
+            } catch (e) {}
+        };
+        rq.onsuccess = function() {
+            res(rq.result);
+        };
+        rq.onerror = function() {
+            rej(rq.error);
+        };
+        rq.onblocked = function() {
+            rej(new Error("blocked"));
+        };
+    }).catch(function(e) {
+        adMediaDb._p = null;
+        throw e;
+    });
+    return adMediaDb._p;
+}
+
+function getAdBlob(raw) {
+    return adMediaDb().then(function(db) {
+        return new Promise(function(res, rej) {
+            let rec;
+            try {
+                const tx = db.transaction("v1", "readonly");
+                rec = tx.objectStore("v1").get(raw);
+            } catch (e) {
+                return rej(e);
+            }
+            rec.onsuccess = function() {
+                res(rec.result || null);
+            };
+            rec.onerror = function() {
+                rej(rec.error);
+            };
+        });
+    });
+}
+
+function putAdBlob(raw, b) {
+    return adMediaDb().then(function(db) {
+        return new Promise(function(res, rej) {
+            try {
+                const tx = db.transaction("v1", "readwrite");
+                tx.objectStore("v1").put(b, raw);
+                tx.oncomplete = function() {
+                    res();
+                };
+                tx.onerror = function() {
+                    rej(tx.error);
+                };
+                tx.onabort = function() {
+                    rej(tx.error);
+                };
+            } catch (e) {
+                rej(e);
+            }
+        });
+    }).catch(function() {});
+}
+
+function reportAdMediaErr(raw, reason) {
+    try {
+        if (!getToken()) return;
+        api("/api/adMediaErr", "POST", {
+            path: raw,
+            reason: String(reason || "").slice(0, 120)
+        }).catch(function() {});
+    } catch (e) {}
+}
+
+function adSignUrlOf(raw) {
+    return resolveVideoUrl(raw).then(function(u) {
+        if (!u || /^(blob:|data:)/i.test(u)) return "";
+        const m = /exp=(\d+)/.exec(u);
+        if (m && Math.floor(Date.now() / 1e3) >= parseInt(m[1], 10)) {
+            return resolveVideoUrl(raw);
+        }
+        return u;
+    });
+}
+
+function downloadAdViaXhr(u, raw) {
+    return new Promise(function(res, rej) {
+        let X;
+        try {
+            X = new XMLHttpRequest();
+        } catch (e) {
+            return rej(e);
+        }
+        try {
+            X.open("GET", u, true);
+            X.responseType = "blob";
+            X.timeout = 60000;
+            X.setRequestHeader("Authorization", getToken());
+            X.setRequestHeader("X-Device-Id", getDeviceId());
+        } catch (e) {
+            return rej(e);
+        }
+        X.onload = function() {
+            if (X.status >= 200 && X.status < 300 && X.response) res(X.response);
+            else rej(new Error("xhr " + X.status));
+        };
+        X.onerror = function() {
+            rej(new Error("xhr net"));
+        };
+        X.ontimeout = function() {
+            rej(new Error("xhr timeout"));
+        };
+        try {
+            X.send();
+        } catch (e) {
+            rej(e);
+        }
+    });
+}
+
+function playAdDirect(v, pl, u) {
+    v.muted = true;
+    v.autoplay = true;
+    v.src = u;
+    v.load();
+    var pr = v.play();
+    if (pr && pr.catch) pr.catch(function() {
+        v.muted = true;
+        var pr2 = v.play();
+        if (pr2 && pr2.catch) pr2.catch(function() {});
+    });
+}
 
 function adVideoObjectUrl(raw) {
     return _adBlobCache[raw] || "";
@@ -376,24 +519,44 @@ function adVideoBlobUrl(raw) {
     if (!raw) return Promise.resolve("");
     if (/^(blob:|data:)/i.test(raw)) return Promise.resolve(raw);
     if (_adBlobCache[raw]) return Promise.resolve(_adBlobCache[raw]);
-    return resolveVideoUrl(raw).then(function(u) {
-        if (!u) return "";
-        if (/^(blob:|data:)/i.test(u)) return u;
-        return fetch(u, {
-            headers: {
-                Authorization: getToken(),
-                "X-Device-Id": getDeviceId()
-            },
-            cache: "force-cache"
-        }).then(function(r) {
-            if (!r.ok) throw new Error("admedia " + r.status);
-            return r.blob();
-        }).then(function(b) {
-            const bu = URL.createObjectURL(b);
-            _adBlobCache[raw] = bu;
-            return bu;
+    if (_adDlInflight[raw]) return _adDlInflight[raw];
+    const job = getAdBlob(raw).then(function(b) {
+        if (b) {
+            const bu0 = URL.createObjectURL(b);
+            _adBlobCache[raw] = bu0;
+            return bu0;
+        }
+        return adSignUrlOf(raw).then(function(u) {
+            if (!u) throw new Error("nosign");
+            return fetch(u, {
+                headers: {
+                    Authorization: getToken(),
+                    "X-Device-Id": getDeviceId()
+                },
+                cache: "force-cache"
+            }).then(function(r) {
+                if (!r.ok) throw new Error("admedia " + r.status);
+                return r.blob();
+            }).catch(function(e) {
+                return downloadAdViaXhr(u, raw).catch(function() {
+                    throw e;
+                });
+            }).then(function(b2) {
+                return putAdBlob(raw, b2).then(function() {
+                    const bu = URL.createObjectURL(b2);
+                    _adBlobCache[raw] = bu;
+                    return bu;
+                });
+            });
         });
     });
+    _adDlInflight[raw] = job;
+    job.then(function() {
+        delete _adDlInflight[raw];
+    }, function() {
+        delete _adDlInflight[raw];
+    });
+    return job;
 }
 
 function playAdVideo(v) {
@@ -419,6 +582,13 @@ function playAdVideo(v) {
             v.dataset.avBusy = "0";
             adVideoLoading(pl, false);
             adMediaResume();
+            if (v.getAttribute("src") && v.dataset.avTried !== "1") {
+                v.dataset.avTried = "1";
+                adSignUrlOf(adVideoRawSrc(v)).then(function(u) {
+                    if (!u || window.__adExpanded === pl) return;
+                    playAdDirect(v, pl, u);
+                }).catch(function() {});
+            }
         }, 15000);
     }
     adVideoBlobUrl(raw).then(function(u) {
@@ -448,12 +618,23 @@ function playAdVideo(v) {
                 document.addEventListener("click", retry);
             });
         });
-    }).catch(function() {
+    }).catch(function(e) {
         v.dataset.avBusy = "0";
         adVideoLoading(pl, false);
         adMediaResume();
         const tt = parseInt(v.dataset.avTt || "0", 10);
-        if (tt >= 2) return;
+        if (tt >= 2) {
+            reportAdMediaErr(raw, e);
+            adSignUrlOf(raw).then(function(u) {
+                if (!u) return;
+                if (!document.body.contains(pl)) return;
+                if (window.__adExpanded) return;
+                playAdDirect(v, pl, u);
+            }).catch(function(err2) {
+                reportAdMediaErr(raw, "direct " + err2);
+            });
+            return;
+        }
         v.dataset.avTt = String(tt + 1);
         setTimeout(function() {
             if (!document.body.contains(pl)) return;
