@@ -17,7 +17,7 @@
             return false;
         }
     }
-    var USER_MEDIA_CACHE = "zanhua-usermedia-v1";
+    var USER_MEDIA_CACHE = "zanhua-usermedia-v2";
     var USER_MEDIA_PATTERNS = [ "/zanhua/uploads/posts/", "/zanhua/uploads/thumbs/", "/zanhua/uploads/homework/", "/zanhua/uploads/avatars/", "/zanhua/uploads/messages/", "/zanhua/uploads/enterprise/", "/zanhua/uploads/feedbacks/" ];
     function isUserMedia(url) {
         try {
@@ -98,6 +98,10 @@
             return url === fu || url.indexOf(fu) !== -1;
         });
         if (!isFont && !isAsset && !isMedia) return;
+        var reqRange = null;
+        try {
+            reqRange = event.request.headers.get("range");
+        } catch (e) {}
         var cn = isMedia ? USER_MEDIA_CACHE : isAsset ? ASSET_CACHE : CACHE_NAME;
         var keyReq = event.request;
         if (isMedia) {
@@ -116,7 +120,31 @@
         }
         event.respondWith(caches.open(cn).then(function(cache) {
             return cache.match(keyReq).then(function(cached) {
-                if (cached) return cached;
+                if (cached) {
+                    if (isMedia && reqRange && cached.status === 200) {
+                        return cached.blob().then(function(b) {
+                            try {
+                                var m = /bytes=(\d+)-(\d*)/.exec(reqRange);
+                                if (!m) return cached;
+                                var st = parseInt(m[1], 10);
+                                var en = m[2] ? parseInt(m[2], 10) : b.size - 1;
+                                if (!(st >= 0 && en >= st && en < b.size)) return cached;
+                                return new Response(b.slice(st, en + 1), {
+                                    status: 206,
+                                    headers: {
+                                        "Content-Type": cached.headers.get("content-type") || "video/mp4",
+                                        "Content-Range": "bytes " + st + "-" + en + "/" + b.size,
+                                        "Accept-Ranges": "bytes",
+                                        "Content-Length": String(en - st + 1)
+                                    }
+                                });
+                            } catch (e) {
+                                return cached;
+                            }
+                        });
+                    }
+                    return cached;
+                }
                 return fetch(event.request).then(function(response) {
                     if (response && response.ok) {
                         var path = new URL(url).pathname;
@@ -124,11 +152,8 @@
                         if (isMedia) {
                             var isImg = /\.(webp|png|jpe?g|gif|ico)$/i.test(path);
                             var isVid = /\.(mp4|webm|m4v|mov|avi|mkv)$/i.test(path);
-                            var hasRange = false;
-                            try {
-                                hasRange = !!event.request.headers.get("range");
-                            } catch (e) {}
-                            canStore = isImg || isVid && !hasRange;
+                            var fullResp = isVid && response.status === 200 && response.headers.get("content-range") === null;
+                            canStore = isImg || fullResp;
                         }
                         if (canStore) {
                             var pr = cache.put(keyReq, response.clone());

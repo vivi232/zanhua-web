@@ -288,8 +288,11 @@ function applyAdSound(pl) {
 }
 
 function unlockAdSound() {
-    if (window.__adUnlocked === true) return;
     window.__adUnlocked = true;
+    const now = Date.now();
+    if (window.__adUnlockTs && now - window.__adUnlockTs < 400) return;
+    window.__adUnlockTs = now;
+    if (window.__adExpanded) return;
     const pls = document.querySelectorAll(".ad-video-player");
     for (let i = 0; i < pls.length; i++) {
         const v = pls[i].querySelector("video");
@@ -344,6 +347,7 @@ function adMediaYield() {
     for (let i = 0; i < vids.length; i++) {
         const vv = vids[i];
         if (adVideoPlayerOf(vv)) continue;
+        if (vv.closest && vv.closest("#custom-video-player")) continue;
         if (!vv.paused) vv.pause();
     }
 }
@@ -365,6 +369,7 @@ function adMediaResume(force) {
 function playAdVideo(v) {
     var pl = adVideoPlayerOf(v);
     if (!pl) return;
+    if (window.__adExpanded) return;
     v.dataset.wantplay = "1";
     if (v.getAttribute("src")) {
         var pr0 = v.play();
@@ -394,20 +399,24 @@ function playAdVideo(v) {
             pl.classList.remove("ready");
             return;
         }
-        applyAdSound(pl);
+        v.muted = true;
         v.autoplay = true;
         v.setAttribute("fetchpriority", "high");
         v.src = u;
         v.load();
         var pr = v.play();
         if (pr && pr.catch) pr.catch(function() {
-            var retry = function() {
-                v.play().catch(function() {});
-                document.removeEventListener("touchstart", retry);
-                document.removeEventListener("click", retry);
-            };
-            document.addEventListener("touchstart", retry);
-            document.addEventListener("click", retry);
+            v.muted = true;
+            var pr2 = v.play();
+            if (pr2 && pr2.catch) pr2.catch(function() {
+                var retry = function() {
+                    v.play().catch(function() {});
+                    document.removeEventListener("touchstart", retry);
+                    document.removeEventListener("click", retry);
+                };
+                document.addEventListener("touchstart", retry);
+                document.addEventListener("click", retry);
+            });
         });
     }).catch(function() {
         v.dataset.avBusy = "0";
@@ -417,6 +426,7 @@ function playAdVideo(v) {
 }
 
 function adVideoOnIntersect(entries) {
+    if (window.__adExpanded) return;
     entries.forEach(function(en) {
         var v = en.target;
         if (!adVideoPlayerOf(v)) return;
@@ -453,6 +463,14 @@ function hookAdVideoPlayer(pl) {
         pl.classList.remove("ready");
         vv.removeAttribute("src");
         vv.dataset.avBusy = "0";
+        if (vv.dataset.avTt && parseInt(vv.dataset.avTt, 10) >= 2) return;
+        vv.dataset.avTt = String((vv.dataset.avTt ? parseInt(vv.dataset.avTt, 10) : 0) + 1);
+        setTimeout(function() {
+            if (!document.body.contains(pl)) return;
+            if (window.__adExpanded) return;
+            if (pl.classList.contains("ready")) return;
+            playAdVideo(vv);
+        }, 1200);
     });
     if (!window.AdVideoIO && window.IntersectionObserver) window.AdVideoIO = new IntersectionObserver(adVideoOnIntersect, {
         threshold: [0, 0.3, 0.5, 1]
@@ -474,6 +492,40 @@ function initAdVideoObserver() {
     if (!window.AdVideoIO) return;
     var pls = document.querySelectorAll(".ad-video-player:not([data-av-obs])");
     for (var i = 0; i < pls.length; i++) hookAdVideoPlayer(pls[i]);
+}
+
+function expandAdVideo(pl, src, poster) {
+    const v = pl.querySelector("video");
+    window.__adExpanded = pl;
+    window.__adExpandedTime = v ? v.currentTime || 0 : 0;
+    if (v) v.pause();
+    openVideoPlayer(src, poster, false, window.__adExpandedTime);
+}
+
+var _adViewSent = {};
+
+function initAdViewScan() {
+    if (!getToken()) return;
+    const els = document.querySelectorAll("[data-adview]");
+    const vh = window.innerHeight || 600;
+    for (let i = 0; i < els.length; i++) {
+        const el = els[i];
+        const id = el.getAttribute("data-adview");
+        if (!id || _adViewSent[id]) continue;
+        const r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+        if (!r) continue;
+        if (r.bottom > 0 && r.top < vh) {
+            _adViewSent[id] = 1;
+            api("/api/adView", "POST", {
+                ad_id: parseInt(id, 10)
+            }).catch(function() {});
+        }
+    }
+}
+
+if (!window.__adViewScanBound) {
+    window.__adViewScanBound = 1;
+    setInterval(initAdViewScan, 2500);
 }
 
 let currentPage = "home";
@@ -1859,7 +1911,7 @@ let playerSpeedIndicator = null;
 
 let playerFirstTipShown = false;
 
-async function openVideoPlayer(src, poster, allowDownload = true) {
+async function openVideoPlayer(src, poster, allowDownload = true, startTime = 0) {
     if (!requireLogin()) return;
     currentVideoSrc = src;
     currentVideoAllowDownload = allowDownload;
@@ -1994,6 +2046,17 @@ async function openVideoPlayer(src, poster, allowDownload = true) {
     if (speedLabel) speedLabel.textContent = "1.0x";
     const speedMenu = document.getElementById("player-speed-menu");
     if (speedMenu) speedMenu.style.display = "none";
+    if (startTime > 0) {
+        const seekTo = function() {
+            try {
+                if (video.duration && startTime < video.duration - 0.5) video.currentTime = startTime;
+            } catch (e) {}
+        };
+        if (video.readyState >= 1) seekTo();
+        else video.addEventListener("loadedmetadata", seekTo, {
+            once: true
+        });
+    }
     video.play().catch(() => {});
     if (!localStorage.getItem("video_player_tip_shown")) {
         setTimeout(() => {
@@ -2037,6 +2100,21 @@ function closeVideoPlayer() {
         video.pause();
         video.src = "";
         player.style.display = "none";
+    }
+    if (window.__adExpanded) {
+        const pl = window.__adExpanded;
+        const t = window.__adExpandedTime || 0;
+        window.__adExpanded = null;
+        window.__adExpandedTime = 0;
+        const iv = pl.querySelector ? pl.querySelector("video") : null;
+        if (iv) {
+            try {
+                iv.currentTime = t;
+            } catch (e) {}
+            applyAdSound(pl);
+            const pr = iv.play();
+            if (pr && pr.catch) pr.catch(function() {});
+        }
     }
     if (playerVideoBlobUrl) {
         try {
@@ -2901,13 +2979,13 @@ function renderPostCard(p) {
         if (isAd) {
             const vsrcEsc = escapeHtml(String(p.video));
             const avCover = p.video_cover ? '<img class="ad-video-poster" src="' + resolveMediaUrl(p.video_cover) + '" onload="var pl=this.closest(\'.ad-video-player\');if(pl&&this.naturalWidth)pl.style.aspectRatio=(this.naturalWidth/this.naturalHeight).toFixed(3)">' : "";
-            videoHtml = `<div class="post-images single">\n          <div class="ad-video-player${p.video_cover ? "" : " ready"}" data-vsrc="${vsrcEsc}" onclick="event.stopPropagation();openVideoPlayer('${p.video}', '${p.video_cover || ""}', false)" style="position:relative;width:75%;aspect-ratio:${p.video_w > 0 && p.video_h > 0 ? (p.video_w / p.video_h).toFixed(3) : "16/9"};border-radius:8px;overflow:hidden;background:#111;">\n            ${avCover}\n            <video muted loop playsinline autoplay preload="auto" fetchpriority="high" data-vsrc="${vsrcEsc}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#111;pointer-events:none;"></video>\n            <div class="ad-video-loading"><span class="ad-video-spin"></span></div>\n            <div class="ad-video-expand"><i class="fa-solid fa-expand"></i></div>\n            <div class="ad-video-sound" onclick="event.stopPropagation();toggleAdSound(this)"><i class="fa-solid fa-volume-xmark"></i></div>\n          </div>\n        </div>`;
+            videoHtml = `<div class="post-images single">\n          <div class="ad-video-player${p.video_cover ? "" : " ready"}" data-vsrc="${vsrcEsc}" onclick="event.stopPropagation();expandAdVideo(this, '${p.video}', '${p.video_cover || ""}')" style="position:relative;width:75%;aspect-ratio:${p.video_w > 0 && p.video_h > 0 ? (p.video_w / p.video_h).toFixed(3) : "16/9"};border-radius:8px;overflow:hidden;background:#111;">\n            ${avCover}\n            <video muted playsinline autoplay preload="auto" fetchpriority="high" data-vsrc="${vsrcEsc}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#111;pointer-events:none;"></video>\n            <div class="ad-video-loading"><span class="ad-video-spin"></span></div>\n            <div class="ad-video-expand"><i class="fa-solid fa-expand"></i></div>\n            <div class="ad-video-sound" onclick="event.stopPropagation();toggleAdSound(this)"><i class="fa-solid fa-volume-xmark"></i></div>\n          </div>\n        </div>`;
         } else {
             videoHtml = `<div class="post-images single">\n          <div onclick="event.stopPropagation();openVideoPlayer('${p.video}', '${p.video_cover || ""}', ${p.allow_download != 0 ? "true" : "false"})" style="position:relative;cursor:pointer;width:75%;aspect-ratio:1;border-radius:8px;overflow:hidden;">\n            ${p.video_cover ? `<img loading="lazy" src="${resolveThumb(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ""}\n            <div style="display:${p.video_cover ? "none" : "flex"};position:absolute;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);align-items:center;justify-content:center;">\n              <div style="text-align:center;">\n                <i class="fa-solid fa-video" style="font-size:32px;color:rgba(255,255,255,0.9);"></i>\n                <div style="color:rgba(255,255,255,0.8);font-size:11px;margin-top:4px;">点击播放</div>\n              </div>\n            </div>\n            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;background:rgba(0,0,0,0.5);border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;">\n              <i class="fa-solid fa-play" style="color:#fff;font-size:16px;margin-left:2px;"></i>\n            </div>\n          </div>\n        </div>`;
         }
     }
     const cardClick = isAd ? "" : ` onclick="goPostDetail('${p.id}')"`;
-    return `<div class="${cardClass}" id="pc-${p.id}"${cardClick}>\n        <div class="post-header">\n          <img class="avatar" src="${resolveMediaUrl(p.avatar) || DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${p.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <div class="post-user">\n            <div class="post-nickname">${wrapNick(escapeHtml(p.nickname || "用户" + p.user_id), p)}${renderListVerification(p)}${isAd ? '<span class="ad-badge">广告</span>' : ""}</div>\n            <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || "未知"}</div>\n          </div>\n          ${isMine ? `<div onclick="event.stopPropagation();showPostActionSheet('${p.id}')" style="cursor:pointer;padding:4px 8px;margin-left:auto;"><i class="fa-solid fa-ellipsis" style="color:#999;font-size:16px;"></i></div>` : ""}\n        </div>\n        ${p.title ? `<div style="padding:0 16px 6px;font-size:16px;font-weight:600;">${escapeHtml(p.title)}</div>` : ""}\n        ${contentBlock}\n        ${isAd ? adImgsHtml(p.images) : ""}\n        ${isProtected || isAd ? "" : `${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}`}\n        ${videoHtml}\n        <div class="post-actions" onclick="event.stopPropagation()">\n          <div class="action-item"${isAd ? "" : ` onclick="likePost('${p.id}',this)`}"><i class="${liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${liked ? "var(--color-red)" : ""}"></i><span>${p.likes || 0}</span></div>\n          <div class="action-item"${isAd ? "" : ` onclick="goPostDetailAndScroll('${p.id}')`}"><i class="fa-regular fa-comment"></i><span>${p.comments || 0}</span></div>\n          <div class="action-item"${isAd ? "" : ` onclick="collectPost('${p.id}',this)`}"><i class="${collected ? "fa-solid fa-star" : "fa-regular fa-star"}" style="color:${collected ? "var(--color-yellow)" : ""}"></i><span>${p.collects || 0}</span></div>\n        </div>\n      </div>`;
+    return `<div class="${cardClass}" id="pc-${p.id}"${isAd ? ` data-adview="${String(p.id).replace("ad-", "")}"` : ""}${cardClick}>\n        <div class="post-header">\n          <img class="avatar" src="${resolveMediaUrl(p.avatar) || DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${p.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <div class="post-user">\n            <div class="post-nickname">${wrapNick(escapeHtml(p.nickname || "用户" + p.user_id), p)}${renderListVerification(p)}${isAd ? '<span class="ad-badge">广告</span>' : ""}</div>\n            <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || "未知"}</div>\n          </div>\n          ${isMine ? `<div onclick="event.stopPropagation();showPostActionSheet('${p.id}')" style="cursor:pointer;padding:4px 8px;margin-left:auto;"><i class="fa-solid fa-ellipsis" style="color:#999;font-size:16px;"></i></div>` : ""}\n        </div>\n        ${p.title ? `<div style="padding:0 16px 6px;font-size:16px;font-weight:600;">${escapeHtml(p.title)}</div>` : ""}\n        ${contentBlock}\n        ${isAd ? adImgsHtml(p.images) : ""}\n        ${isProtected || isAd ? "" : `${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}`}\n        ${videoHtml}\n        <div class="post-actions" onclick="event.stopPropagation()">\n          <div class="action-item"${isAd ? "" : ` onclick="likePost('${p.id}',this)`}"><i class="${liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${liked ? "var(--color-red)" : ""}"></i><span>${p.likes || 0}</span></div>\n          <div class="action-item"${isAd ? "" : ` onclick="goPostDetailAndScroll('${p.id}')`}"><i class="fa-regular fa-comment"></i><span>${p.comments || 0}</span></div>\n          <div class="action-item"${isAd ? "" : ` onclick="collectPost('${p.id}',this)`}"><i class="${collected ? "fa-solid fa-star" : "fa-regular fa-star"}" style="color:${collected ? "var(--color-yellow)" : ""}"></i><span>${p.collects || 0}</span></div>\n        </div>\n      </div>`;
 }
 
 function togglePostExpand(cardId) {
@@ -3285,7 +3363,7 @@ async function loadConfessionComments(confessionId) {
         const content = formatCommentContent(c.content);
         const nameHtml = parentName ? `<span class="c-name">${escapeHtml(c.nickname || "用户")}</span><span class="reply-arrow"></span><span class="reply-parent-name">${escapeHtml(parentName)}</span>` : `<span class="c-name">${escapeHtml(c.nickname || "用户")}</span>${c.is_ad ? '<span class="ad-badge">广告</span>' : ""}`;
         const isMine = c.user_id === myUid || currentNickname === "管理员";
-        return `<div class="comment-item" data-ccomment-id="${c.id}" data-cis-mine="${isMine}"${c.is_ad ? ' data-ad="1"' : ""}>\n            <img class="c-avatar" src="${resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${c.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="c-body">\n              <div class="c-header">\n                ${nameHtml}\n                ${c.post_seq === 1 ? '<span class="comment-tag-first">首评</span>' : ""}\n              </div>\n              <div class="c-content collapsed" id="ccc-${c.id}">${content}${c.images ? adImgsHtml(c.images) : ""}</div>\n              <div class="c-meta">\n                <div class="c-meta-left">\n                  <span class="c-time">${timeAgo(c.create_time)}</span>\n                  ${cleanProvince(c.province) ? `<span>${cleanProvince(c.province)}</span>` : ""}\n                  ${c.is_ad ? "" : `<span class="c-action" onclick="setConfessionReply(${c.post_seq})">回复</span>`}\n                </div>\n                <span class="c-like"${c.is_ad ? "" : ` onclick="likeConfessionComment(${c.id},this)`}">\n                  <i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i>\n                  <span>${c.likes || 0}</span>\n                </span>\n              </div>\n              ${repliesHtml || ""}\n            </div>\n          </div>`;
+        return `<div class="comment-item" data-ccomment-id="${c.id}" data-cis-mine="${isMine}"${c.is_ad ? ' data-ad="1" data-adview="' + Math.abs(parseInt(c.id, 10)) + '"' : ""}>\n            <img class="c-avatar" src="${resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${c.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="c-body">\n              <div class="c-header">\n                ${nameHtml}\n                ${c.post_seq === 1 ? '<span class="comment-tag-first">首评</span>' : ""}\n              </div>\n              <div class="c-content collapsed" id="ccc-${c.id}">${content}${c.images ? adImgsHtml(c.images) : ""}</div>\n              <div class="c-meta">\n                <div class="c-meta-left">\n                  <span class="c-time">${timeAgo(c.create_time)}</span>\n                  ${cleanProvince(c.province) ? `<span>${cleanProvince(c.province)}</span>` : ""}\n                  ${c.is_ad ? "" : `<span class="c-action" onclick="setConfessionReply(${c.post_seq})">回复</span>`}\n                </div>\n                <span class="c-like"${c.is_ad ? "" : ` onclick="likeConfessionComment(${c.id},this)`}">\n                  <i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i>\n                  <span>${c.likes || 0}</span>\n                </span>\n              </div>\n              ${repliesHtml || ""}\n            </div>\n          </div>`;
     };
     const collectAllDescendants = parentSeq => {
         const direct = res.data.filter(c => c.parent_seq == parentSeq);
@@ -4237,7 +4315,7 @@ async function loadHomeworkComments() {
         const nameHtml = parentName ? `<span class="c-name">${escapeHtml(c.nickname || "用户")}</span><span class="reply-arrow"></span><span class="reply-parent-name">${escapeHtml(parentName)}</span>` : `<span class="c-name">${escapeHtml(c.nickname || "用户")}</span>${c.is_ad ? '<span class="ad-badge">广告</span>' : ""}`;
         const isMine = c.user_id === myUid || currentNickname === "管理员";
         const avatar = resolveMediaUrl(c.avatar) || DEFAULT_AVATAR;
-        return `<div class="comment-item" data-comment-id="${c.id}" data-is-mine="${isMine}"${c.is_ad ? ' data-ad="1"' : ""}>\n            <img class="c-avatar" src="${avatar}" onclick="goUserProfile('${c.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="c-body">\n              <div class="c-header">${nameHtml}${c.post_seq === 1 ? '<span class="comment-tag-first">首评</span>' : ""}</div>\n              <div class="c-content">${text}${c.images ? adImgsHtml(c.images) : ""}</div>\n              <div class="c-meta">\n                <div class="c-meta-left">\n                  <span class="c-time">${timeAgo(c.create_time)}</span>\n                  ${cleanProvince(c.province) ? `<span>${escapeHtml(cleanProvince(c.province))}</span>` : ""}\n                  ${c.is_ad ? "" : `<span class="c-action" onclick="setHwReply(${c.post_seq})">回复</span>`}\n                  ${isMine ? `<span class="c-action" onclick="deleteHomeworkComment(${c.id})" style="color:#ff2442;">删除</span>` : ""}\n                </div>\n                <span class="c-like"${c.is_ad ? "" : ` onclick="toggleHomeworkCommentLike(${c.id},this)`}">\n                  <i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i>\n                  <span>${c.likes || 0}</span>\n                </span>\n              </div>\n              ${repliesHtml || ""}\n            </div>\n          </div>`;
+        return `<div class="comment-item" data-comment-id="${c.id}" data-is-mine="${isMine}"${c.is_ad ? ' data-ad="1" data-adview="' + Math.abs(parseInt(c.id, 10)) + '"' : ""}>\n            <img class="c-avatar" src="${avatar}" onclick="goUserProfile('${c.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="c-body">\n              <div class="c-header">${nameHtml}${c.post_seq === 1 ? '<span class="comment-tag-first">首评</span>' : ""}</div>\n              <div class="c-content">${text}${c.images ? adImgsHtml(c.images) : ""}</div>\n              <div class="c-meta">\n                <div class="c-meta-left">\n                  <span class="c-time">${timeAgo(c.create_time)}</span>\n                  ${cleanProvince(c.province) ? `<span>${escapeHtml(cleanProvince(c.province))}</span>` : ""}\n                  ${c.is_ad ? "" : `<span class="c-action" onclick="setHwReply(${c.post_seq})">回复</span>`}\n                  ${isMine ? `<span class="c-action" onclick="deleteHomeworkComment(${c.id})" style="color:#ff2442;">删除</span>` : ""}\n                </div>\n                <span class="c-like"${c.is_ad ? "" : ` onclick="toggleHomeworkCommentLike(${c.id},this)`}">\n                  <i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i>\n                  <span>${c.likes || 0}</span>\n                </span>\n              </div>\n              ${repliesHtml || ""}\n            </div>\n          </div>`;
     };
     const collectAllDescendants = parentSeq => {
         const direct = homeworkComments.filter(c => c.parent_seq == parentSeq);
@@ -6293,7 +6371,7 @@ async function loadComments(postId) {
         const content = formatCommentContent(c.content);
         const nameHtml = parentName ? `<span class="c-name">${escapeHtml(c.nickname || "用户")}</span><span class="reply-arrow"></span><span class="reply-parent-name">${escapeHtml(parentName)}</span>` : `<span class="c-name">${escapeHtml(c.nickname || "用户")}</span>${c.is_ad ? '<span class="ad-badge">广告</span>' : ""}`;
         const isMine = c.user_id === myUid || currentNickname === "管理员";
-        return `<div class="comment-item" data-comment-id="${c.id}" data-is-mine="${isMine}"${c.is_ad ? ' data-ad="1"' : ""}>\n            <img class="c-avatar" src="${resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${c.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="c-body">\n              <div class="c-header">\n                ${nameHtml}\n                ${c.post_seq === 1 ? '<span class="comment-tag-first">首评</span>' : ""}\n              </div>\n              <div class="c-content collapsed" id="cc-${c.id}">${content}${c.images ? adImgsHtml(c.images) : ""}</div>\n              <div class="c-meta">\n                <div class="c-meta-left">\n                  <span class="c-time">${timeAgo(c.create_time)}</span>\n                  ${cleanProvince(c.province) ? `<span>${cleanProvince(c.province)}</span>` : ""}\n                  ${c.is_ad ? "" : `<span class="c-action" onclick="setReply(${c.post_seq})">回复</span>`}\n                </div>\n                <span class="c-like"${c.is_ad ? "" : ` onclick="likeComment(${c.id},this)`}">\n                  <i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i>\n                  <span>${c.likes || 0}</span>\n                </span>\n              </div>\n              ${repliesHtml || ""}\n            </div>\n          </div>`;
+        return `<div class="comment-item" data-comment-id="${c.id}" data-is-mine="${isMine}"${c.is_ad ? ' data-ad="1" data-adview="' + Math.abs(parseInt(c.id, 10)) + '"' : ""}>\n            <img class="c-avatar" src="${resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${c.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="c-body">\n              <div class="c-header">\n                ${nameHtml}\n                ${c.post_seq === 1 ? '<span class="comment-tag-first">首评</span>' : ""}\n              </div>\n              <div class="c-content collapsed" id="cc-${c.id}">${content}${c.images ? adImgsHtml(c.images) : ""}</div>\n              <div class="c-meta">\n                <div class="c-meta-left">\n                  <span class="c-time">${timeAgo(c.create_time)}</span>\n                  ${cleanProvince(c.province) ? `<span>${cleanProvince(c.province)}</span>` : ""}\n                  ${c.is_ad ? "" : `<span class="c-action" onclick="setReply(${c.post_seq})">回复</span>`}\n                </div>\n                <span class="c-like"${c.is_ad ? "" : ` onclick="likeComment(${c.id},this)`}">\n                  <i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i>\n                  <span>${c.likes || 0}</span>\n                </span>\n              </div>\n              ${repliesHtml || ""}\n            </div>\n          </div>`;
     };
     const collectAllDescendants = parentSeq => {
         const direct = res.data.filter(c => c.parent_seq == parentSeq);
