@@ -17,7 +17,7 @@
             return false;
         }
     }
-    var USER_MEDIA_CACHE = "zanhua-usermedia-v2";
+    var USER_MEDIA_CACHE = "zanhua-usermedia-v3";
     var USER_MEDIA_PATTERNS = [ "/zanhua/uploads/posts/", "/zanhua/uploads/thumbs/", "/zanhua/uploads/homework/", "/zanhua/uploads/avatars/", "/zanhua/uploads/messages/", "/zanhua/uploads/enterprise/", "/zanhua/uploads/feedbacks/" ];
     function isUserMedia(url) {
         try {
@@ -107,7 +107,7 @@
         if (isMedia) {
             try {
                 var uu = new URL(url);
-                if (/\.(webp|png|jpe?g|gif|ico)$/i.test(uu.pathname)) uu.search = "";
+                if (/\.(webp|png|jpe?g|gif|ico|mp4|webm|m4v|mov|avi|mkv)$/i.test(uu.pathname)) uu.search = "";
                 keyReq = new Request(uu.href, {
                     method: "GET",
                     headers: new Headers({
