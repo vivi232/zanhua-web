@@ -262,24 +262,91 @@ function adVideoRawSrc(v) {
     return (v && v.getAttribute("data-vsrc")) || (pl && pl.getAttribute("data-vsrc")) || "";
 }
 
-function adVideoVisible(en) {
-    if (!en.isIntersecting) return false;
-    if (en.intersectionRatio >= 0.3) return true;
+function adVisibleRatio(el) {
+    if (!el || !el.getBoundingClientRect) return 0;
+    var r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return 0;
     var vh = window.innerHeight || 600;
-    return en.intersectionRect.height >= Math.min(90, vh * 0.12);
+    var vw = window.innerWidth || 360;
+    var visW = Math.min(r.right, vw) - Math.max(r.left, 0);
+    var visH = Math.min(r.bottom, vh) - Math.max(r.top, 0);
+    if (visW <= 0 || visH <= 0) return 0;
+    return visW * visH / (r.width * r.height);
+}
+
+function adVideoUsable(v) {
+    var pl = adVideoPlayerOf(v);
+    var p = pl && pl.parentElement;
+    while (p && p.getAttribute && !p.getAttribute("data-adview")) p = p.parentElement;
+    if (!p || !p.getAttribute) return true;
+    var w = parseInt(p.getAttribute("data-ad-w") || "0", 10) || 0;
+    var h = parseInt(p.getAttribute("data-ad-h") || "0", 10) || 0;
+    return w > 0 && h > 0;
+}
+
+function adSetAvProgress(pl, ratio) {
+    if (!pl || !pl.querySelector) return;
+    var box = pl.querySelector(".ad-video-loading");
+    if (!box || !box.querySelector) return;
+    var pct = box.querySelector(".ad-video-pct");
+    if (ratio <= 0) {
+        if (pct && pct.remove) pct.remove();
+        return;
+    }
+    if (!pct) {
+        pct = document.createElement("span");
+        pct.className = "ad-video-pct";
+        box.appendChild(pct);
+    }
+    pct.textContent = Math.floor(ratio * 100) + "%";
+}
+
+function adVideoVisible(el, en) {
+    if (en) {
+        if (!en.isIntersecting) return false;
+        return en.intersectionRatio >= 0.5;
+    }
+    return adVisibleRatio(el) >= 0.5;
+}
+
+function checkAdVideos() {
+    if (window.__adExpanded) return;
+    var vids = document.querySelectorAll ? document.querySelectorAll(".ad-video-player video") : [];
+    for (var i = 0; i < vids.length; i++) {
+        var vv = vids[i];
+        var pl = adVideoPlayerOf(vv);
+        if (!pl || pl.classList.contains("ready")) continue;
+        if (vv.getAttribute("src") || vv.dataset.avBusy === "1") continue;
+        if (vv.dataset.avTt && parseInt(vv.dataset.avTt, 10) >= 3) continue;
+        if (adVideoVisible(vv, null)) playAdVideo(vv);
+    }
+}
+
+if (!window.__adVideoScanBound) {
+    window.__adVideoScanBound = 1;
+    var _adScanIdle = 0;
+    setInterval(function() {
+        if (_adScanIdle === 1) return;
+        _adScanIdle = 1;
+        setTimeout(function() {
+            _adScanIdle = 0;
+            checkAdVideos();
+        }, 2200);
+    }, 2600);
 }
 
 function adVideoLoading(pl, on) {
     if (!pl) return;
     if (on) pl.classList.add("av-loading");
     else pl.classList.remove("av-loading");
+    adSetAvProgress(pl, 0);
 }
 
 function applyAdSound(pl) {
     const v = pl.querySelector("video");
     if (!v) return;
     const want = pl.getAttribute("data-sound") !== "off";
-    const can = window.__adUnlocked === true;
+    const can = window.__adUnlocked === true && adVideoVisible(v, null);
     v.muted = !(want && can);
     v.volume = 1;
     const btn = pl.querySelector(".ad-video-sound");
@@ -329,42 +396,9 @@ function toggleAdSound(btn) {
     document.addEventListener("keydown", unlockAdSound, false);
 })();
 
-function adMediaYield() {
-    try {
-        imgPrefetch.pause();
-    } catch (e) {}
-    const imgs = document.querySelectorAll(".post-images img");
-    for (let i = 0; i < imgs.length; i++) {
-        const im = imgs[i];
-        if (adVideoPlayerOf(im)) continue;
-        if (im.complete && im.naturalWidth) continue;
-        const cur = im.getAttribute("src");
-        if (!cur || cur.indexOf("data:") === 0 || im.getAttribute("data-av-pend")) continue;
-        im.setAttribute("data-av-pend", cur);
-        im.removeAttribute("src");
-    }
-    const vids = document.querySelectorAll("video");
-    for (let i = 0; i < vids.length; i++) {
-        const vv = vids[i];
-        if (adVideoPlayerOf(vv)) continue;
-        if (vv.closest && vv.closest("#custom-video-player")) continue;
-        if (!vv.paused) vv.pause();
-    }
-}
 
-function adMediaResume(force) {
-    if (!force && document.querySelector(".ad-video-player.av-loading")) return;
-    const pend = document.querySelectorAll(".post-images img[data-av-pend]");
-    for (let i = 0; i < pend.length; i++) {
-        const im = pend[i];
-        const u = im.getAttribute("data-av-pend");
-        im.removeAttribute("data-av-pend");
-        if (u) im.setAttribute("src", u);
-    }
-    try {
-        imgPrefetch.resume();
-    } catch (e) {}
-}
+
+
 
 var _adBlobCache = {};
 var _adDlInflight = {};
@@ -450,6 +484,27 @@ function putAdBlob(raw, b) {
     }).catch(function() {});
 }
 
+function readAdStream(r, onp) {
+    if (!onp || !r || !r.body || typeof r.body.getReader !== "function" || !r.headers || typeof r.headers.get !== "function") return r.blob();
+    const total = parseInt(r.headers.get("Content-Length") || "0", 10) || 0;
+    if (!total) return r.blob();
+    const reader = r.body.getReader();
+    const chunks = [];
+    let got = 0;
+    const step = function() {
+        return reader.read().then(function(dn) {
+            if (dn.done) return new Blob(chunks, {
+                type: "video/mp4"
+            });
+            chunks.push(dn.value);
+            got += dn.value.length;
+            onp(Math.min(1, got / total));
+            return step();
+        });
+    };
+    return step();
+}
+
 function reportAdMediaErr(raw, reason) {
     try {
         if (!getToken()) return;
@@ -475,7 +530,7 @@ function adSignUrlOf(raw) {
     });
 }
 
-function downloadAdViaXhr(u, raw) {
+function downloadAdViaXhr(u, raw, onp) {
     return new Promise(function(res, rej) {
         let X;
         try {
@@ -486,7 +541,10 @@ function downloadAdViaXhr(u, raw) {
         try {
             X.open("GET", u, true);
             X.responseType = "blob";
-            X.timeout = 60000;
+            X.timeout = 240000;
+            if (typeof onp === "function") X.onprogress = function(ev) {
+                if (ev.total > 0) onp(ev.loaded / ev.total);
+            };
             X.setRequestHeader("Authorization", getToken());
             X.setRequestHeader("X-Device-Id", getDeviceId());
         } catch (e) {
@@ -527,7 +585,7 @@ function adVideoObjectUrl(raw) {
     return _adBlobCache[raw] || "";
 }
 
-function adVideoBlobUrl(raw) {
+function adVideoBlobUrl(raw, onp) {
     if (!raw) return Promise.resolve("");
     if (/^(blob:|data:)/i.test(raw)) return Promise.resolve(raw);
     if (_adBlobCache[raw]) return Promise.resolve(_adBlobCache[raw]);
@@ -549,9 +607,9 @@ function adVideoBlobUrl(raw) {
                 cache: "force-cache"
             }).then(function(r) {
                 if (!r.ok) throw new Error("admedia " + r.status);
-                return r.blob();
+                return readAdStream(r, onp);
             }).catch(function(e) {
-                return downloadAdViaXhr(u, raw).catch(function() {
+                return downloadAdViaXhr(u, raw, onp).catch(function() {
                     throw e;
                 });
             }).then(function(b2) {
@@ -576,43 +634,38 @@ function playAdVideo(v) {
     var pl = adVideoPlayerOf(v);
     if (!pl) return;
     if (window.__adExpanded) return;
+    var raw = adVideoRawSrc(v);
+    if (raw && !adVideoUsable(v)) {
+        _adDead[raw] = 1;
+        v.dataset.avTt = "9";
+        adVideoLoading(pl, false);
+        return;
+    }
+    if (!adVideoVisible(v, null)) return;
     v.dataset.wantplay = "1";
     if (v.getAttribute("src")) {
         var pr0 = v.play();
         if (pr0 && pr0.catch) pr0.catch(function() {});
+        applyAdSound(pl);
         return;
     }
     if (v.dataset.avBusy === "1") return;
-    var raw = adVideoRawSrc(v);
-    if (!raw) return;
+    if (!raw || _adDead[raw]) return;
+    var tt = parseInt(v.dataset.avTt || "0", 10);
+    if (tt >= 3) return;
     v.dataset.avBusy = "1";
     adVideoLoading(pl, true);
-    adMediaYield();
-    if (pl.dataset.avGuard !== "1") {
-        pl.dataset.avGuard = "1";
-        setTimeout(function() {
-            if (v.readyState >= 2) return;
-            v.dataset.avBusy = "0";
-            adVideoLoading(pl, false);
-            adMediaResume();
-            if (_adDead[adVideoRawSrc(v)]) return;
-            if (v.getAttribute("src") && v.dataset.avTried !== "1") {
-                v.dataset.avTried = "1";
-                adSignUrlOf(adVideoRawSrc(v)).then(function(u) {
-                    if (!u || window.__adExpanded === pl) return;
-                    playAdDirect(v, pl, u);
-                }).catch(function() {});
-            }
-        }, 15000);
-    }
-    adVideoBlobUrl(raw).then(function(u) {
+    adVideoBlobUrl(raw, function(ratio) {
+        adSetAvProgress(pl, ratio);
+    }).then(function(u) {
+        v.dataset.avBusy = "0";
         if (!u) {
-            v.dataset.avBusy = "0";
             adVideoLoading(pl, false);
-            adMediaResume();
             pl.classList.remove("ready");
             return;
         }
+        if (window.__adExpanded) return;
+        if (!adVideoVisible(v, null)) return;
         v.muted = true;
         v.autoplay = true;
         v.setAttribute("fetchpriority", "high");
@@ -622,27 +675,18 @@ function playAdVideo(v) {
         if (pr && pr.catch) pr.catch(function() {
             v.muted = true;
             var pr2 = v.play();
-            if (pr2 && pr2.catch) pr2.catch(function() {
-                var retry = function() {
-                    v.play().catch(function() {});
-                    document.removeEventListener("touchstart", retry);
-                    document.removeEventListener("click", retry);
-                };
-                document.addEventListener("touchstart", retry);
-                document.addEventListener("click", retry);
-            });
+            if (pr2 && pr2.catch) pr2.catch(function() {});
         });
     }).catch(function(e) {
         v.dataset.avBusy = "0";
         adVideoLoading(pl, false);
-        adMediaResume();
         if (String(e && e.message || e).indexOf("nosign") >= 0) {
             _adDead[raw] = 1;
-            v.dataset.avTt = "2";
+            v.dataset.avTt = "9";
             return;
         }
-        const tt = parseInt(v.dataset.avTt || "0", 10);
-        if (tt >= 2) {
+        v.dataset.avTt = String(tt + 1);
+        if (tt + 1 >= 3) {
             reportAdMediaErr(raw, e);
             adSignUrlOf(raw).then(function(u) {
                 if (!u) {
@@ -657,12 +701,11 @@ function playAdVideo(v) {
             });
             return;
         }
-        v.dataset.avTt = String(tt + 1);
         setTimeout(function() {
             if (!document.body.contains(pl)) return;
             if (window.__adExpanded) return;
             playAdVideo(v);
-        }, 1500);
+        }, 3000);
     });
 }
 
@@ -671,8 +714,15 @@ function adVideoOnIntersect(entries) {
     entries.forEach(function(en) {
         var v = en.target;
         if (!adVideoPlayerOf(v)) return;
-        if (adVideoVisible(en)) playAdVideo(v);
-        else if (v.dataset.wantplay === "1") v.pause();
+        if (adVideoVisible(v, en)) {
+            playAdVideo(v);
+            var plOn = adVideoPlayerOf(v);
+            if (plOn) applyAdSound(plOn);
+        } else {
+            if (!v.paused) v.pause();
+            var plOff = adVideoPlayerOf(v);
+            if (plOff) applyAdSound(plOff);
+        }
     });
 }
 
@@ -688,11 +738,9 @@ function hookAdVideoPlayer(pl) {
     vv.addEventListener("playing", function() {
         pl.classList.add("ready");
         adVideoLoading(pl, false);
-        adMediaResume();
     });
     vv.addEventListener("canplay", function() {
         adVideoLoading(pl, false);
-        adMediaResume();
     });
     vv.addEventListener("waiting", function() {
         if (pl.classList.contains("ready")) return;
@@ -700,11 +748,10 @@ function hookAdVideoPlayer(pl) {
     });
     vv.addEventListener("error", function() {
         adVideoLoading(pl, false);
-        adMediaResume();
         pl.classList.remove("ready");
         vv.removeAttribute("src");
         vv.dataset.avBusy = "0";
-        if (vv.dataset.avTt && parseInt(vv.dataset.avTt, 10) >= 2) return;
+        if (vv.dataset.avTt && parseInt(vv.dataset.avTt, 10) >= 3) return;
         vv.dataset.avTt = String((vv.dataset.avTt ? parseInt(vv.dataset.avTt, 10) : 0) + 1);
         setTimeout(function() {
             if (!document.body.contains(pl)) return;
@@ -714,11 +761,10 @@ function hookAdVideoPlayer(pl) {
         }, 1200);
     });
     if (!window.AdVideoIO && window.IntersectionObserver) window.AdVideoIO = new IntersectionObserver(adVideoOnIntersect, {
-        threshold: [0, 0.3, 0.5, 1]
+        threshold: [0, 0.5, 1]
     });
     if (window.AdVideoIO) window.AdVideoIO.observe(vv);
-    var r = pl.getBoundingClientRect ? pl.getBoundingClientRect() : null;
-    if (r && window.AdVideoIO && r.bottom > 0 && r.top < (window.innerHeight || 600)) playAdVideo(vv);
+    if (adVideoVisible(vv, null)) playAdVideo(vv);
 }
 
 function registerAdVideos(root) {
@@ -3244,7 +3290,7 @@ function renderPostCard(p) {
         }
     }
     const cardClick = isAd ? "" : ` onclick="goPostDetail('${p.id}')"`;
-    return `<div class="${cardClass}" id="pc-${p.id}"${isAd ? ` data-adview="${String(p.id).replace("ad-", "")}"` : ""}${cardClick}>\n        <div class="post-header">\n          <img class="avatar" src="${resolveMediaUrl(p.avatar) || DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${p.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <div class="post-user">\n            <div class="post-nickname">${wrapNick(escapeHtml(p.nickname || "用户" + p.user_id), p)}${renderListVerification(p)}${isAd ? '<span class="ad-badge">广告</span>' : ""}</div>\n            <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || "未知"}</div>\n          </div>\n          ${isMine ? `<div onclick="event.stopPropagation();showPostActionSheet('${p.id}')" style="cursor:pointer;padding:4px 8px;margin-left:auto;"><i class="fa-solid fa-ellipsis" style="color:#999;font-size:16px;"></i></div>` : ""}\n        </div>\n        ${p.title ? `<div style="padding:0 16px 6px;font-size:16px;font-weight:600;">${escapeHtml(p.title)}</div>` : ""}\n        ${contentBlock}\n        ${isAd ? adImgsHtml(p.images) : ""}\n        ${isProtected || isAd ? "" : `${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}`}\n        ${videoHtml}\n        <div class="post-actions" onclick="event.stopPropagation()">\n          <div class="action-item"${isAd ? "" : ` onclick="likePost('${p.id}',this)`}"><i class="${liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${liked ? "var(--color-red)" : ""}"></i><span>${p.likes || 0}</span></div>\n          <div class="action-item"${isAd ? "" : ` onclick="goPostDetailAndScroll('${p.id}')`}"><i class="fa-regular fa-comment"></i><span>${p.comments || 0}</span></div>\n          <div class="action-item"${isAd ? "" : ` onclick="collectPost('${p.id}',this)`}"><i class="${collected ? "fa-solid fa-star" : "fa-regular fa-star"}" style="color:${collected ? "var(--color-yellow)" : ""}"></i><span>${p.collects || 0}</span></div>\n        </div>\n      </div>`;
+    return `<div class="${cardClass}" id="pc-${p.id}"${isAd ? ` data-adview="${String(p.id).replace("ad-", "")}" data-ad-w="${p.ad_w || 0}" data-ad-h="${p.ad_h || 0}"` : ""}${cardClick}>\n        <div class="post-header">\n          <img class="avatar" src="${resolveMediaUrl(p.avatar) || DEFAULT_AVATAR}" onclick="event.stopPropagation();goUserProfile('${p.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n          <div class="post-user">\n            <div class="post-nickname">${wrapNick(escapeHtml(p.nickname || "用户" + p.user_id), p)}${renderListVerification(p)}${isAd ? '<span class="ad-badge">广告</span>' : ""}</div>\n            <div class="post-time">${timeAgo(p.create_time)} · ${cleanProvince(p.province) || "未知"}</div>\n          </div>\n          ${isMine ? `<div onclick="event.stopPropagation();showPostActionSheet('${p.id}')" style="cursor:pointer;padding:4px 8px;margin-left:auto;"><i class="fa-solid fa-ellipsis" style="color:#999;font-size:16px;"></i></div>` : ""}\n        </div>\n        ${p.title ? `<div style="padding:0 16px 6px;font-size:16px;font-weight:600;">${escapeHtml(p.title)}</div>` : ""}\n        ${contentBlock}\n        ${isAd ? adImgsHtml(p.images) : ""}\n        ${isProtected || isAd ? "" : `${imgs.length ? `<div class="post-images ${imgClass}">${imgs.map((i, idx) => `<img loading="lazy" src="${resolveThumb(i)}" onclick="event.stopPropagation();showFullImage('${i}','${imgsJson}',${idx})">`).join("")}</div>` : ""}`}\n        ${videoHtml}\n        <div class="post-actions" onclick="event.stopPropagation()">\n          <div class="action-item"${isAd ? "" : ` onclick="likePost('${p.id}',this)`}"><i class="${liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${liked ? "var(--color-red)" : ""}"></i><span>${p.likes || 0}</span></div>\n          <div class="action-item"${isAd ? "" : ` onclick="goPostDetailAndScroll('${p.id}')`}"><i class="fa-regular fa-comment"></i><span>${p.comments || 0}</span></div>\n          <div class="action-item"${isAd ? "" : ` onclick="collectPost('${p.id}',this)`}"><i class="${collected ? "fa-solid fa-star" : "fa-regular fa-star"}" style="color:${collected ? "var(--color-yellow)" : ""}"></i><span>${p.collects || 0}</span></div>\n        </div>\n      </div>`;
 }
 
 function togglePostExpand(cardId) {
