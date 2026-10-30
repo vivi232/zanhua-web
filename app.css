@@ -262,6 +262,11 @@
       grid-template-columns: 1fr;
       position: relative;
     }
+    .post-images img.ad-video-poster {
+      aspect-ratio: auto;
+      border: 0;
+      border-radius: 0;
+    }
     .post-images img {
       width: 100%;
       aspect-ratio: 1;
