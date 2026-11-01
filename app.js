@@ -72,9 +72,30 @@ function resolveMediaUrl(url) {
     return MEDIA_BASE + "/" + s.replace(/^\/+/, "");
 }
 
+function mediaIsFirstParty(u) {
+    const s = String(u || "");
+    if (!/^https?:\/\//i.test(s)) return true;
+    try {
+        const a = new URL(s);
+        const api = new URL(API_HOST || location.href);
+        return a.host === api.host;
+    } catch (e) {
+        return false;
+    }
+}
+
+function adMediaHeaders(u) {
+    if (!mediaIsFirstParty(u)) return {};
+    return {
+        Authorization: getToken(),
+        "X-Device-Id": getDeviceId()
+    };
+}
+
 function withMediaAuth(url) {
     const u = resolveMediaUrl(url);
     if (!u) return "";
+    if (!mediaIsFirstParty(u)) return u;
     const tok = getToken();
     if (!tok) return u;
     return u + (u.indexOf("?") >= 0 ? "&" : "?") + "token=" + encodeURIComponent(tok);
@@ -545,8 +566,10 @@ function downloadAdViaXhr(u, raw, onp) {
             if (typeof onp === "function") X.onprogress = function(ev) {
                 if (ev.total > 0) onp(ev.loaded / ev.total);
             };
-            X.setRequestHeader("Authorization", getToken());
-            X.setRequestHeader("X-Device-Id", getDeviceId());
+            if (mediaIsFirstParty(u)) {
+                X.setRequestHeader("Authorization", getToken());
+                X.setRequestHeader("X-Device-Id", getDeviceId());
+            }
         } catch (e) {
             return rej(e);
         }
@@ -600,10 +623,7 @@ function adVideoBlobUrl(raw, onp) {
         return adSignUrlOf(raw).then(function(u) {
             if (!u) throw new Error("nosign");
             return fetch(u, {
-                headers: {
-                    Authorization: getToken(),
-                    "X-Device-Id": getDeviceId()
-                },
+                headers: adMediaHeaders(u),
                 cache: "force-cache"
             }).then(function(r) {
                 if (!r.ok) throw new Error("admedia " + r.status);
