@@ -726,6 +726,29 @@ function adVideoOnIntersect(entries) {
     });
 }
 
+function adApplyAdRatio(pl, v) {
+    var w = v.videoWidth | 0;
+    var h = v.videoHeight | 0;
+    if (!w || !h) return;
+    var want = w / h;
+    var cur = pl.style ? String(pl.style.aspectRatio || "") : "";
+    var have = 0;
+    if (cur.indexOf("/") > 0) {
+        var ps = cur.split("/");
+        var pa = parseFloat(ps[0]), pb = parseFloat(ps[1]);
+        if (pa > 0 && pb > 0) have = pa / pb;
+    } else {
+        have = parseFloat(cur) || 0;
+    }
+    if (have > 0 && Math.abs(have - want) < 0.02) return;
+    if (pl.style) pl.style.aspectRatio = want.toFixed(3);
+    var card = pl.closest ? pl.closest("[data-adview]") : null;
+    if (card) {
+        card.setAttribute("data-ad-w", String(w));
+        card.setAttribute("data-ad-h", String(h));
+    }
+}
+
 function hookAdVideoPlayer(pl) {
     if (!pl || pl.getAttribute("data-av-obs") === "1") return;
     pl.setAttribute("data-av-obs", "1");
@@ -741,6 +764,9 @@ function hookAdVideoPlayer(pl) {
     });
     vv.addEventListener("canplay", function() {
         adVideoLoading(pl, false);
+    });
+    vv.addEventListener("loadedmetadata", function() {
+        adApplyAdRatio(pl, vv);
     });
     vv.addEventListener("waiting", function() {
         if (pl.classList.contains("ready")) return;
