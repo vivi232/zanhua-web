@@ -44,9 +44,9 @@ function getInviteCode() {
     }
 }
 
-const API_HOST = "https://154.201.81.86";
+const API_HOST = "";
 
-const API_FALLBACK = "https://zanhuaweb.asia";
+const API_FALLBACK = "";
 
 const API_BASE = API_HOST + "/api";
 
@@ -163,6 +163,9 @@ function trackImagesContainer(container) {
     if (!container) return;
     if (container._prefetchTracked) return;
     container._prefetchTracked = true;
+    try {
+        adBootPriority();
+    } catch (e) {}
     const imgs = container.querySelectorAll('img[src*="thumb=1"]');
     if (!imgs.length) return;
     const origUrls = [];
@@ -406,6 +409,9 @@ function toggleAdSound(btn) {
 var _adBlobCache = {};
 var _adDlInflight = {};
 var _adDlActive = 0;
+var _adImgHold = 0;
+var _adQ = [];
+var _adQRun = 0;
 
 function adDlGate(on) {
     try {
@@ -414,9 +420,72 @@ function adDlGate(on) {
             imgPrefetch.pause();
         } else {
             if (_adDlActive > 0) _adDlActive--;
-            if (!_adDlActive) imgPrefetch.resume();
+            if (!_adDlActive && !_adQ.length && !_adImgHold) imgPrefetch.resume();
         }
     } catch (e) {}
+}
+
+function adQueueRun() {
+    if (_adQRun || !_adQ.length) return;
+    let best = 0;
+    for (let i = 1; i < _adQ.length; i++) {
+        if (_adQ[i].prio < _adQ[best].prio) best = i;
+    }
+    const item = _adQ.splice(best, 1)[0];
+    _adQRun = 1;
+    adDlGate(true);
+    Promise.resolve().then(function() {
+        return item.start();
+    }).then(function(v) {
+        _adQRun = 0;
+        if (_adDlInflight[item.raw] === item) delete _adDlInflight[item.raw];
+        adDlGate(false);
+        item.resolve(v);
+        adQueueRun();
+    }, function(e) {
+        _adQRun = 0;
+        if (_adDlInflight[item.raw] === item) delete _adDlInflight[item.raw];
+        adDlGate(false);
+        item.reject(e);
+        adQueueRun();
+    });
+}
+
+var _adBootState = 0;
+
+function adBootPriority() {
+    if (_adBootState !== 0) return;
+    const pls = document.querySelectorAll(".ad-video-player[data-vsrc]");
+    let raw = "";
+    for (let i = 0; i < pls.length; i++) {
+        const r = pls[i].getAttribute("data-vsrc") || "";
+        if (r && !_adBlobCache[r] && !_adDead[r]) {
+            raw = r;
+            break;
+        }
+    }
+    if (!raw) return;
+    _adBootState = 1;
+    _adImgHold++;
+    try {
+        imgPrefetch.pause();
+    } catch (e) {}
+    let done = false;
+    const finish = function() {
+        if (done) return;
+        done = true;
+        _adBootState = 2;
+        if (_adImgHold > 0) _adImgHold--;
+        try {
+            if (!_adDlActive && !_adQ.length && !_adImgHold) imgPrefetch.resume();
+        } catch (e) {}
+    };
+    try {
+        adVideoBlobUrl(raw, null, 0).then(finish, finish);
+    } catch (e) {
+        finish();
+    }
+    setTimeout(finish, 12e3);
 }
 var _adDead = {};
 
@@ -603,13 +672,8 @@ function adVideoObjectUrl(raw) {
     return _adBlobCache[raw] || "";
 }
 
-function adVideoBlobUrl(raw, onp) {
-    if (!raw) return Promise.resolve("");
-    if (/^(blob:|data:)/i.test(raw)) return Promise.resolve(raw);
-    if (_adBlobCache[raw]) return Promise.resolve(_adBlobCache[raw]);
-    if (_adDead[raw]) return Promise.resolve("");
-    if (_adDlInflight[raw]) return _adDlInflight[raw];
-    const job = getAdBlob(raw).then(function(b) {
+function adFetchNow(raw, onp) {
+    return getAdBlob(raw).then(function(b) {
         if (b) {
             const bu0 = URL.createObjectURL(b);
             _adBlobCache[raw] = bu0;
@@ -636,16 +700,35 @@ function adVideoBlobUrl(raw, onp) {
             });
         });
     });
-    _adDlInflight[raw] = job;
-    adDlGate(true);
-    job.then(function() {
-        delete _adDlInflight[raw];
-        adDlGate(false);
-    }, function() {
-        delete _adDlInflight[raw];
-        adDlGate(false);
+}
+
+function adVideoBlobUrl(raw, onp, prio) {
+    if (!raw) return Promise.resolve("");
+    if (/^(blob:|data:)/i.test(raw)) return Promise.resolve(raw);
+    if (_adBlobCache[raw]) return Promise.resolve(_adBlobCache[raw]);
+    if (_adDead[raw]) return Promise.resolve("");
+    const ex = _adDlInflight[raw];
+    if (ex) {
+        if (typeof prio === "number" && prio < ex.prio) {
+            ex.prio = prio;
+        }
+        return ex.p;
+    }
+    const slot = {
+        raw: raw,
+        prio: typeof prio === "number" ? prio : 5,
+        start: function() {
+            return adFetchNow(raw, onp);
+        }
+    };
+    slot.p = new Promise(function(res, rej) {
+        slot.resolve = res;
+        slot.reject = rej;
     });
-    return job;
+    _adDlInflight[raw] = slot;
+    _adQ.push(slot);
+    adQueueRun();
+    return slot.p;
 }
 
 function playAdVideo(v) {
