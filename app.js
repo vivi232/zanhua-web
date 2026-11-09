@@ -44,9 +44,9 @@ function getInviteCode() {
     }
 }
 
-const API_HOST = "";
+const API_HOST = location.hostname === "zanhua.asia" || location.hostname === "www.zanhua.asia" ? "https://zanhuaweb.asia" : "";
 
-const API_FALLBACK = "";
+const API_FALLBACK = API_HOST ? "https://154.201.81.86" : "";
 
 const API_BASE = API_HOST + "/api";
 
@@ -465,6 +465,7 @@ function adBootPriority() {
         }
     }
     if (!raw) return;
+    try { localStorage.setItem("zanhua_advid", raw); } catch (e) {}
     _adBootState = 1;
     _adImgHold++;
     try {
@@ -13088,6 +13089,14 @@ if (_appealPathToken) {
         history.replaceState({
             page: "home"
         }, "", "#home");
+    } catch (e) {}
+    try {
+        if (getToken()) {
+            const _savedAdVid = localStorage.getItem("zanhua_advid") || "";
+            if (_savedAdVid && !_adBlobCache[_savedAdVid] && !_adDead[_savedAdVid]) {
+                adVideoBlobUrl(_savedAdVid, null, 0).then(function() {}, function() {});
+            }
+        }
     } catch (e) {}
     render();
     updateTabbar();
