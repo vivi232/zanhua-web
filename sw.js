@@ -9,7 +9,7 @@
     function isSharedAsset(url) {
         try {
             var u = new URL(url);
-            if (u.origin !== self.location.origin && u.hostname !== "154.201.81.86") return false;
+            if (u.origin !== self.location.origin && u.hostname !== "154.201.81.86" && u.hostname !== "zanhuaweb.asia" && u.hostname !== "www.zanhuaweb.asia") return false;
             return ASSET_PATTERNS.some(function(p) {
                 return u.pathname.indexOf(p) !== -1;
             });
@@ -22,7 +22,7 @@
     function isUserMedia(url) {
         try {
             var u = new URL(url);
-            if (u.origin !== self.location.origin && u.hostname !== "154.201.81.86") return false;
+            if (u.origin !== self.location.origin && u.hostname !== "154.201.81.86" && u.hostname !== "zanhuaweb.asia" && u.hostname !== "www.zanhuaweb.asia") return false;
             if (u.pathname === "/zanhua/uploads/default_avatar.webp") return false;
             return USER_MEDIA_PATTERNS.some(function(p) {
                 return u.pathname.indexOf(p) !== -1;
