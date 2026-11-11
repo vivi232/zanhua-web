@@ -17,7 +17,7 @@
 - 备份机（仅冷备）：AWS `140.179.167.16`
 - GitHub Pages：`vivi232/zanhua-web`（静态资源 CDN）
 - GitHub PAT：`ghp_LWhq...[REDACTED-GITHUB-PAT]zT75`
-- Token 密钥（当前）：`e8226579a094fd946a737b3b13decad6f233198eda28a9c60a950b7fabaf7221`
+- Token 密钥（当前）：`e8226579...[REDACTED-ZANHUA-TOKEN-SECRET]`
 - 用户技术水平：编程新手，通过手机操作
 
 ## 2. 网络与架构（关键，v124 修复）
