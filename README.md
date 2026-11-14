@@ -392,3 +392,36 @@ list.forEach(function(p) {
 ```
 
 `refreshFeedDelta()` 中新增帖子同样写入缓存。
+
+---
+
+## v1.5.0 (v130) — 抖音去水印永久直链接入
+
+### 背景
+帖子广告的视频素材原先由本机 `/uploads` 直出，服务器带宽吃紧。目标是让客户端直接引用抖音官方 CDN 的无水印地址，把视频流量从本机剥离。
+
+### 关键发现：永久直链，无需定时刷新
+- 抖音作品的 `video_id`（`v0xxxx` 内部格式）是**永久文件 ID**，不随时间过期。
+- 用 `https://www.douyin.com/aweme/v1/play/?video_id=<vid>&line=0&is_play_url=1` 作为 `<video>` 源：该端点免 Cookie、免签名，每次请求 302 到一个**新生成的签名 CDN 地址**，因此不存在过期问题，无需任何定时刷新逻辑（比原设想的"每 5 分钟拉取"更稳）。
+- 实测 CDN 防盗链规则：`Referer` 为空 或 `Referer=www.douyin.com` → 200/206；`Referer=其它任意站点`（如 zanhua.asia）→ 403。Range 分片（206）正常，浏览器可拖动进度。
+
+### video_id 提取方案
+用 Evil0ctal/Douyin_TikTok_Download_API 的公开 demo 实例（`api.douyin.wtf`，内置 demo 账号）走异步任务接口提取：
+```
+POST /api/v1/auth/login  {username:demo, password:<公开demo口令>}
+POST /api/v1/parse?wait=30  {url:<分享链接>}
+→ data.media.video.urls 末项 / play 链接内含 video_id=v0xxxx
+```
+注意：该接口存在风控冷却（circuit_open / 限流），需带重试；个别设为非公开的作品返回 NOT_FOUND。
+
+### 改动
+1. **app.js** — 广告 `<video>` 与全屏播放器 `<video id="player-video">` 增加 `referrerpolicy="no-referrer"`，使跨站请求不带 Referer，命中 CDN 白名单。
+2. **app.js** — `adFetchNow()` 对非本站（`!mediaIsFirstParty`）URL 直接返回原地址，跳过 IndexedDB blob 抓取（跨站 fetch 会带本站 Referer 触发 403，且抖音 CDN 本就带宽优化，缓存无意义）。
+3. **数据库 ads 表** — ad 27（吴泽拓新 iPhone18）`video` 字段切为 `.../aweme/v1/play/?video_id=v02f52g10003danl1bfog65mvh261bd0&line=0&is_play_url=1`，`video_w=1024 video_h=576`，封面保留本地 webp。`server.js` 的 `adMediaUsable / adRemoteUrl / adRowToSend` 早已支持远程视频 URL，无需改动。
+
+### 权重 / 多广告（复核，均已具备）
+- `weight` 7 档（极低1/低2/较低3/常规4/较高5/高6/极高7）在 `admin.html` 发布表单与列表下拉均可设，落库到 `ads.weight`。
+- `adWeightBoost=[1,2,3,5,8,13,21]`，`feedAdSlots` 每页生成多个广告位，`adSeqPick(ads,k,prevId)` 用 `prevId` 过滤确保同页不连续重复同一广告。
+
+### 待办
+- ad 28（星海轨迹 iPhone18）解析返回 NOT_FOUND，需作者把作品设为公开后再切直链；当前仍走本机 mp4。
