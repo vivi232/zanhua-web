@@ -1026,6 +1026,10 @@
     .comment-replies .c-content {
       font-size: 13px;
     }
+.comment-item .post-images img {
+      aspect-ratio: auto;
+      object-fit: contain;
+    }
     .reply-arrow {
       display: inline-block;
       width: 0;

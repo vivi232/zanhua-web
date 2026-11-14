@@ -3794,7 +3794,7 @@ async function loadConfessionComments(confessionId) {
         const content = formatCommentContent(c.content);
         const nameHtml = parentName ? `<span class="c-name">${escapeHtml(c.nickname || "用户")}</span><span class="reply-arrow"></span><span class="reply-parent-name">${escapeHtml(parentName)}</span>` : `<span class="c-name">${escapeHtml(c.nickname || "用户")}</span>${c.is_ad ? '<span class="ad-badge">广告</span>' : ""}`;
         const isMine = c.user_id === myUid || currentNickname === "管理员";
-        return `<div class="comment-item" data-ccomment-id="${c.id}" data-cis-mine="${isMine}"${c.is_ad ? ' data-ad="1" data-adview="' + Math.abs(parseInt(c.id, 10)) + '"' : ""}>\n            <img class="c-avatar" src="${resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${c.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="c-body">\n              <div class="c-header">\n                ${nameHtml}\n                ${c.post_seq === 1 ? '<span class="comment-tag-first">首评</span>' : ""}\n              </div>\n              <div class="c-content collapsed" id="ccc-${c.id}">${content}${c.images ? adImgsHtml(c.images) : ""}</div>\n              <div class="c-meta">\n                <div class="c-meta-left">\n                  <span class="c-time">${timeAgo(c.create_time)}</span>\n                  ${cleanProvince(c.province) ? `<span>${cleanProvince(c.province)}</span>` : ""}\n                  ${c.is_ad ? "" : `<span class="c-action" onclick="setConfessionReply(${c.post_seq})">回复</span>`}\n                </div>\n                <span class="c-like"${c.is_ad ? "" : ` onclick="likeConfessionComment(${c.id},this)`}">\n                  <i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i>\n                  <span>${c.likes || 0}</span>\n                </span>\n              </div>\n              ${repliesHtml || ""}\n            </div>\n          </div>`;
+        return `<div class="comment-item" data-ccomment-id="${c.id}" data-cis-mine="${isMine}"${c.is_ad ? ' data-ad="1" data-adview="' + Math.abs(parseInt(c.id, 10)) + '"' : ""}>\n            <img class="c-avatar" src="${resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${c.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="c-body">\n              <div class="c-header">\n                ${nameHtml}\n                ${c.post_seq === 1 ? '<span class="comment-tag-first">首评</span>' : ""}\n              </div>\n              <div class="c-content${c.is_ad ? "" : " collapsed"}" id="ccc-${c.id}">${content}${c.images ? adImgsHtml(c.images) : ""}</div>\n              <div class="c-meta">\n                <div class="c-meta-left">\n                  <span class="c-time">${timeAgo(c.create_time)}</span>\n                  ${cleanProvince(c.province) ? `<span>${cleanProvince(c.province)}</span>` : ""}\n                  ${c.is_ad ? "" : `<span class="c-action" onclick="setConfessionReply(${c.post_seq})">回复</span>`}\n                </div>\n                <span class="c-like"${c.is_ad ? "" : ` onclick="likeConfessionComment(${c.id},this)`}">\n                  <i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i>\n                  <span>${c.likes || 0}</span>\n                </span>\n              </div>\n              ${repliesHtml || ""}\n            </div>\n          </div>`;
     };
     const collectAllDescendants = parentSeq => {
         const direct = res.data.filter(c => c.parent_seq == parentSeq);
@@ -6804,7 +6804,7 @@ async function loadComments(postId) {
         const content = formatCommentContent(c.content);
         const nameHtml = parentName ? `<span class="c-name">${escapeHtml(c.nickname || "用户")}</span><span class="reply-arrow"></span><span class="reply-parent-name">${escapeHtml(parentName)}</span>` : `<span class="c-name">${escapeHtml(c.nickname || "用户")}</span>${c.is_ad ? '<span class="ad-badge">广告</span>' : ""}`;
         const isMine = c.user_id === myUid || currentNickname === "管理员";
-        return `<div class="comment-item" data-comment-id="${c.id}" data-is-mine="${isMine}"${c.is_ad ? ' data-ad="1" data-adview="' + Math.abs(parseInt(c.id, 10)) + '"' : ""}>\n            <img class="c-avatar" src="${resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${c.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="c-body">\n              <div class="c-header">\n                ${nameHtml}\n                ${c.post_seq === 1 ? '<span class="comment-tag-first">首评</span>' : ""}\n              </div>\n              <div class="c-content collapsed" id="cc-${c.id}">${content}${c.images ? adImgsHtml(c.images) : ""}</div>\n              <div class="c-meta">\n                <div class="c-meta-left">\n                  <span class="c-time">${timeAgo(c.create_time)}</span>\n                  ${cleanProvince(c.province) ? `<span>${cleanProvince(c.province)}</span>` : ""}\n                  ${c.is_ad ? "" : `<span class="c-action" onclick="setReply(${c.post_seq})">回复</span>`}\n                </div>\n                <span class="c-like"${c.is_ad ? "" : ` onclick="likeComment(${c.id},this)`}">\n                  <i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i>\n                  <span>${c.likes || 0}</span>\n                </span>\n              </div>\n              ${repliesHtml || ""}\n            </div>\n          </div>`;
+        return `<div class="comment-item" data-comment-id="${c.id}" data-is-mine="${isMine}"${c.is_ad ? ' data-ad="1" data-adview="' + Math.abs(parseInt(c.id, 10)) + '"' : ""}>\n            <img class="c-avatar" src="${resolveMediaUrl(c.avatar) || DEFAULT_AVATAR}" onclick="goUserProfile('${c.user_id}')" onerror="this.src='${DEFAULT_AVATAR}';this.onerror=null">\n            <div class="c-body">\n              <div class="c-header">\n                ${nameHtml}\n                ${c.post_seq === 1 ? '<span class="comment-tag-first">首评</span>' : ""}\n              </div>\n              <div class="c-content${c.is_ad ? "" : " collapsed"}" id="cc-${c.id}">${content}${c.images ? adImgsHtml(c.images) : ""}</div>\n              <div class="c-meta">\n                <div class="c-meta-left">\n                  <span class="c-time">${timeAgo(c.create_time)}</span>\n                  ${cleanProvince(c.province) ? `<span>${cleanProvince(c.province)}</span>` : ""}\n                  ${c.is_ad ? "" : `<span class="c-action" onclick="setReply(${c.post_seq})">回复</span>`}\n                </div>\n                <span class="c-like"${c.is_ad ? "" : ` onclick="likeComment(${c.id},this)`}">\n                  <i class="${c.liked ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color:${c.liked ? "var(--color-red)" : ""}"></i>\n                  <span>${c.likes || 0}</span>\n                </span>\n              </div>\n              ${repliesHtml || ""}\n            </div>\n          </div>`;
     };
     const collectAllDescendants = parentSeq => {
         const direct = res.data.filter(c => c.parent_seq == parentSeq);
@@ -8294,34 +8294,6 @@ function goPostDetail(id) {
         return;
     }
     if (_navBusy("postDetail:" + id)) return;
-    const dismissed = localStorage.getItem("zanhua_protected_post_dismissed") === "1";
-    if (!dismissed) {
-        api("/postDetail?id=" + encodeURIComponent(id)).then(r => {
-            if (r.needLogin) {
-                showLoginModal();
-                return;
-            }
-            if (r.code === 1 && r.data) {
-                try {
-                    postDetailCache[String(r.data.id || id)] = {
-                        data: r.data,
-                        ts: Date.now(),
-                        raw: JSON.stringify(r.data)
-                    };
-                } catch (e) {}
-            }
-            if (r.code === 1 && r.data && r.data.watermark_protected == 1 && r.data.user_id !== getUid()) {
-                showProtectedPostWarning(id);
-            } else if (r.code === 1) {
-                _goPostDetailDirect(id);
-            } else {
-                showToast(r.msg || "加载失败");
-            }
-        }).catch(() => {
-            _goPostDetailDirect(id);
-        });
-        return;
-    }
     _goPostDetailDirect(id);
 }
 
@@ -8345,22 +8317,29 @@ function _goPostDetailDirect(id) {
         } catch (e) {}
         api("/postDetail?id=" + encodeURIComponent(id)).then(r => {
             if (r.code === 1 && r.data) {
-                let _same = false;
-                try {
-                    _same = JSON.stringify(r.data) === _pd.raw;
-                } catch (e) {}
                 postDetailCache[id] = {
                     data: r.data,
                     ts: Date.now(),
-                    raw: _pd.raw
+                    raw: JSON.stringify(r.data)
                 };
-                if (!_same && currentPage === "postDetail" && document.getElementById("commentList")) {
+                if (currentPage !== "postDetail") return;
+                const _dismissed2 = localStorage.getItem("zanhua_protected_post_dismissed") === "1";
+                if (!_dismissed2 && r.data.watermark_protected == 1 && String(r.data.user_id) !== String(getUid())) {
+                    showProtectedPostWarning(id, () => {
+                        currentPostDetail = postDetailCache[id] ? postDetailCache[id].data : r.data;
+                        try { render(); } catch(e) {}
+                    });
+                    return;
+                }
+                const contentChanged = r.data.content !== _pd.data.content || r.data.title !== _pd.data.title || r.data.images !== _pd.data.images;
+                if (contentChanged && document.getElementById("commentList")) {
                     currentPostDetail = r.data;
                     try {
-                        postDetailCache[id].raw = JSON.stringify(r.data);
                         render();
                         updateTabbar();
                     } catch (e) {}
+                } else {
+                    currentPostDetail = r.data;
                 }
             }
         }).catch(() => {});
@@ -8387,6 +8366,21 @@ function _goPostDetailDirect(id) {
                     };
                 } catch (e) {}
             }
+            const _dismissed = localStorage.getItem("zanhua_protected_post_dismissed") === "1";
+            if (!_dismissed && r.data && r.data.watermark_protected == 1 && String(r.data.user_id) !== String(getUid())) {
+                const _renderPost = () => {
+                    try {
+                        window.scrollTo(0, 0);
+                        render();
+                        updateTabbar();
+                    } catch (e) {
+                        _rollbackFailedNav("postDetail");
+                        showToast("加载失败，请稍后重试");
+                    }
+                };
+                showProtectedPostWarning(id, _renderPost);
+                return;
+            }
             try {
                 window.scrollTo(0, 0);
                 render();
@@ -8408,7 +8402,7 @@ function _goPostDetailDirect(id) {
     });
 }
 
-function showProtectedPostWarning(postId) {
+function showProtectedPostWarning(postId, onConfirm) {
     const existing = document.getElementById("protectedPostWarnOverlay");
     if (existing) existing.remove();
     const overlay = document.createElement("div");
@@ -8440,12 +8434,16 @@ function showProtectedPostWarning(postId) {
             dontShowBtn.disabled = false;
         }
     }, 1e3);
+    const _go = () => {
+        if (onConfirm) { onConfirm(); return; }
+        _goPostDetailDirect(postId);
+    };
     confirmBtn.onclick = () => {
         if (confirmBtn.disabled) return;
         clearInterval(timer);
         overlay.remove();
         document.body.style.overflow = "";
-        _goPostDetailDirect(postId);
+        _go();
     };
     dontShowBtn.onclick = () => {
         if (dontShowBtn.disabled) return;
@@ -8453,7 +8451,7 @@ function showProtectedPostWarning(postId) {
         localStorage.setItem("zanhua_protected_post_dismissed", "1");
         overlay.remove();
         document.body.style.overflow = "";
-        _goPostDetailDirect(postId);
+        _go();
     };
 }
 
