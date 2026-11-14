@@ -3806,6 +3806,7 @@ async function loadConfessionComments(confessionId) {
         return all;
     };
     const renderTopLevel = c => {
+        if (c.is_ad) return renderComment(c, "", "");
         const allDescendants = collectAllDescendants(c.post_seq);
         const repliesHtml = allDescendants.length > 0 ? `<div class="comment-replies">${allDescendants.map(d => {
             const parent = seqMap[d.parent_seq];
@@ -4758,6 +4759,7 @@ async function loadHomeworkComments() {
         return all;
     };
     const renderTopLevel = c => {
+        if (c.is_ad) return renderHwComment(c, "", "");
         const allDescendants = collectAllDescendants(c.post_seq);
         const repliesHtml = allDescendants.length > 0 ? `<div class="comment-replies">${allDescendants.map(d => {
             const parent = seqMap[d.parent_seq];
@@ -6814,6 +6816,7 @@ async function loadComments(postId) {
         return all;
     };
     const renderTopLevel = c => {
+        if (c.is_ad) return renderComment(c, "", "");
         const allDescendants = collectAllDescendants(c.post_seq);
         const repliesHtml = allDescendants.length > 0 ? `<div class="comment-replies">${allDescendants.map(d => {
             const parent = seqMap[d.parent_seq];
@@ -6831,6 +6834,7 @@ async function loadComments(postId) {
     } else {
         const _cc0 = cacheGet(commentListCache, postId);
         if (_cc0 && _cc0.raw === html) {
+            if (!list.querySelector(".comment-item")) list.innerHTML = _cc0.html;
             _rebindCommentExpandButtons(list);
             bindCommentLongPress();
             return;
