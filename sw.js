@@ -18,6 +18,19 @@
         }
     }
     var USER_MEDIA_CACHE = "zanhua-usermedia-v3";
+    var AD_REMOTE_HOSTS = ["www.douyin.com", "douyin.com", "v.douyin.com", "aweme.snssdk.com", "api.amemv.com"];
+    function isAdRemoteVideo(url) {
+        try {
+            var u = new URL(url);
+            var h = u.hostname || "";
+            if (AD_REMOTE_HOSTS.indexOf(h) >= 0 || /\.douyin\.com$/.test(h) || /\.iesdouyin\.com$/.test(h)) return true;
+            if (/zjcdn\.com$/.test(h) || /\.zjcdn\.com$/.test(h)) return true;
+            if (/\.amemv\.com$/.test(h) || /\.snssdk\.com$/.test(h)) return true;
+            return false;
+        } catch (e) {
+            return false;
+        }
+    }
     var USER_MEDIA_PATTERNS = [ "/zanhua/uploads/posts/", "/zanhua/uploads/thumbs/", "/zanhua/uploads/homework/", "/zanhua/uploads/avatars/", "/zanhua/uploads/messages/", "/zanhua/uploads/enterprise/", "/zanhua/uploads/feedbacks/" ];
     function isUserMedia(url) {
         try {
@@ -92,6 +105,34 @@
     });
     self.addEventListener("fetch", function(event) {
         var url = event.request.url;
+        if (isAdRemoteVideo(url)) {
+            var adRange = null;
+            try { adRange = event.request.headers.get("range"); } catch (e) {}
+            var adOpts = {
+                mode: "cors",
+                credentials: "omit",
+                redirect: "follow",
+                cache: "no-store",
+                referrerPolicy: "no-referrer",
+                headers: new Headers()
+            };
+            if (adRange) adOpts.headers.set("range", adRange);
+            event.respondWith(fetch(url, adOpts).catch(function(e1) {
+                var o2 = {
+                    mode: "cors",
+                    credentials: "omit",
+                    redirect: "follow",
+                    cache: "no-store",
+                    referrerPolicy: "origin"
+                };
+                if (adRange) {
+                    o2.headers = new Headers();
+                    o2.headers.set("range", adRange);
+                }
+                return fetch(url, o2);
+            }));
+            return;
+        }
         var isAsset = isSharedAsset(url);
         var isMedia = !isAsset && isUserMedia(url);
         var isFont = FONT_URLS.some(function(fu) {

@@ -675,6 +675,7 @@ function adVideoObjectUrl(raw) {
 
 function adFetchNow(raw, onp) {
     var crossOrigin = !mediaIsFirstParty(raw);
+    if (crossOrigin) return Promise.resolve(raw);
     return getAdBlob(raw).then(function(b) {
         if (b) {
             const bu0 = URL.createObjectURL(b);
