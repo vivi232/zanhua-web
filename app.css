@@ -1030,6 +1030,12 @@
       aspect-ratio: auto;
       object-fit: contain;
     }
+    .c-content .post-images {
+      padding: 0 0 8px;
+    }
+    .c-content .post-images.single img {
+      width: 66.67%;
+    }
     .reply-arrow {
       display: inline-block;
       width: 0;
