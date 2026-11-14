@@ -236,26 +236,29 @@ pm2 restart 未加 `--update-env`，环境变量保留，`ZANHUA_TOKEN_SECRET` �
 
 
 
-## 9. v1.4.6（index.html N=126）评论加载修复
+## 10. v1.4.7（index.html N=127）帖子导航 & 评论广告优化
 
-### 根因：评论广告导致无限递归崩溃（Stack Overflow）
+### 帖子详情点击响应提速
 
-`commentList` API 为已登录用户注入广告评论。广告对象由 `adCommentToSend()` 生成，其 `post_seq: 0`、`parent_seq: 0`。
+**问题**：未关闭水印保护提示的用户每次点击帖子都先阻塞一次 `/postDetail` 请求，等待 API 返回后才开始导航；同时后台刷新检测到任意数据变化（点赞数、评论数等）即触发整页 `render()`，造成 UI 闪烁，用户感知为"卡住"或需要多次点击。
 
-`app.js` `loadComments()` 中 `buildTree(0)` 取所有 `parent_seq == 0` 的条目，包括广告。
-`renderTopLevel(ad)` 调用 `collectAllDescendants(ad.post_seq = 0)`，后者再次找到 `parent_seq == 0` 的所有条目（包括广告本身），递归调用 → 无限递归 → `RangeError: Maximum call stack size exceeded` → `list.innerHTML` 永不赋值 → 骨架屏永久停留。
+**修复**：
+- `goPostDetail()` 移除水印预检阻塞，直接调用 `_goPostDetailDirect()` 导航，立即显示加载状态或缓存内容
+- 水印检查移到 `_goPostDetailDirect()` 的 API 回调中；受保护帖子时传 `onConfirm` 回调给 `showProtectedPostWarning()`，确认后直接 `render()` 而不重复推入 `pageHistory`
+- 后台 `/postDetail` 刷新只在正文/标题/图片发生实质变化时才触发重渲染；仅点赞数等元数据变化时静默更新缓存
 
-**用户可见症状**：登录后打开任何有评论的帖子，评论区永久停留在加载骨架状态。
+### 评论广告位置与样式
 
-### 修复（app.js v126）
+**问题**：广告评论随机插入列表中间，且图片被强制裁剪为 1:1 正方形。
 
-三处 `renderTopLevel` 函数（帖子详情、表白墙、作业）均在开头加入：
-`if (c.is_ad) return renderComment(c, "", "");`
+**修复**：
+- `server.js` `injectCommentAds()`：广告始终插入列表第一位（`splice(0,0,...)`），移除 `feedAdSlots` 随机位置逻辑
+- `app.js` `renderComment()`：广告评论移除 `c-content collapsed` 类（帖子详情和表白墙两处），图片无需点击"展开"即可看到
+- `app.css` v13：新增 `.comment-item .post-images img { aspect-ratio: auto; object-fit: contain; }` 规则，评论图片保留原始比例
 
-广告作为顶层元素直接渲染，不再参与 `collectAllDescendants` 递归。
+### 缓存 bg 刷新逻辑说明
 
-### 附带修复：评论缓存竞态条件
-
-`_goPostDetailDirect()` 在命中 `postDetailCache` 时并行发起 `commentList` 和后台 `postDetail` 刷新。若 `postDetail` 先返回且数据有变（`!_same`），则触发第二次 `render()`，`#commentList` 节点被替换，`loadComments()` 第二次运行时发现缓存与数据相同（`_cc0.raw === html`）却跳过 `list.innerHTML = html` → 骨架持续。
-
-修复：在缓存命中判断中加 DOM 有效性检查：`if (!list.querySelector(".comment-item")) list.innerHTML = _cc0.html;`
+`_goPostDetailDirect()` 命中缓存时，后台 `api("/postDetail?id=...")` 返回后：
+- 若帖子内容（`content`/`title`/`images`）未变 → 仅更新 `currentPostDetail` 和缓存，不触发 `render()`
+- 若帖子内容已变 → 重新渲染整页（包含评论重新加载）
+- 若检测到 `watermark_protected == 1` 且未关闭提示 → 弹出保护提示覆盖层
