@@ -234,3 +234,28 @@ nginx 层 `zanhua.asia` HTTP+HTTPS 块添加：`if ($request_uri ~* "\.\.") { re
 ### pm2 状态
 pm2 restart 未加 `--update-env`，环境变量保留，`ZANHUA_TOKEN_SECRET` 不变，**用户未被强制退出**。
 
+
+
+## 9. v1.4.6（index.html N=126）评论加载修复
+
+### 根因：评论广告导致无限递归崩溃（Stack Overflow）
+
+`commentList` API 为已登录用户注入广告评论。广告对象由 `adCommentToSend()` 生成，其 `post_seq: 0`、`parent_seq: 0`。
+
+`app.js` `loadComments()` 中 `buildTree(0)` 取所有 `parent_seq == 0` 的条目，包括广告。
+`renderTopLevel(ad)` 调用 `collectAllDescendants(ad.post_seq = 0)`，后者再次找到 `parent_seq == 0` 的所有条目（包括广告本身），递归调用 → 无限递归 → `RangeError: Maximum call stack size exceeded` → `list.innerHTML` 永不赋值 → 骨架屏永久停留。
+
+**用户可见症状**：登录后打开任何有评论的帖子，评论区永久停留在加载骨架状态。
+
+### 修复（app.js v126）
+
+三处 `renderTopLevel` 函数（帖子详情、表白墙、作业）均在开头加入：
+`if (c.is_ad) return renderComment(c, "", "");`
+
+广告作为顶层元素直接渲染，不再参与 `collectAllDescendants` 递归。
+
+### 附带修复：评论缓存竞态条件
+
+`_goPostDetailDirect()` 在命中 `postDetailCache` 时并行发起 `commentList` 和后台 `postDetail` 刷新。若 `postDetail` 先返回且数据有变（`!_same`），则触发第二次 `render()`，`#commentList` 节点被替换，`loadComments()` 第二次运行时发现缓存与数据相同（`_cc0.raw === html`）却跳过 `list.innerHTML = html` → 骨架持续。
+
+修复：在缓存命中判断中加 DOM 有效性检查：`if (!list.querySelector(".comment-item")) list.innerHTML = _cc0.html;`
