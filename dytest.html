@@ -1,0 +1,108 @@
+<!doctype html>
+<html><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>dy diag</title>
+<style>
+body{font-family:system-ui,-apple-system,sans-serif;padding:14px;background:#111;color:#eee;font-size:13px;line-height:1.6;}
+h3{color:#fff;margin:14px 0 6px;font-size:14px;}
+.row{margin:6px 0;padding:8px;background:#1b1b1b;border-radius:6px;}
+.lbl{color:#0f6;font-weight:bold;}
+video{width:100%;max-width:360px;background:#000;display:block;border-radius:6px;margin-top:6px;}
+pre{white-space:pre-wrap;word-break:break-all;background:#000;padding:8px;border-radius:6px;color:#fc6;font-size:11px;max-height:300px;overflow:auto;}
+.btn{display:inline-block;padding:8px 14px;background:#0a8;color:#fff;border-radius:6px;margin:4px;cursor:pointer;border:none;font-size:13px;}
+#summary{padding:10px;background:#063;border-radius:6px;margin-top:10px;}
+</style></head>
+<body>
+<h2>抖音直链诊断 <span id="ver" style="color:#aaa;font-weight:normal;font-size:12px;"></span></h2>
+<div id="info"></div>
+<div id="out"></div>
+<div id="summary" style="display:none;"></div>
+
+<script>
+var URLS = {
+  A: "https://www.douyin.com/aweme/v1/play/?video_id=v02f52g10003danl1bfog65mvh261bd0&line=0&is_play_url=1",
+  // same URL with referrerpolicy attribute set on <video>
+};
+function log(s){ var d=document.getElementById('info'); d.innerHTML += s + '<br>'; }
+function esc(s){ return String(s||'').replace(/[&<>"]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function dump(label, obj){
+  var out=document.getElementById('out');
+  var pre=document.createElement('pre');
+  pre.textContent = label + '\n' + JSON.stringify(obj, null, 2);
+  out.appendChild(pre);
+}
+function summary(){
+  var s=document.getElementById('summary');
+  s.style.display='block';
+  s.textContent = window.__summary || '未完成';
+}
+window.__results = {};
+
+async function runTest(id, url, opts){
+  var out=document.getElementById('out');
+  var row=document.createElement('div'); row.className='row';
+  row.innerHTML = '<div class="lbl">'+id+': '+opts.name+'</div><div>'+esc(url).slice(0,150)+'...</div>';
+  var st = document.createElement('div'); st.textContent='状态: 进行中...'; row.appendChild(st);
+  out.appendChild(row);
+  var res = {id:id, name:opts.name, ok:false, msg:''};
+  try{
+    if (opts.mode === 'fetch'){
+      var t0 = performance.now();
+      var r = await fetch(url, {mode:opts.cors||'cors', credentials:opts.credentials||'omit', referrerPolicy:opts.referrer||'no-referrer', cache:'no-store'});
+      res.status = r.status; res.ok = r.ok || r.type==='opaque';
+      var txt = ''; try { txt = await r.text(); res.bytes = txt.length; } catch(e){ res.err = 'body '+e; }
+      res.ms = Math.round(performance.now()-t0);
+      st.textContent = 'fetch status='+r.status+' type='+r.type+' bytes='+(res.bytes||0)+' ms='+res.ms;
+    } else if (opts.mode === 'video'){
+      var v = document.createElement('video');
+      v.setAttribute('playsinline',''); v.muted = true; v.controls = true; v.preload='metadata';
+      if (opts.referrerAttr) v.setAttribute('referrerpolicy', opts.referrerAttr);
+      v.src = url;
+      row.appendChild(v);
+      await new Promise(function(resolve){
+        var done=false;
+        var ok = function(e){ if(done)return; done=true; res.event=e.type; res.dur=v.duration; res.w=v.videoWidth; res.h=v.videoHeight; st.textContent='video '+e.type+' dur='+v.duration+' '+v.videoWidth+'x'+v.videoHeight; resolve(); };
+        var err = function(e){ if(done)return; done=true; res.event='error'; res.code=v.error&&v.error.code; res.msg=v.error&&v.error.message; st.textContent='video ERROR code='+res.code; resolve(); };
+        v.addEventListener('loadedmetadata', ok);
+        v.addEventListener('error', err);
+        setTimeout(function(){ if(done)return; done=true; res.event='timeout'; st.textContent='video TIMEOUT 12s'; resolve(); }, 12000);
+        v.load();
+      });
+      res.ok = res.event === 'loadedmetadata' && res.dur > 0;
+    } else if (opts.mode === 'sw'){
+      // try to detect if SW is active and would handle douyin URL
+      try{
+        var regs = await navigator.serviceWorker.getRegistrations();
+        res.swCount = regs.length;
+        res.swScopes = regs.map(function(r){return r.scope;});
+        if (navigator.serviceWorker.controller) res.controller = navigator.serviceWorker.controller.scriptURL;
+        st.textContent='SW count='+regs.length+' ctrl='+(!!navigator.serviceWorker.controller);
+      }catch(e){ res.msg = String(e); st.textContent='SW check err '+res.msg; }
+    }
+  }catch(e){
+    res.err = String(e && e.message || e);
+    st.textContent = 'THROW '+res.err;
+  }
+  window.__results[id] = res;
+  dump('结果 '+id+' ('+opts.name+')', res);
+  return res;
+}
+
+(async function(){
+  document.getElementById('ver').textContent = 'UA='+navigator.userAgent.slice(0,80);
+  log('origin: '+location.origin);
+  try { log('pathname: '+location.pathname); } catch(e){}
+  await runTest('sw', '', {mode:'sw', name:'SW状态'});
+  await runTest('1', URLS.A, {mode:'video', name:'video 无 referrerpolicy'});
+  await runTest('2', URLS.A, {mode:'video', referrerAttr:'no-referrer', name:'video referrerpolicy=no-referrer'});
+  await runTest('3', URLS.A, {mode:'fetch', cors:'cors', referrer:'no-referrer', name:'fetch cors no-referrer'});
+  await runTest('4', URLS.A, {mode:'fetch', cors:'no-cors', referrer:'no-referrer', name:'fetch no-cors (opaque)'});
+  await runTest('5', URLS.A, {mode:'fetch', cors:'cors', referrer:'origin', name:'fetch cors referrer=origin'});
+  var ok1 = window.__results['1'] && window.__results['1'].ok;
+  var ok2 = window.__results['2'] && window.__results['2'].ok;
+  var ctrl = window.__results['sw'] && window.__results['sw'].controller;
+  var s = 'video无rp='+(ok1?'OK':'FAIL')+' video有rp='+(ok2?'OK':'FAIL')+' SW='+(ctrl?'active('+ctrl+')':'NONE')+'\n';
+  s += '请把整页截图发我。';
+  window.__summary = s;
+  summary();
+})();
+</script>
+</body></html>
