@@ -674,7 +674,7 @@ function adVideoObjectUrl(raw) {
 }
 
 function adFetchNow(raw, onp) {
-    if (!mediaIsFirstParty(raw)) return Promise.resolve(raw);
+    var crossOrigin = !mediaIsFirstParty(raw);
     return getAdBlob(raw).then(function(b) {
         if (b) {
             const bu0 = URL.createObjectURL(b);
@@ -683,10 +683,12 @@ function adFetchNow(raw, onp) {
         }
         return adSignUrlOf(raw).then(function(u) {
             if (!u) throw new Error("nosign");
-            return fetch(u, {
+            var opt = {
                 headers: adMediaHeaders(u),
                 cache: "force-cache"
-            }).then(function(r) {
+            };
+            if (crossOrigin) opt.referrerPolicy = "no-referrer";
+            return fetch(u, opt).then(function(r) {
                 if (!r.ok) throw new Error("admedia " + r.status);
                 return readAdStream(r, onp);
             }).catch(function(e) {
