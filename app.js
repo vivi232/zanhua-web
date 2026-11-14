@@ -873,6 +873,17 @@ function hookAdVideoPlayer(pl) {
         adVideoLoading(pl, true);
     });
     vv.addEventListener("error", function() {
+        if (pl.classList.contains("ready") && vv.getAttribute("src")) {
+            const _t = vv.currentTime;
+            setTimeout(function() {
+                if (!document.body.contains(pl)) return;
+                if (window.__adExpanded) return;
+                try { vv.currentTime = _t; } catch(e) {}
+                const _p = vv.play();
+                if (_p && _p.catch) _p.catch(function() {});
+            }, 400);
+            return;
+        }
         adVideoLoading(pl, false);
         pl.classList.remove("ready");
         vv.removeAttribute("src");
@@ -3410,7 +3421,7 @@ function renderPostCard(p) {
         if (isAd) {
             const vsrcEsc = escapeHtml(String(p.video));
             const avCover = p.video_cover ? '<img class="ad-video-poster" src="' + resolveMediaUrl(p.video_cover) + '" onerror="this.hidden=true">' : "";
-            videoHtml = `<div class="post-images single">\n          <div class="ad-video-player${p.video_cover ? "" : " ready"}" data-vsrc="${vsrcEsc}" onclick="event.stopPropagation();expandAdVideo(this, '${p.video}', '${p.video_cover || ""}')" style="position:relative;width:75%;aspect-ratio:${p.video_w > 0 && p.video_h > 0 ? (p.video_w / p.video_h).toFixed(3) : (p.video_cover ? "16/9" : "9/16")};border-radius:8px;overflow:hidden;background:#111;">\n            ${avCover}\n            <video muted playsinline autoplay preload="auto" fetchpriority="high" data-vsrc="${vsrcEsc}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#111;pointer-events:none;"></video>\n            <div class="ad-video-loading"><span class="ad-video-spin"></span></div>\n            <div class="ad-video-expand"><i class="fa-solid fa-expand"></i></div>\n            <div class="ad-video-sound" onclick="event.stopPropagation();toggleAdSound(this)"><i class="fa-solid fa-volume-xmark"></i></div>\n          </div>\n        </div>`;
+            videoHtml = `<div class="post-images single">\n          <div class="ad-video-player${p.video_cover ? "" : " ready"}" data-vsrc="${vsrcEsc}" onclick="event.stopPropagation();expandAdVideo(this, '${p.video}', '${p.video_cover || ""}')" style="position:relative;width:75%;aspect-ratio:${p.video_w > 0 && p.video_h > 0 ? (p.video_w / p.video_h).toFixed(3) : (p.video_cover ? "16/9" : "9/16")};border-radius:8px;overflow:hidden;background:#111;">\n            ${avCover}\n            <video muted playsinline autoplay loop preload="auto" fetchpriority="high" data-vsrc="${vsrcEsc}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#111;pointer-events:none;"></video>\n            <div class="ad-video-loading"><span class="ad-video-spin"></span></div>\n            <div class="ad-video-expand"><i class="fa-solid fa-expand"></i></div>\n            <div class="ad-video-sound" onclick="event.stopPropagation();toggleAdSound(this)"><i class="fa-solid fa-volume-xmark"></i></div>\n          </div>\n        </div>`;
         } else {
             videoHtml = `<div class="post-images single">\n          <div onclick="event.stopPropagation();openVideoPlayer('${p.video}', '${p.video_cover || ""}', ${p.allow_download != 0 ? "true" : "false"})" style="position:relative;cursor:pointer;width:75%;aspect-ratio:1;border-radius:8px;overflow:hidden;">\n            ${p.video_cover ? `<img loading="lazy" src="${resolveThumb(p.video_cover)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ""}\n            <div style="display:${p.video_cover ? "none" : "flex"};position:absolute;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);align-items:center;justify-content:center;">\n              <div style="text-align:center;">\n                <i class="fa-solid fa-video" style="font-size:32px;color:rgba(255,255,255,0.9);"></i>\n                <div style="color:rgba(255,255,255,0.8);font-size:11px;margin-top:4px;">点击播放</div>\n              </div>\n            </div>\n            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;background:rgba(0,0,0,0.5);border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;">\n              <i class="fa-solid fa-play" style="color:#fff;font-size:16px;margin-left:2px;"></i>\n            </div>\n          </div>\n        </div>`;
         }
@@ -4095,6 +4106,11 @@ async function refreshFeedDelta() {
                 liked: n.liked !== undefined ? n.liked : false,
                 collected: n.collected !== undefined ? n.collected : false
             })), ...posts.slice(insertAt) ];
+            newPosts.forEach(function(p) {
+                if (p && p.id && p.watermark_protected != 1) {
+                    postDetailCache[String(p.id)] = { data: p, ts: Date.now(), raw: JSON.stringify(p) };
+                }
+            });
             dirty = true;
         }
         if (dirty) {
@@ -4178,6 +4194,11 @@ async function loadPosts(refresh = false) {
         if (res.code === 1) {
             const list = res.data || [];
             posts = refresh ? list : [ ...posts, ...list ];
+            list.forEach(function(p) {
+                if (p && p.id && !p.is_ad && p.watermark_protected != 1) {
+                    postDetailCache[String(p.id)] = { data: p, ts: Date.now(), raw: JSON.stringify(p) };
+                }
+            });
             const _plEl = document.getElementById("postList");
             if (posts.length) {
                 const _cards = AdManager.injectFeed(posts.map(renderPostCard));
