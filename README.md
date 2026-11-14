@@ -236,29 +236,109 @@ pm2 restart 未加 `--update-env`，环境变量保留，`ZANHUA_TOKEN_SECRET` �
 
 
 
-## 10. v1.4.7（index.html N=127）帖子导航 & 评论广告优化
+## 15. v1.4.6（index.html N=126）评论加载修复
 
-### 帖子详情点击响应提速
+### 根因：评论广告导致无限递归崩溃（Stack Overflow）
 
-**问题**：未关闭水印保护提示的用户每次点击帖子都先阻塞一次 `/postDetail` 请求，等待 API 返回后才开始导航；同时后台刷新检测到任意数据变化（点赞数、评论数等）即触发整页 `render()`，造成 UI 闪烁，用户感知为"卡住"或需要多次点击。
+`commentList` API 为已登录用户注入广告评论（`withCommentAds` → `injectCommentAdsFor`）。
+广告对象由 `adCommentToSend()` 生成，其 `post_seq: 0`、`parent_seq: 0`。
 
-**修复**：
-- `goPostDetail()` 移除水印预检阻塞，直接调用 `_goPostDetailDirect()` 导航，立即显示加载状态或缓存内容
-- 水印检查移到 `_goPostDetailDirect()` 的 API 回调中；受保护帖子时传 `onConfirm` 回调给 `showProtectedPostWarning()`，确认后直接 `render()` 而不重复推入 `pageHistory`
-- 后台 `/postDetail` 刷新只在正文/标题/图片发生实质变化时才触发重渲染；仅点赞数等元数据变化时静默更新缓存
+`app.js` `loadComments()` 中 `buildTree(0)` 会取所有 `parent_seq == 0` 的条目，包括该广告。
+`renderTopLevel(ad)` 调用 `collectAllDescendants(ad.post_seq = 0)`，后者再次找到 `parent_seq == 0` 的所有条目（包括广告本身），递归调用 → 无限递归 → 浏览器抛出 `RangeError: Maximum call stack size exceeded` → `list.innerHTML` 永不赋值 → 骨架屏永久停留。
 
-### 评论广告位置与样式
+**用户可见症状**：登录后打开任何有评论的帖子，评论区永久停留在加载骨架状态。未登录时广告不注入，故未登录用户不受影响。
 
-**问题**：广告评论随机插入列表中间，且图片被强制裁剪为 1:1 正方形。
+### 修复（app.js v126）
 
-**修复**：
-- `server.js` `injectCommentAds()`：广告始终插入列表第一位（`splice(0,0,...)`），移除 `feedAdSlots` 随机位置逻辑
-- `app.js` `renderComment()`：广告评论移除 `c-content collapsed` 类（帖子详情和表白墙两处），图片无需点击"展开"即可看到
-- `app.css` v13：新增 `.comment-item .post-images img { aspect-ratio: auto; object-fit: contain; }` 规则，评论图片保留原始比例
+三处 `renderTopLevel` 函数（帖子详情、表白墙、作业）均在开头加入：
+```js
+if (c.is_ad) return renderComment(c, "", "");
+// 或 renderHwComment(c, "", "") 视场景而定
+```
 
-### 缓存 bg 刷新逻辑说明
+广告作为顶层元素直接渲染，不再参与 `collectAllDescendants` 递归。
 
-`_goPostDetailDirect()` 命中缓存时，后台 `api("/postDetail?id=...")` 返回后：
-- 若帖子内容（`content`/`title`/`images`）未变 → 仅更新 `currentPostDetail` 和缓存，不触发 `render()`
-- 若帖子内容已变 → 重新渲染整页（包含评论重新加载）
-- 若检测到 `watermark_protected == 1` 且未关闭提示 → 弹出保护提示覆盖层
+### 附带修复：评论缓存竞态条件（race condition）
+
+`_goPostDetailDirect()` 在命中 `postDetailCache` 时并行发起两个请求：`commentList` 和后台 `postDetail` 刷新。若 `postDetail` 先返回且数据有变（`!_same`），则触发第二次 `render()`，此时 `#commentList` 节点被替换，`loadComments()` 第二次运行时检查到缓存与数据相同（`_cc0.raw === html`）却跳过 `list.innerHTML = html` → 骨架持续。
+
+修复：在缓存命中判断中加 DOM 有效性检查：
+```js
+if (_cc0 && _cc0.raw === html) {
+    if (!list.querySelector(".comment-item")) list.innerHTML = _cc0.html;
+    _rebindCommentExpandButtons(list);
+    bindCommentLongPress();
+    return;
+}
+```
+
+
+## 16. v1.4.7（index.html N=127）广告评论 + 导航提速
+
+### 评论广告图片不可见（collapsed 截断）
+
+广告评论的 `content` 被包裹在 `.c-content.collapsed`（`-webkit-line-clamp: 3`），图片在折叠区外，用户必须点"展开"才能看到。
+
+修复（app.js）：两处 `loadComments`（帖子详情、表白墙）渲染逻辑：
+```js
+`<div class="c-content${c.is_ad ? "" : " collapsed"}" ...>`
+```
+广告条目直接去掉 `collapsed`，全图无需展开即可见。
+
+### 评论广告图片 1:1 裁剪
+
+CSS `.post-images img { aspect-ratio: 1; object-fit: cover; }` 将所有帖子图片强制裁剪为 1:1。
+
+修复（app.css）：在 `.comment-replies .c-content` 规则后新增：
+```css
+.comment-item .post-images img { aspect-ratio: auto; object-fit: contain; }
+```
+评论区图片按原比例显示。
+
+### 评论广告位置：随机 → 始终最顶部
+
+`injectCommentAds()` 原来使用 `feedAdSlots()` 随机插位。
+
+修复（server.js）：固定插入位置：
+```js
+out.splice(0, 0, { ...onlyAd, is_ad: true });
+```
+
+### 帖子详情导航慢（水印预检阻塞）
+
+`goPostDetail()` 原来先 `await` 一次 `checkWatermark` API，再跳转，导致点击后白等。
+
+修复：水印检查移入 `_goPostDetailDirect()` 的 `postDetail` API 回调中；
+`showProtectedPostWarning(postId, onConfirm)` 新增第二个参数，点击确认后直接渲染，不再重复压栈。
+
+### 后台 postDetail 刷新触发不必要重渲染
+
+缓存命中路径中，`_goPostDetailDirect()` 并行发 `api("/postDetail")` 后台刷新；
+原逻辑：数据有任何差异（含点赞数）就 `render()` → 闪屏。
+
+修复：只比较 `content` / `title` / `images`，其余字段静默更新：
+```js
+const contentChanged = r.data.content !== _pd.data.content
+    || r.data.title !== _pd.data.title
+    || r.data.images !== _pd.data.images;
+if (contentChanged && document.getElementById("commentList")) { currentPostDetail = r.data; render(); }
+else { currentPostDetail = r.data; }
+```
+
+
+
+## 17. v1.4.8（index.html N=128）帖子信息流广告文案样式
+
+### 问题
+
+`adRowToSend()` 返回帖子广告对象，文案放在 `title` 字段，`content` 字段为空。
+`renderFeedItem()` 对 `p.title` 使用 `font-weight: 600` 标题样式，广告文案看起来像标题加粗，与正常帖子标题无异。
+
+### 修复（app.js）
+
+`renderFeedItem` 中区分广告与非广告的 title 渲染：
+```js
+${p.title && !isAd ? `<div style="padding:0 16px 6px;font-size:16px;font-weight:600;">${escapeHtml(p.title)}</div>` : ""}
+${isAd && p.title ? `<div class="post-content" style="padding:0 16px 6px;">${formatContentWithTopics(p.title)}</div>` : ""}
+```
+广告文案改为 `.post-content` 正文样式（正常字重），视觉与帖子正文一致。
