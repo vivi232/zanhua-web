@@ -342,3 +342,53 @@ ${p.title && !isAd ? `<div style="padding:0 16px 6px;font-size:16px;font-weight:
 ${isAd && p.title ? `<div class="post-content" style="padding:0 16px 6px;">${formatContentWithTopics(p.title)}</div>` : ""}
 ```
 广告文案改为 `.post-content` 正文样式（正常字重），视觉与帖子正文一致。
+
+
+## 18. v1.4.9（index.html N=129）广告视频循环 + 评论图片布局 + 导航加速
+
+### 广告视频反复重载问题
+
+广告视频播放结束后，`IntersectionObserver` 或定时器触发 `playAdVideo()`，该函数对已有 `src` 的视频调用 `v.play()`，导致浏览器从头重新播放（blob URL 播放结束→再play→回到0秒）。
+
+**修复（app.js）**：广告视频 `<video>` 添加 `loop` 属性：
+```html
+<video muted playsinline autoplay loop preload="auto" ...>
+```
+
+视频自然循环播放，不再触发 IO 重启。
+
+同时改善 `hookAdVideoPlayer` 的 `error` 事件处理：若视频已处于 `ready` 状态且有 `src`，仅记录当前时间戳、延迟 400ms 重试 play，不删除 `src`、不显示加载图标：
+```js
+if (pl.classList.contains("ready") && vv.getAttribute("src")) {
+    const _t = vv.currentTime;
+    setTimeout(function() { vv.currentTime = _t; vv.play(); }, 400);
+    return;
+}
+```
+
+### 评论广告图片：对齐正文首字 + 缩至 2/3 宽
+
+`.post-images { padding: 0 16px 8px; }` 的全局左 padding 使图片偏离文字左边 16px。
+
+**修复（app.css）**：
+```css
+.c-content .post-images { padding: 0 0 8px; }
+.c-content .post-images.single img { width: 66.67%; }
+```
+
+图片左边与正文首字对齐，宽度为文字区域的 2/3。
+
+### 帖子详情导航仍慢：预填充缓存
+
+首次点击帖子进入详情时，`postDetailCache` 为空，必须等待 `/postDetail` API 响应，期间显示"加载中"。
+
+**修复（app.js）**：feed 数据加载完成后，立即用 feed 数据填充 `postDetailCache`（排除广告帖和受水印保护帖）。用户点击任意 feed 中的帖子时，缓存路径命中，立即渲染内容；后台 `/postDetail` 刷新补充 liked/collected 状态。
+```js
+list.forEach(function(p) {
+    if (p && p.id && !p.is_ad && p.watermark_protected != 1) {
+        postDetailCache[String(p.id)] = { data: p, ts: Date.now(), raw: JSON.stringify(p) };
+    }
+});
+```
+
+`refreshFeedDelta()` 中新增帖子同样写入缓存。
