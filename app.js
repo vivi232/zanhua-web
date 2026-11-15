@@ -685,7 +685,9 @@ function adVideoObjectUrl(raw) {
 function isAdMirrorRaw(u) {
     try {
         var h = (new URL(u).hostname || "").toLowerCase();
-        return h === "raw.githubusercontent.com" || /(^|\.)githubusercontent\.com$/.test(h);
+        if (h === "raw.githubusercontent.com" || /(^|\.)githubusercontent\.com$/.test(h)) return true;
+        if (/(^|\.)github\.io$/.test(h)) return true;
+        return false;
     } catch (e) {
         return false;
     }
