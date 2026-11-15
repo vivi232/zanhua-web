@@ -2,6 +2,15 @@ const _pathFirst = function() {
     const _segs = window.location.pathname.split("/").filter(Boolean);
     if (_segs.length && _segs[0] === "appeal") return "";
     if (_segs.length && /^inv=/.test(_segs[0])) return "";
+    if (_segs.length) {
+        const s0 = _segs[0];
+        // Bare invite-code path on a top-level domain: /ZHBBQ001 (8-char uppercase+digit)
+        if (/^[A-Z0-9]{8}$/.test(s0)) {
+            try { localStorage.setItem("zanhua_invite_code", s0); } catch (e) {}
+            try { history.replaceState({}, "", "/" + _segs.slice(1).join("/") + location.search + location.hash); } catch (e) {}
+            return "";
+        }
+    }
     return _segs[0] || "";
 }();
 

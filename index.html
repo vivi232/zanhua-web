@@ -21,10 +21,19 @@
   <script>(function() {
   var _segs = window.location.pathname.split("/").filter(Boolean);
   var _pf = "";
-  if (_segs.length && (_segs[0] === "appeal" || _segs[0].indexOf("inv=") === 0)) {
-    _pf = "";
-  } else {
-    _pf = _segs[0] || "";
+  var _host = location.hostname;
+  var _top = _host === "zanhua.asia" || _host === "www.zanhua.asia" || _host === "vivi232.github.io";
+  if (_segs.length) {
+    var _s0 = _segs[0];
+    if (_s0 === "appeal" || _s0.indexOf("inv=") === 0) {
+      _pf = "";
+    } else if (_top && /^[A-Z0-9]{8}$/.test(_s0)) {
+      // bare invite code path like /ZHBBQ001
+      try { localStorage.setItem("zanhua_invite_code", _s0); } catch (e) {}
+      _pf = "";
+    } else {
+      _pf = _top ? "" : _s0;
+    }
   }
   window.__BASE = _pf ? "/" + _pf : "";
 })();
@@ -344,7 +353,7 @@ if ("serviceWorker" in navigator) {
   </div>
   <script>(function() {
   var s = document.createElement("script");
-  s.src = window.__BASE + "/app.js?v=135";
+  s.src = window.__BASE + "/app.js?v=136";
   document.body.appendChild(s);
 })();
 </script>
