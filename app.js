@@ -682,9 +682,54 @@ function adVideoObjectUrl(raw) {
     return _adBlobCache[raw] || "";
 }
 
+function isAdMirrorRaw(u) {
+    try {
+        var h = (new URL(u).hostname || "").toLowerCase();
+        return h === "raw.githubusercontent.com" || /(^|\.)githubusercontent\.com$/.test(h);
+    } catch (e) {
+        return false;
+    }
+}
+
+function adMirrorBlobUrl(raw, onp) {
+    return getAdBlob(raw).catch(function() {
+        return null;
+    }).then(function(b) {
+        if (b) {
+            var bu = URL.createObjectURL(b);
+            _adBlobCache[raw] = bu;
+            return bu;
+        }
+        return fetch(raw, {
+            mode: "cors",
+            credentials: "omit",
+            referrerPolicy: "no-referrer",
+            cache: "force-cache"
+        }).then(function(r) {
+            if (!r.ok) throw new Error("admirror " + r.status);
+            return readAdStream(r, onp);
+        }).then(function(bb) {
+            var typed = (bb && bb.type === "video/mp4") ? bb : new Blob([bb], {
+                type: "video/mp4"
+            });
+            return putAdBlob(raw, typed).then(function() {
+                var u = URL.createObjectURL(typed);
+                _adBlobCache[raw] = u;
+                return u;
+            });
+        }).catch(function(e) {
+            reportAdMediaErr(raw, e);
+            return raw;
+        });
+    });
+}
+
 function adFetchNow(raw, onp) {
     var crossOrigin = !mediaIsFirstParty(raw);
-    if (crossOrigin) return Promise.resolve(raw);
+    if (crossOrigin) {
+        if (isAdMirrorRaw(raw)) return adMirrorBlobUrl(raw, onp);
+        return Promise.resolve(raw);
+    }
     return getAdBlob(raw).then(function(b) {
         if (b) {
             const bu0 = URL.createObjectURL(b);
