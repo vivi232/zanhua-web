@@ -8025,6 +8025,9 @@ async function handleAuth() {
 }
 
 function showLoginModal() {
+    _loginInFlight = false;
+    const _lb = document.getElementById("loginBtn");
+    if (_lb) { _lb.disabled = false; _lb.textContent = "登录 / 注册"; }
     document.getElementById("loginModal").classList.add("active");
     document.getElementById("loginTipPhone").textContent = "";
     document.getElementById("loginTipCode").textContent = "";
@@ -8247,7 +8250,9 @@ function genLoginId() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
 }
 
+let _loginInFlight = false;
 async function handleLoginAuth() {
+    if (_loginInFlight) return;
     const phone = document.getElementById("loginAuthPhone").value.trim();
     const code = document.getElementById("loginAuthCode").value.trim();
     const agree = document.getElementById("loginAgreeTerms").checked;
@@ -8266,6 +8271,14 @@ async function handleLoginAuth() {
         document.getElementById("loginTipAgreement").textContent = "请阅读并勾选同意《用户服务协议》《隐私政策》《未成年人隐私政策》";
         return;
     }
+    const _btn = document.getElementById("loginBtn");
+    const _btnText = _btn ? _btn.textContent : "";
+    _loginInFlight = true;
+    if (_btn) { _btn.disabled = true; _btn.textContent = "登录中…"; }
+    const _restore = function() {
+        _loginInFlight = false;
+        if (_btn) { _btn.disabled = false; _btn.textContent = _btnText; }
+    };
     try {
         const _lid = genLoginId();
         const res = await api("/auth", "POST", {
@@ -8289,6 +8302,7 @@ async function handleLoginAuth() {
                 loadPosts(true);
             }
         } else {
+            _restore();
             if (res.banInfo && res.banInfo.blocked) {
                 handleLoginBanBlocked(phone, res.banInfo);
             } else {
@@ -8296,6 +8310,7 @@ async function handleLoginAuth() {
             }
         }
     } catch (e) {
+        _restore();
         showToast("网络异常，请重试");
     }
 }
