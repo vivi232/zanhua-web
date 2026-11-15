@@ -96,6 +96,9 @@ async function runTest(id, url, opts){
   await runTest('3', URLS.A, {mode:'fetch', cors:'cors', referrer:'no-referrer', name:'fetch cors no-referrer'});
   await runTest('4', URLS.A, {mode:'fetch', cors:'no-cors', referrer:'no-referrer', name:'fetch no-cors (opaque)'});
   await runTest('5', URLS.A, {mode:'fetch', cors:'cors', referrer:'origin', name:'fetch cors referrer=origin'});
+  await runTest('6', "https://zanhuaweb.asia/zanhua/uploads/posts/1793637684619_ybfrt4.mp4", {mode:'video', name:'video 跨域(自服务器)对照'});
+  await runTest('7', "https://zanhuaweb.asia/zanhua/uploads/posts/1793637684619_ybfrt4.mp4", {mode:'fetch', cors:'cors', referrer:'no-referrer', name:'fetch 跨域(自服务器)对照'});
+  await runTest('8', "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", {mode:'video', name:'video 第三方MP4对照'});
   var ok1 = window.__results['1'] && window.__results['1'].ok;
   var ok2 = window.__results['2'] && window.__results['2'].ok;
   var ctrl = window.__results['sw'] && window.__results['sw'].controller;
