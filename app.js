@@ -693,6 +693,15 @@ function isAdMirrorRaw(u) {
     }
 }
 
+function isAdCdnDomain(u) {
+    try {
+        var h = (new URL(u).hostname || "").toLowerCase();
+        return h === "ad.zanhua.asia";
+    } catch (e) {
+        return false;
+    }
+}
+
 function adMirrorBlobUrl(raw, onp) {
     return getAdBlob(raw).catch(function() {
         return null;
@@ -729,7 +738,7 @@ function adMirrorBlobUrl(raw, onp) {
 function adFetchNow(raw, onp) {
     var crossOrigin = !mediaIsFirstParty(raw);
     if (crossOrigin) {
-        if (isAdMirrorRaw(raw)) return adMirrorBlobUrl(raw, onp);
+        if (isAdMirrorRaw(raw) || isAdCdnDomain(raw)) return adMirrorBlobUrl(raw, onp);
         return Promise.resolve(raw);
     }
     return getAdBlob(raw).then(function(b) {
