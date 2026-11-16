@@ -232,7 +232,9 @@ function cleanProvince(p) {
     if (/台湾|臺灣|台灣|Taiwan|TW/i.test(s)) return "中国台湾";
     if (/香港|Hong\s?Kong|HK/i.test(s)) return "中国香港";
     if (/澳门|澳門|Macau|Macao|MO/i.test(s)) return "中国澳门";
-    return s;
+    const m = { "内蒙古自治区": "内蒙古", "广西壮族自治区": "广西", "西藏自治区": "西藏", "宁夏回族自治区": "宁夏", "新疆维吾尔自治区": "新疆" };
+    if (m[s]) return m[s];
+    return s.replace(/[省市]$/, "");
 }
 
 const _videoSignCache = new Map;
