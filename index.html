@@ -168,6 +168,7 @@ if ("serviceWorker" in navigator) {
   var isApple = vendor.indexOf("Apple") !== -1 || /Macintosh|Mac OS X|iPhone|iPad|iPod/i.test(ua);
   var scFontUrl = "https://emoji-fonts-1342939114.cos.ap-nanjing.myqcloud.com/ZanhuaSans-SC-Regular-Decrease.woff2";
   var latinFontUrl = "https://154.201.81.86/zanhua/res/fonts/ZanhuaSans-Latin-Regular.woff2";
+  var latinBoldFontUrl = "https://154.201.81.86/zanhua/res/fonts/ZanhuaSans-Latin-Bold.woff2";
   var emojiUrl = "https://emoji-fonts-1342939114.cos.ap-nanjing.myqcloud.com/emoji.ttf";
   var fontUrl = isApple ? latinFontUrl : scFontUrl;
   var pre = document.createElement("link");
@@ -176,12 +177,26 @@ if ("serviceWorker" in navigator) {
   pre.href = fontUrl;
   pre.crossOrigin = "anonymous";
   document.head.appendChild(pre);
+  if (isApple) {
+    var preB = document.createElement("link");
+    preB.rel = "preload";
+    preB.as = "font";
+    preB.href = latinBoldFontUrl;
+    preB.crossOrigin = "anonymous";
+    document.head.appendChild(preB);
+  }
   var emojiRanges = [ "U+1F600-1F64F", "U+1F300-1F5FF", "U+1F680-1F6FF", "U+1F900-1F9FF", "U+1FA00-1FA6F, U+1FA70-1FAFF", "U+2600-26FF, U+2700-27BF", "U+FE00-FE0F, U+1F000-1F0FF", "U+2300-23FF, U+2B00-2BFF, U+25A0-25FF, U+2764, U+2728, U+2B50, U+2190-21FF" ];
   var fontStyleEl = document.createElement("style");
   document.head.appendChild(fontStyleEl);
   function setFontFace(family, url, format, extraCss) {
     var css = "@font-face {" + "font-family:'" + family + "';" + "src:url('" + url + "') format('" + format + "');" + "font-display:swap;" + "font-weight:400;" + "font-style:normal;" + (extraCss || "") + "}";
-    fontStyleEl.textContent = fontStyleEl.textContent.replace(new RegExp("@font-face \\{font-family:'" + family + "'[^}]*\\}", "g"), "");
+    fontStyleEl.textContent = fontStyleEl.textContent.replace(new RegExp("@font-face \\{font-family:'" + family + "'[^}]*font-weight:400;[^}]*\\}", "g"), "");
+    fontStyleEl.textContent = fontStyleEl.textContent + "\n" + css;
+  }
+  function setBoldFace(family, url, weight) {
+    weight = weight || 700;
+    var css = "@font-face {" + "font-family:'" + family + "';" + "src:url('" + url + "') format('woff2');" + "font-display:swap;" + "font-weight:" + weight + ";" + "font-style:normal;}";
+    fontStyleEl.textContent = fontStyleEl.textContent.replace(new RegExp("@font-face \\{font-family:'" + family + "'[^}]*font-weight:" + weight + ";[^}]*\\}", "g"), "");
     fontStyleEl.textContent = fontStyleEl.textContent + "\n" + css;
   }
   function setEmojiFontFace(url, format) {
@@ -193,6 +208,7 @@ if ("serviceWorker" in navigator) {
     fontStyleEl.textContent = fontStyleEl.textContent + "\n" + css;
   }
   setFontFace("ZanhuaSans", fontUrl, "woff2");
+  setBoldFace("ZanhuaSans", latinBoldFontUrl, 700);
   if (!isApple) setEmojiFontFace(emojiUrl, "truetype");
   function loadFont(href, family, format, timeout) {
     return new Promise(function(resolve) {
@@ -353,7 +369,7 @@ if ("serviceWorker" in navigator) {
   </div>
   <script>(function() {
   var s = document.createElement("script");
-  s.src = window.__BASE + "/app.js?v=142";
+  s.src = window.__BASE + "/app.js?v=143";
   document.body.appendChild(s);
 })();
 </script>
